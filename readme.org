@@ -1,0 +1,30 @@
+* Lathe-automatic complex (ТАК токарно-автоматный комплекс)
+** Directory structure
+*** ENC-EP50S8
+EP50S8 encoder controller. It uses LGT8F328P board.
+
+**** Install board and project
+pio upgrade
+pio pkg install -g -p "https://github.com/darkautism/pio-lgt8fx.git"
+pio init -b LGT8F328P
+
+**** Minimal platgormio.ini
+[env:LGT8F328P]
+platform = lgt8f
+board = LGT8F328P
+framework = arduino
+board_build.f_cpu=16000000L
+;internal clock
+board_build.clock_source=1
+
+**** Extended platgormio.ini params
+[env:LGT8F328P]
+framework = arduino
+monitor_speed = 9600
+upload_speed = 57600
+board_build.f_cpu = 32000000L
+board_build.clock_source = 1
+
+** Links
+https://community.platformio.org/t/lgt8f328p-with-platformio-and-vscode-unknown-platform/35072/23
+https://registry.platformio.org/platforms/darkautism/lgt8f
