@@ -34,5 +34,7 @@ board_build.clock_source = 1
 #+END_EXAMPLE
 
 ** Links
-https://community.platformio.org/t/lgt8f328p-with-platformio-and-vscode-unknown-platform/35072/23
 https://registry.platformio.org/platforms/darkautism/lgt8f
+https://community.platformio.org/t/lgt8f328p-with-platformio-and-vscode-unknown-platform/35072/23
+http://www.ur5ffr.com/viewtopic.php?t=369
+
