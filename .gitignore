@@ -30,3 +30,10 @@
 *.exe
 *.out
 *.app
+
+# PLATFORMIO
+.pio
+.clang_complete
+.ccls
+
+TAGS
