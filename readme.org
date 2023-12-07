@@ -1,7 +1,8 @@
-* Lathe-automatic complex (ТАК токарно-автоматный комплекс)
+* Lathe-automatic complex
+LAC == ТАК (токарно-автоматний комплекс)
 ** Directory structure
 *** ENC-EP50S8
-EP50S8 encoder controller. It uses LGT8F328P board.
+EP50S8 encoder controller uses Arduino Nano LGT8F328P board.
 
 **** Install board and project
 #+BEGIN_EXAMPLE
