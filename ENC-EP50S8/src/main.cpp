@@ -1,7 +1,7 @@
 #include <Arduino.h>
-#define BITS 11 ///< Encoder data bits length
-#define MSB 12  ///< The GPIO 12 is the most significant bit on the board.
-                ///< The least significant bit is GPIO 2.
+#define BITS 11  ///< Encoder data bits length
+#define MSB  12  ///< The GPIO 12 is the most significant bit on the board.
+                 ///< The least significant bit is GPIO 2.
 
 void gpioInit();
 void readRaw(int *a);
@@ -20,13 +20,12 @@ void loop() {
   printRaw(rawValues);
   Serial.print("\t");
   Serial.println( rawToBin(rawValues) );
-  Serial.print("\n");
   delay(100);
 }
 
 void gpioInit() {
   int i;
-  for (i = MSB; i > MSB - BITS; i--){
+  for (i = MSB; i > MSB - BITS; i--) {
     pinMode(i, INPUT_PULLUP);
   }
 }
