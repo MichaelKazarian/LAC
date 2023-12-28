@@ -1,20 +1,29 @@
 #include <Arduino.h>
+#include <MCP23017.h>
+
 #define BITS 11  ///< Encoder data bits length
 #define MSB  12  ///< The GPIO 12 is the most significant bit on the board.
                  ///< The least significant bit is GPIO 2.
 
 void gpioInit();
+bool mcpInit();
 void readRaw(int *a);
 void printRaw(int *a);
 int bcd8421(int *a, int length);
 int rawToBin(int *a);
+void testMcp();
+  
+MCP23017 mcp = MCP23017(0x20);
 
 void setup() {
+  while (!Serial) { delay(10); }
   Serial.begin(9600);
   gpioInit();
+  mcpInit();
 }
 
 void loop() {
+  testMcp();
   int rawValues[BITS];
   readRaw(rawValues);
   printRaw(rawValues);
@@ -90,5 +99,32 @@ void greytobinary(int *a, int count) {
   for(int i = count - 2; i >= 0; i--) {
     a[i] = a[i]^a[i+1];
   }
+}
+
+
+/**
+ * \brief Inits MCP23017 device family provides 16-bit,
+ *  general purpose parallel I/O expansion for I2C bus or SPI applications.
+ *
+ * \returns  true if init successful.
+ */
+bool mcpInit() {
+  // if (!mcp.begin_I2C(0x25)) {
+  //   Serial.println("I2C Error.");
+  //   while (1);
+  // }
+  mcp.init();
+  mcp.pinMode(0, INPUT_PULLUP);
+  mcp.pinMode(1, INPUT_PULLUP);
+  mcp.pinMode(2, INPUT_PULLUP);
+  mcp.pinMode(6, OUTPUT);
+  mcp.pinMode(5, OUTPUT);
+  mcp.pinMode(4, OUTPUT);
+}
+
+void testMcp() {
+  mcp.digitalWrite(4, mcp.digitalRead(0));
+  mcp.digitalWrite(5, mcp.digitalRead(1));
+  mcp.digitalWrite(6, mcp.digitalRead(2));  
 }
 
