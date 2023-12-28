@@ -41,3 +41,12 @@ EP50S8 encoder controller uses Arduino Nano LGT8F328P board.
 4. https://www.electronicshub.org/binary-codes/
 5. https://uk.wikipedia.org/wiki/%D0%94%D0%B2%D1%96%D0%B9%D0%BA%D0%BE%D0%B2%D0%BE-%D0%B4%D0%B5%D1%81%D1%8F%D1%82%D0%BA%D0%BE%D0%B2%D0%B8%D0%B9_%D0%BA%D0%BE%D0%B4
 
+*** MCP23017 I2C GPIO Expander
+
+**** Install
+#+BEGIN_EXAMPLE
+pio lib install "blemasle/MCP23017"
+#+END_EXAMPLE
+**** Links
+1. https://learn.adafruit.com/adafruit-mcp23017-i2c-gpio-expander
+2. https://github.com/blemasle/arduino-mcp23017
