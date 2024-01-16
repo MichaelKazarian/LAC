@@ -5,6 +5,9 @@
 #define MSB  12  ///< The GPIO 12 is the most significant bit on the board.
                  ///< The least significant bit is GPIO 2.
 
+#define P_ECHO A0
+#define P_TRIG 13
+
 void gpioInit();
 bool mcpInit();
 void readRaw(int *a);
@@ -29,7 +32,7 @@ void loop() {
   printRaw(rawValues);
   Serial.print("\t");
   Serial.println( rawToBin(rawValues) );
-  delay(100);
+  delay(500);
 }
 
 void gpioInit() {
@@ -113,6 +116,12 @@ bool mcpInit() {
   //   Serial.println("I2C Error.");
   //   while (1);
   // }
+  // MCP addressing START
+  // pinMode(A1, OUTPUT);
+  // pinMode(A2, OUTPUT);
+  // digitalWrite(A1, HIGH);
+  // digitalWrite(A2, HIGH);
+  // MCP addressing END
   mcp.init();
   mcp.pinMode(0, INPUT_PULLUP);
   mcp.pinMode(1, INPUT_PULLUP);
@@ -120,11 +129,14 @@ bool mcpInit() {
   mcp.pinMode(6, OUTPUT);
   mcp.pinMode(5, OUTPUT);
   mcp.pinMode(4, OUTPUT);
+
+
+  pinMode(P_ECHO, INPUT_PULLUP);
+  pinMode(P_TRIG, OUTPUT);
 }
 
 void testMcp() {
   mcp.digitalWrite(4, mcp.digitalRead(0));
   mcp.digitalWrite(5, mcp.digitalRead(1));
-  mcp.digitalWrite(6, mcp.digitalRead(2));  
+  mcp.digitalWrite(6, mcp.digitalRead(2));
 }
-
