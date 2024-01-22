@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #define BITS 11  ///< Encoder data bits length
-#define MSB  12  ///< The GPIO 12 is the most significant bit on the board.
-                 ///< The least significant bit is GPIO 2.
+#define PRINT_SPEED 20 // Per second
 
 void gpioInit();
 void readRaw(int *a);
@@ -9,24 +8,24 @@ void printRaw(int *a);
 int bcd8421(int *a, int length);
 int rawToBin(int *a);
 
+const byte PINS [BITS] = { 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+int RAWVALUES [BITS] = {};
+
 void setup() {
   Serial.begin(9600);
   gpioInit();
 }
 
 void loop() {
-  int rawValues[BITS];
-  readRaw(rawValues);
-  printRaw(rawValues);
-  Serial.print("\t");
-  Serial.println( rawToBin(rawValues) );
-  delay(100);
+  readRaw(RAWVALUES);
+  // printRaw(RAWVALUES); Serial.print("\t");
+  Serial.println( rawToBin(RAWVALUES) );
+  delay(PRINT_SPEED);
 }
 
 void gpioInit() {
-  int i;
-  for (i = MSB; i > MSB - BITS; i--) {
-    pinMode(i, INPUT_PULLUP);
+  for (int i = 0; i < BITS; i++) {
+    pinMode(PINS[i], INPUT_PULLUP);
   }
 }
 
@@ -49,12 +48,10 @@ int bcd8421(int *a, int length) {
  * \brief Reads encoder binarry data to \param[*a]
  */
 void readRaw(int *a) {
-  int i, j=BITS-1;
-  for (i = MSB; i > MSB-BITS; i--) {
-    int readVal;
-    readVal = !digitalRead(i);
-    a[j] = readVal;
-    j--;
+  int readVal;
+  for (int i = 0; i < BITS; i++) {
+    readVal = !digitalRead(PINS[i]);
+    a[i] = readVal;
   }
 }
 
@@ -69,6 +66,7 @@ void printRaw(int *a) {
     Serial.print(a[j]);
   }
 }
+
 
 /**
  * \brief Converts raw alue to decimal value.
