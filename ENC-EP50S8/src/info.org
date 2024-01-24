@@ -1,0 +1,41 @@
+* Project info
+Currently, an encoder used in the project set the water temperature and starts/stops heating. To use buttons instead of encoder change USE_ENCODER to false.
+
+** Library references
+18B20 temperature sensor [[https://github.com/esp8266/Basic/blob/master/libraries/dallas-temperature-control/examples/Tester/Tester.pde][example]]
+
+** Other
+Avoiding the Overflow Issue When Using millis() - [[https://www.norwegiancreations.com/2018/10/arduino-tutorial-avoiding-the-overflow-issue-when-using-millis-and-micros/][link]]
+C documentation using [[https://habr.com/ru/articles/252101/][doxygen]]
+
+** Ultrasonic sensor
+The reader of HC-SR04, US-025, etc ultrasonic sensors.
+
+#+BEGIN_SRC C
+#define P_ECHO 4
+#define P_TRIG 5
+
+void setup() {
+    while (!Serial) { delay(10); }
+    Serial.begin(9600);
+    pinMode(P_ECHO, INPUT_PULLUP);
+    pinMode(P_TRIG, OUTPUT);
+}
+
+void loop() {
+  digitalWrite(P_TRIG, LOW);
+  delayMicroseconds(2);
+  digitalWrite(P_TRIG, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(P_TRIG, LOW);
+
+  double duration=pulseIn(P_ECHO, HIGH);
+  //Serial.print("DR: ");  Serial.println(duration);
+  double distance;
+  distance = duration/58;
+  //distance = (duration*.0343)/2;
+  Serial.print("Distance: ");
+  Serial.println(distance);
+  delay(200);
+}
+#+END_SRC

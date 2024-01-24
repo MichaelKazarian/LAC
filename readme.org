@@ -1,6 +1,15 @@
 * Lathe-automatic complex
 LAC == ТАК (токарно-автоматний комплекс)
-** Board setup
+** Directory structure
+*** ENC-EP50S8
+EP50S8 encoder controller uses Arduino Nano LGT8F328P board.
+Read via Modbus
+#+BEGIN_EXAMPLE
+mbpoll -0 -B -m rtu -a 3 -b 9600 -l 200 -t 4 -r 0 -c 1 -P none /dev/ttyUSB0
+#+END_EXAMPLE
+
+*** TestBoard directory
+LGT8F328P based Arduino Nano clone uses as test board
 **** Install board and project
 #+BEGIN_EXAMPLE
 pio upgrade
@@ -30,14 +39,9 @@ board_build.clock_source = 1
 ...
 #+END_EXAMPLE
 
-** Directory structure
-*** ENC-EP50S8
-EP50S8 encoder controller uses Arduino Nano LGT8F328P board.
-
 **** Links
 1. https://registry.platformio.org/platforms/darkautism/lgt8f
 2. https://community.platformio.org/t/lgt8f328p-with-platformio-and-vscode-unknown-platform/35072/23
 3. http://www.ur5ffr.com/viewtopic.php?t=369
 4. https://www.electronicshub.org/binary-codes/
 5. https://uk.wikipedia.org/wiki/%D0%94%D0%B2%D1%96%D0%B9%D0%BA%D0%BE%D0%B2%D0%BE-%D0%B4%D0%B5%D1%81%D1%8F%D1%82%D0%BA%D0%BE%D0%B2%D0%B8%D0%B9_%D0%BA%D0%BE%D0%B4
-
