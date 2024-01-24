@@ -1,6 +1,9 @@
 #include <Arduino.h>
+#include <SimpleModbusSlave.h>
+
 #define BITS 11  ///< Encoder data bits length
-#define PRINT_SPEED 20 // Per second
+#define PRINT_SPEED 50 // Per second
+#define BAUD_RATE 9600
 
 void gpioInit();
 void readRaw(int *a);
@@ -8,18 +11,26 @@ void printRaw(int *a);
 int bcd8421(int *a, int length);
 int rawToBin(int *a);
 
+const int MODBUS_ID = 3;
+const int HOLDING_REGS_SIZE = 1;
+unsigned int modbusHoldingRegisters[HOLDING_REGS_SIZE] = {0};
+
 const byte PINS [BITS] = { 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
 int RAWVALUES [BITS] = {};
 
 void setup() {
-  Serial.begin(9600);
+  // Serial.begin(BAUD_RATE);
   gpioInit();
+  modbus_configure(BAUD_RATE, MODBUS_ID, 2, HOLDING_REGS_SIZE, 0);
 }
 
 void loop() {
   readRaw(RAWVALUES);
+  int degree = rawToBin(RAWVALUES);
+  modbusHoldingRegisters[0] = degree;
   // printRaw(RAWVALUES); Serial.print("\t");
-  Serial.println( rawToBin(RAWVALUES) );
+  // Serial.println( modbusHoldingRegisters[0] );
+  modbus_update(modbusHoldingRegisters);
   delay(PRINT_SPEED);
 }
 
@@ -89,4 +100,3 @@ void greytobinary(int *a, int count) {
     a[i] = a[i]^a[i+1];
   }
 }
-
