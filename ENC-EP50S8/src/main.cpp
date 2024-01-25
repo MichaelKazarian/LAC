@@ -15,8 +15,9 @@ const int MODBUS_ID = 3;
 const int HOLDING_REGS_SIZE = 1;
 unsigned int modbusHoldingRegisters[HOLDING_REGS_SIZE] = {0};
 
-const byte PINS [BITS] = { BROWN, RED, ORANGE, YELLOW, BLUE, VIOLET, GRAY,
-                           WHBROWN, WHRED, WHORANGE, WHYELOOW };
+const byte PINS [BITS] = { OUT2E0, OUT2E1, OUT2E2, OUT2E3,
+                           OUT2E0x10, OUT2E1x10, OUT2E2x10, OUT2E3x10,
+                           OUT2E0x100, OUT2E1x100, OUT2E2x100 };
 int RAWVALUES [BITS] = {};
 
 void setup() {
