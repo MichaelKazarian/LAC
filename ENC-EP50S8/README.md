@@ -1,1 +1,1 @@
-# Arduino based boiler controller
+# EP50S8 encoder reader
