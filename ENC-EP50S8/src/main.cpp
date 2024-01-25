@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <SimpleModbusSlave.h>
+#include "encoder.h"
 
-#define BITS 11  ///< Encoder data bits length
 #define PRINT_SPEED 50 // Per second
 #define BAUD_RATE 9600
 
@@ -15,7 +15,8 @@ const int MODBUS_ID = 3;
 const int HOLDING_REGS_SIZE = 1;
 unsigned int modbusHoldingRegisters[HOLDING_REGS_SIZE] = {0};
 
-const byte PINS [BITS] = { 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+const byte PINS [BITS] = { BROWN, RED, ORANGE, YELLOW, BLUE, VIOLET, GRAY,
+                           WHBROWN, WHRED, WHORANGE, WHYELOOW };
 int RAWVALUES [BITS] = {};
 
 void setup() {
