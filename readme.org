@@ -2,11 +2,35 @@
 LAC == ТАК (токарно-автоматний комплекс)
 ** Directory structure
 *** ENC-EP50S8
-EP50S8 encoder controller uses Arduino Nano LGT8F328P board.
-Read via Modbus
+EP50S8 encoder reader.
+**** Pin values
+The encoder output has a weight based on 2, an exponent of N, and is a BCD code of 8-4-2-1.
+
+| *Color*      | *Value Ex* | *Value Deg* | *Digital Pin* | *Pin Register* |
+| Brown        | 2 ex 0     |           1 |            16 | PC2            |
+| Red          | 2 ex 1     |           2 |            17 | PC3            |
+| Orange       | 2 ex 2     |           4 |            18 | PC4            |
+| Yellow       | 2 ex 3     |           8 |            19 | PC5            |
+| Blue         | 2 ex 0*10  |          10 |            12 | PB4            |
+| Violet       | 2 ex 1*10  |          20 |            14 | PC0            |
+| Gray         | 2 ex 2*10  |          40 |            15 | PC1            |
+| White/Brown  | 2 ex 3*10  |          80 |             8 | PB0            |
+| White/Red    | 2 ex 0*100 |         100 |             9 | PB1            |
+| White/Orange | 2 ex 1*100 |         200 |            10 | PB2            |
+| White/Yellow | 2 ex 2*100 |         400 |            11 | PB3            |
+
+**** Encoder reader communication
+The encoder reader sends data via Modbus RTU protocol.
+Slave configuration...: address = 3, start reference = 0, count = 1
+Communication.........: 9600-8N1
+Data type.............: 16-bit register, output (holding) register table
+
+You can read the encoder this way:
 #+BEGIN_EXAMPLE
 mbpoll -0 -B -m rtu -a 3 -b 9600 -l 200 -t 4 -r 0 -c 1 -P none /dev/ttyUSB0
 #+END_EXAMPLE
+
+mbpoll is a Modbus reader app available in the Ubuntu repository or [[Github][https://github.com/epsilonrt/mbpoll]].
 
 *** TestBoard directory
 LGT8F328P based Arduino Nano clone uses as test board
