@@ -21,7 +21,7 @@ int RAWVALUES [BITS] = {};
 void setup() {
   // Serial.begin(BAUD_RATE);
   gpioInit();
-  modbus_configure(BAUD_RATE, MODBUS_ID, 2, HOLDING_REGS_SIZE, 0);
+  modbus_configure(BAUD_RATE, MODBUS_ID, 1, HOLDING_REGS_SIZE, 0);
 }
 
 void loop() {
