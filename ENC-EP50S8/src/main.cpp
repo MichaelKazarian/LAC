@@ -2,7 +2,7 @@
 #include <SimpleModbusSlave.h>
 #include "encoder.h"
 
-#define PRINT_SPEED 50 // Per second
+#define PRINT_SPEED 5 // Modbus update per second
 #define BAUD_RATE 9600
 
 void gpioInit();
