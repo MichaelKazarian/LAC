@@ -11,11 +11,11 @@
 #define OUT2E2        18 ///< PC4, D18, Val is 4, ORANGE
 #define OUT2E3        19 ///< PC5, D19, Val is 8, YELLOW
 
-#define OUT2E0x10     12 ///< PB4, D12, Val is 10, BLUE
-#define OUT2E1x10     14 ///< PC0, D14, Val is 20, VIOLET
-#define OUT2E2x10     15 ///< PC1, D15, Val is 40, GRAY
-#define OUT2E3x10      8 ///< PB0, D8,  Val is 80, WHITE/BROWN
+#define OUT2E0x10     11 ///< PB3, D11, Val is 10, BLUE
+#define OUT2E1x10     12 ///< PB4, D12, Val is 20, VIOLET
+#define OUT2E2x10     14 ///< PC0, D14, Val is 40, GRAY
+#define OUT2E3x10     15 ///< PC1, D15,  Val is 80, WHITE/BROWN
 
-#define OUT2E0x100     9 ///< PB1, D9,  Val is 100, WHITE/RED
-#define OUT2E1x100    10 ///< PB2, D10, Val is 200, WHITE/ORANGE
-#define OUT2E2x100    11 ///< PB3, D11, Val is 400, WHITE/YELLOW
+#define OUT2E0x100     8 ///< PB1, D9,  Val is 100, WHITE/RED
+#define OUT2E1x100     9 ///< PB2, D10, Val is 200, WHITE/ORANGE
+#define OUT2E2x100    10 ///< PB3, D11, Val is 400, WHITE/YELLOW
