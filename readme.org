@@ -32,8 +32,8 @@ mbpoll -0 -B -m rtu -a 3 -b 9600 -l 200 -t 4 -r 0 -c 1 -P none /dev/ttyUSB0
 
 mbpoll is a Modbus reader app available in the Ubuntu repository or [[Github][https://github.com/epsilonrt/mbpoll]].
 
-*** Input board reader
-It reads 32 inputs. 28 inputs read via MCP23017 I/O expander and 4 via ATMega 368 pins (D7-D10).
+*** INPUT
+Reads 32 digital board inputs. 28 inputs read via MCP23017 I/O expander and 4 via ATMega 368 pins (D7-D10).
 GPA7 and GPB7 cannot be used as inputs because has possible problems.
 Code controls MCP23017 using [[https://github.com/blemasle/arduino-mcp23017][arduino mcp23017 library]].
 
