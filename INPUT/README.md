@@ -1,1 +1,1 @@
-# EP50S8 encoder reader
+# Reader of 32 digital inputs
