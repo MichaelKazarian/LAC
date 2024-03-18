@@ -2,7 +2,7 @@
 #include <SimpleModbusSlave.h>
 #include <MCP23017.h>
 
-#define PRINT_SPEED 100 // Modbus update per second
+#define PRINT_SPEED 5 // Modbus update per second
 #define BAUD_RATE 9600
 #define BITS 64
 #define MCP_LAST_PIN 6 // MCP23017 has problematic GPA7/GPB7
