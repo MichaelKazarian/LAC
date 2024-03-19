@@ -52,6 +52,8 @@ void gpioInit() {
 void mcpInit() {
   // Init MCP23017 adressing pins
   pinMode(2, OUTPUT);  digitalWrite(2, LOW);   // MCP0, addr 20
+  pinMode(3, OUTPUT);  digitalWrite(3, LOW);
+  pinMode(4, OUTPUT);  digitalWrite(4, LOW);
   pinMode(A1, OUTPUT); digitalWrite(A1, LOW);  // MCP1, addr 21
   pinMode(A2, OUTPUT); digitalWrite(A2, LOW);
   pinMode(A3, OUTPUT); digitalWrite(A3, HIGH);
@@ -65,15 +67,15 @@ void mcpInit() {
 
 void readPins() {
   for (int i=0; i<= MCP_LAST_PIN; i++) {
-    holdingRegisters[i] = mcp0.digitalRead(i);       // Reading MCP0 GPA/GPB
-    holdingRegisters[i+7] = mcp0.digitalRead(i+8);
-    holdingRegisters[i+14] = mcp1.digitalRead(i);    // Reading MCP1 GPA/GPB
-    holdingRegisters[i+14+7] = mcp1.digitalRead(i+8);
+    holdingRegisters[MCP_LAST_PIN-i+7] = mcp1.digitalRead(i);       // Reading MCP1 GPA/GPB
+    holdingRegisters[MCP_LAST_PIN-i] = mcp1.digitalRead(i+8);
+    holdingRegisters[MCP_LAST_PIN-i+14+7+4] = mcp0.digitalRead(i);  // Reading MCP0 GPA/GPB
+    holdingRegisters[MCP_LAST_PIN-i+14+4] = mcp0.digitalRead(i+8);
   }
 
-  int regNext = 28;
+  int regNext = 17;
   for (int i=BOARD_IN_FIRST; i<= BOARD_IN_LAST; i++){
     holdingRegisters[regNext] = digitalRead(i);     // Reading Board pins
-    regNext++;
+    regNext--;
   }
 }
