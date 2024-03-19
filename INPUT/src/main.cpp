@@ -8,6 +8,7 @@
 #define MCP_LAST_PIN 6 // MCP23017 has problematic GPA7/GPB7
 #define BOARD_IN_FIRST 7
 #define BOARD_IN_LAST 10
+#define GPA_SHIFT_B 8
 
 MCP23017 mcp0 = MCP23017(0x20);
 MCP23017 mcp1 = MCP23017(0x21);
@@ -60,22 +61,33 @@ void mcpInit() {
   mcp0.init();
   mcp1.init();
   for (int i=0; i<= MCP_LAST_PIN; i++) { // GPA/GPB init
-     mcp0.pinMode(i, INPUT_PULLUP); mcp0.pinMode(i+8, INPUT_PULLUP);
-     mcp1.pinMode(i, INPUT_PULLUP); mcp1.pinMode(i+8, INPUT_PULLUP);
+     mcp0.pinMode(i, INPUT_PULLUP); mcp0.pinMode(i+GPA_SHIFT_B, INPUT_PULLUP);
+     mcp1.pinMode(i, INPUT_PULLUP); mcp1.pinMode(i+GPA_SHIFT_B, INPUT_PULLUP);
   }
 }
 
 void readPins() {
+  void fixBoardPinOrder(int pin0, int pin1);
+  const char PRC_PINS = 4;   // Processor pins are in the middle of the board
+  const char DS       = 14;  // Direction shift
+  const char HS       = 7;   // GPA/GBP shift in holding registers
+  // Write holding registers in reverce order according to board design
   for (int i=0; i<= MCP_LAST_PIN; i++) {
-    holdingRegisters[MCP_LAST_PIN-i+7] = mcp1.digitalRead(i);       // Reading MCP1 GPA/GPB
-    holdingRegisters[MCP_LAST_PIN-i] = mcp1.digitalRead(i+8);
-    holdingRegisters[MCP_LAST_PIN-i+14+7+4] = mcp0.digitalRead(i);  // Reading MCP0 GPA/GPB
-    holdingRegisters[MCP_LAST_PIN-i+14+4] = mcp0.digitalRead(i+8);
+    holdingRegisters[MCP_LAST_PIN-i+HS] = mcp1.digitalRead(i); // GBP
+    holdingRegisters[MCP_LAST_PIN-i] = mcp1.digitalRead(i+GPA_SHIFT_B); // GPA
+    holdingRegisters[MCP_LAST_PIN-i+DS+HS+PRC_PINS] = mcp0.digitalRead(i); // GPA
+    holdingRegisters[MCP_LAST_PIN-i+DS+PRC_PINS] = mcp0.digitalRead(i+GPA_SHIFT_B); //GPB
   }
 
-  int regNext = 17;
-  for (int i=BOARD_IN_FIRST; i<= BOARD_IN_LAST; i++){
-    holdingRegisters[regNext] = digitalRead(i);     // Reading Board pins
-    regNext--;
+  int regBrdPins = 17; // Reading processor pins (PRC_PINS)
+  for (int i=BOARD_IN_FIRST; i<= BOARD_IN_LAST; i++) {
+    holdingRegisters[regBrdPins--] = digitalRead(i);
   }
+  fixBoardPinOrder(4, 6); fixBoardPinOrder(22, 24);
+}
+
+void fixBoardPinOrder(int pin0, int pin1) {
+  char tmp = holdingRegisters[pin0];
+  holdingRegisters[pin0] = holdingRegisters[pin1];
+  holdingRegisters[pin1] = tmp;
 }
