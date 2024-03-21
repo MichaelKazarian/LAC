@@ -4,7 +4,6 @@
 
 #define PRINT_SPEED 5 // Modbus update per second
 #define BAUD_RATE 9600
-#define BITS 64
 #define MCP_LAST_PIN 6 // MCP23017 has problematic GPA7/GPB7
 #define BOARD_IN_FIRST 7
 #define BOARD_IN_LAST 10
@@ -22,8 +21,6 @@ void readPins();
 const int MODBUS_ID = 10;
 const int HOLDING_REGS_SIZE = 32;
 unsigned int holdingRegisters[HOLDING_REGS_SIZE] = {};
-
-int RAWVALUES [BITS] = {};
 
 void setup() {
   // Serial.begin(BAUD_RATE);
