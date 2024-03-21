@@ -58,7 +58,7 @@ void loop() {
 }
 
 void registersInit() {
-  for (int i=0; i< HOLDING_REGS_SIZE; i++) holdingRegisters[i] = 0;
+  for (int i=0; i< HOLDING_REGS_SIZE; i++) holdingRegisters[i] = LOW;
 }
 
 void gpioInit() {
@@ -80,7 +80,7 @@ void mcpInit() {
 }
 
 void writePins() {
-  mcp0.digitalWrite(4, holdingRegisters[0]);
-  mcp0.digitalWrite(5, holdingRegisters[1]);
-  mcp0.digitalWrite(6, holdingRegisters[2]);
+  mcp0.digitalWrite(4, !holdingRegisters[0]);
+  mcp0.digitalWrite(5, !holdingRegisters[1]);
+  mcp0.digitalWrite(6, !holdingRegisters[2]);
 }
