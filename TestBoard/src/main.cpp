@@ -1,25 +1,3 @@
-/**
- * Sample of use.
- * mbpoll -m rtu -a 10 -b 9600 -t 4 -r 1 -P none /dev/ttyUSB0 1 0 1
- * It works with an external 485 to TTL adapter.
- * Arduino nano internal USB adapter crashes with Connection timeout.
- * Also 2-3 connection timeout caught while mbpoll starts reading:
- * mbpoll -m rtu -a 10 -b 9600 -t 4 -r 1 -P none /dev/ttyUSB0
- * ....
- * Data type.............: 16-bit register, output (holding) register table
- *
- * -- Polling slave 10... Ctrl-C to stop)
- * Read output (holding) register failed: Connection timed out
- * -- Polling slave 10... Ctrl-C to stop)
- * [1]:    0
- * -- Polling slave 10... Ctrl-C to stop)
- * [1]:    0
- * ^C--- /dev/ttyUSB0 poll statistics ---
- * 3 frames transmitted, 2 received, 1 errors, 33.3% frame loss
- * TODO: Possible DTR interference, try to run using USB to TTL
- * adapter with RX/TX only
- */
-
 #include <Arduino.h>
 #include <SimpleModbusSlave.h>
 #include <MCP23017.h>
@@ -29,8 +7,10 @@
 #define MCP_LAST_PIN 6 // MCP23017 has problematic GPA7/GPB7
 #define BOARD_IN_FIRST 7
 #define BOARD_IN_LAST 10
+#define GPA_SHIFT_B 8
 
 MCP23017 mcp0 = MCP23017(0x20);
+MCP23017 mcp1 = MCP23017(0x21);
 
 void gpioInit();
 void mcpInit();
@@ -54,7 +34,6 @@ void setup() {
 void loop() {
   modbus_update(holdingRegisters);
   writePins();
-  // delay(PRINT_SPEED);
 }
 
 void registersInit() {
@@ -70,17 +49,42 @@ void gpioInit() {
  */
 void mcpInit() {
   // Init MCP23017 adressing pins
-  pinMode(A1, OUTPUT); digitalWrite(A1, LOW);  // MCP0, addr 20
+  pinMode(2, OUTPUT);  digitalWrite(2, LOW);   // MCP0, addr 20
+  pinMode(3, OUTPUT);  digitalWrite(3, LOW);
+  pinMode(4, OUTPUT);  digitalWrite(4, LOW);
+  pinMode(A1, OUTPUT); digitalWrite(A1, LOW);  // MCP1, addr 21
   pinMode(A2, OUTPUT); digitalWrite(A2, LOW);
   pinMode(A3, OUTPUT); digitalWrite(A3, LOW);
   mcp0.init();
+  // mcp1.init();
   for (int i=0; i<= MCP_LAST_PIN; i++) { // GPA/GPB init
-     mcp0.pinMode(i, OUTPUT); mcp0.pinMode(i+8, OUTPUT);
+    mcp0.pinMode(i, OUTPUT); mcp0.pinMode(i+GPA_SHIFT_B, OUTPUT);
+    // mcp1.pinMode(i, OUTPUT); mcp1.pinMode(i+GPA_SHIFT_B, OUTPUT);
   }
 }
 
 void writePins() {
-  mcp0.digitalWrite(4, !holdingRegisters[0]);
-  mcp0.digitalWrite(5, !holdingRegisters[1]);
-  mcp0.digitalWrite(6, !holdingRegisters[2]);
+  void fixBoardPinOrder(int pin0, int pin1);
+  fixBoardPinOrder(4, 6); fixBoardPinOrder(22, 24);
+  const char PRC_PINS = 4;   // Processor pins are in the middle of the board
+  const char DS       = 14;  // Direction shift
+  const char HS       = 7;   // GPA/GBP shift in holding registers
+  // Write holding registers in reverce order according to board design
+  for (int i=0; i<= MCP_LAST_PIN; i++) {
+    // mcp1.digitalWrite(i, !holdingRegisters[MCP_LAST_PIN-i+HS]);          // GBP
+    // mcp1.digitalWrite(i+GPA_SHIFT_B, !holdingRegisters[MCP_LAST_PIN-i]); // GPA
+    mcp0.digitalWrite(i, !holdingRegisters[MCP_LAST_PIN-i+DS+HS+PRC_PINS]); // GPA
+    mcp0.digitalWrite(i+GPA_SHIFT_B, !holdingRegisters[MCP_LAST_PIN-i+DS+PRC_PINS]); //GPB
+  }
+
+  int regBrdPins = 17; // Reading processor pins (PRC_PINS)
+  for (int i=BOARD_IN_FIRST; i<= BOARD_IN_LAST; i++) {
+    digitalWrite(i, !holdingRegisters[regBrdPins--]);
+  }
+}
+
+void fixBoardPinOrder(int pin0, int pin1) {
+  char tmp = holdingRegisters[pin0];
+  holdingRegisters[pin0] = holdingRegisters[pin1];
+  holdingRegisters[pin1] = tmp;
 }

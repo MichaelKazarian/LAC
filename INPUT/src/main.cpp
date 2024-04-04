@@ -64,27 +64,36 @@ void mcpInit() {
 }
 
 void readPins() {
-  void fixBoardPinOrder(int pin0, int pin1);
-  const char PRC_PINS = 4;   // Processor pins are in the middle of the board
-  const char DS       = 14;  // Direction shift
-  const char HS       = 7;   // GPA/GBP shift in holding registers
-  // Write holding registers in reverce order according to board design
-  for (int i=0; i<= MCP_LAST_PIN; i++) {
-    holdingRegisters[MCP_LAST_PIN-i+HS] = mcp1.digitalRead(i); // GBP
-    holdingRegisters[MCP_LAST_PIN-i] = mcp1.digitalRead(i+GPA_SHIFT_B); // GPA
-    holdingRegisters[MCP_LAST_PIN-i+DS+HS+PRC_PINS] = mcp0.digitalRead(i); // GPA
-    holdingRegisters[MCP_LAST_PIN-i+DS+PRC_PINS] = mcp0.digitalRead(i+GPA_SHIFT_B); //GPB
-  }
-
-  int regBrdPins = 17; // Reading processor pins (PRC_PINS)
-  for (int i=BOARD_IN_FIRST; i<= BOARD_IN_LAST; i++) {
-    holdingRegisters[regBrdPins--] = digitalRead(i);
-  }
-  fixBoardPinOrder(4, 6); fixBoardPinOrder(22, 24);
-}
-
-void fixBoardPinOrder(int pin0, int pin1) {
-  char tmp = holdingRegisters[pin0];
-  holdingRegisters[pin0] = holdingRegisters[pin1];
-  holdingRegisters[pin1] = tmp;
+  holdingRegisters[0] = !mcp1.digitalRead(14);
+  holdingRegisters[1] = !mcp1.digitalRead(13);
+  holdingRegisters[2] = !mcp1.digitalRead(12);
+  holdingRegisters[3] = !mcp1.digitalRead(11);
+  holdingRegisters[4] = !mcp1.digitalRead(8);
+  holdingRegisters[5] = !mcp1.digitalRead(9);
+  holdingRegisters[6] = !mcp1.digitalRead(10);
+  holdingRegisters[7] = !mcp1.digitalRead(6);
+  holdingRegisters[8] = !mcp1.digitalRead(5);
+  holdingRegisters[9] = !mcp1.digitalRead(4);
+  holdingRegisters[10] = !mcp1.digitalRead(3);
+  holdingRegisters[11] = !mcp1.digitalRead(2);
+  holdingRegisters[12] = !mcp1.digitalRead(1);
+  holdingRegisters[13] = !mcp1.digitalRead(0);
+  holdingRegisters[14] = !digitalRead(10);
+  holdingRegisters[15] = !digitalRead(9);
+  holdingRegisters[16] = !digitalRead(8);
+  holdingRegisters[17] = !digitalRead(7);
+  holdingRegisters[18] = !mcp0.digitalRead(14);
+  holdingRegisters[19] = !mcp0.digitalRead(13);
+  holdingRegisters[20] = !mcp0.digitalRead(12);
+  holdingRegisters[21] = !mcp0.digitalRead(11);
+  holdingRegisters[22] = !mcp0.digitalRead(8);
+  holdingRegisters[23] = !mcp0.digitalRead(9);
+  holdingRegisters[24] = !mcp0.digitalRead(10);
+  holdingRegisters[25] = !mcp0.digitalRead(6);
+  holdingRegisters[26] = !mcp0.digitalRead(5);
+  holdingRegisters[27] = !mcp0.digitalRead(4);
+  holdingRegisters[28] = !mcp0.digitalRead(3);
+  holdingRegisters[29] = !mcp0.digitalRead(2);
+  holdingRegisters[30] = !mcp0.digitalRead(1);
+  holdingRegisters[31] = !mcp0.digitalRead(0);
 }
