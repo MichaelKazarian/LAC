@@ -18,7 +18,7 @@ void registersInit();
 void writePins();
 
 
-const int MODBUS_ID = 10;
+const int MODBUS_ID = 20;
 const int HOLDING_REGS_SIZE = 32;
 unsigned int holdingRegisters[HOLDING_REGS_SIZE] = {};
 
