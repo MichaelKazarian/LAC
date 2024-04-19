@@ -1,0 +1,14 @@
+* LAC web UI
+It uses NodeJs to provide appropriate functionality
+
+** Installation
+#+BEGIN_EXAMPLE
+sudo apt install node npm
+#+END_EXAMPLE
+
+** Project dependencies
+1. [[https://www.npmjs.com/package/express][Express]] as web framework
+2. [[https://www.npmjs.com/package/ejs][EJS]] as template engine
+
+** Developer dependencies
+1. [[https://www.npmjs.com/package/nodemon][Nodemon]] to automatically restart Node application if any changes was detected

@@ -65,6 +65,11 @@ $ mbpoll -B -m rtu -a 10 -b 9600 -t 4 -r 1 -c 32 -P none /dev/ttyUSB0
 [32]:   1
 #+END_EXAMPLE
 
+*** TODO OUTPUT
+
+*** WEBAPP
+LACs web application. Read more in the readme.org
+
 *** TestBoard directory
 LGT8F328P based Arduino Nano clone uses as test board
 **** Install board and project
