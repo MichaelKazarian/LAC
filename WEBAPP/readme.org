@@ -1,7 +1,7 @@
 * LAC web UI
 It uses NodeJs to provide appropriate functionality
 
-** Installation
+** Node installation
 #+BEGIN_EXAMPLE
 sudo apt install node npm
 #+END_EXAMPLE
@@ -9,6 +9,13 @@ sudo apt install node npm
 ** Project dependencies
 1. [[https://www.npmjs.com/package/express][Express]] as web framework
 2. [[https://www.npmjs.com/package/ejs][EJS]] as template engine
+3. [[https://www.npmjs.com/package/bootstrap][Bootstrap]] as front-end framework
 
 ** Developer dependencies
 1. [[https://www.npmjs.com/package/nodemon][Nodemon]] to automatically restart Node application if any changes was detected
+
+*** Dependencies installation
+#+BEGIN_EXAMPLE
+npm install express ejs bootstrap
+npm install --save-dev nodemon
+#+END_EXAMPLE
