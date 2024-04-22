@@ -1,31 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <%- include('../partials/head'); %>
-</head>
-<body class="container">
+  <head>
+    <meta charset="UTF-8">
+    <%- include('../partials/head'); %>
+  </head>
+  
+  <body class="container">
+    <header>
+      <%- include('../partials/header'); %>
+      <link rel="stylesheet" type="text/css" href="css/app.css">
+    </header>
+    <div >
+      <div class="card">
+        <div class="card-body">
+          <script src="css/circle-progress.min.js" type="module"></script>
+          <div class="row">
+            <div class="col-sm-6 d-flex justify-content-center">
+              <circle-progress id="MyC" value="50" max="720"></circle-progress>
+            </div>
+            <div class="col-sm-4">
+              <div class="fs-5 fw-normal mb-2">
+                Лічильник
+              </div>
+              <h2 class="fs-3 fw-extrabold">1122</h2>
+            </div>
+            <div class="col-sm-2 d-flex justify-content-center">
+              <div class="mb-3 mt-1">
+                <div class="row mb-1 mt-1">
+                  <button class="btn btn-danger" type="button">СТОП</button>
+                </div>
+                <div class="row mb-1 mt-1">
+                  <button class="btn btn-primary" type="button">СТАРТ</button>
+                </div>
 
-<header>
-  <%- include('../partials/header'); %>
-</header>
+                <div class="row mb-4 mt-3">
+                  <div class="row mb-1 mt-1">
+                    <input type="radio" class="btn-check" name="radio-auto-mode" id="rb-auto" autocomplete="off">
+                    <label class="btn btn-outline-success" for="rb-auto">Автомат</label>
+                  </div>
+                  <div class="row mb-1 mt-1">
+                    <input type="radio" class="btn-check" name="radio-auto-mode" id="rb-manually" autocomplete="off" checked>
+                    <label class="btn btn-outline-warning" for="rb-manually">Вручну</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-<main>
-  <div class="jumbotron">
-    <h1>It works</h1>
-    <p>Welcome to LAC interface</p>
-    <!--Buttons-->
-    <button class="btn btn-pill btn-outline-primary" type="button">Primary</button>
-    <button class="btn btn-pill btn-outline-secondary" type="button">Secondary</button>
-    <button class="btn btn-pill btn-outline-info" type="button">Info</button>
-    <button class="btn btn-pill btn-outline-success" type="button">Success</button>
-    <button class="btn btn-pill btn-outline-danger" type="button">Danger</button>
-    <!--End Of Buttons-->
-  </div>
-</main>
+      <div class="row funkyradio">
+        <!-- Radio -->        
+        <div class="col-sm-6">
+          <!-- <h4>Radio Buttons Left</h4> -->
+          <div class="funkyradio-primary">
+            <input type="radio" name="radio-operation" id="radio1" />
+            <label for="radio1">Одиничний цикл</label>
+          </div>
+          <div class="funkyradio-primary">
+            <input type="radio" name="radio-operation" id="radio2" checked/>
+            <label for="radio2">Подача в наладці</label>
+          </div>
+          <div class="funkyradio-success">
+            <input type="radio" name="radio-operation" id="radio3" />
+            <label for="radio3">Мотор шпінделя</label>
+          </div>
+          <div class="funkyradio-danger">
+            <input type="radio" name="radio-operation" id="radio4" />
+            <label for="radio4">Скидання механізмів</label>
+          </div>
+          <div class="funkyradio-warning">
+            <input type="radio" name="radio-operation" id="radio5" />
+            <label for="radio5">Дозов. змазка</label>
+          </div>
+          <div class="funkyradio-primary">
+            <input type="radio" name="radio-operation" id="radio6" />
+            <label for="radio6">Відведення інструменту</label>
+          </div>
+          <div class="funkyradio-primary">
+            <input type="radio" name="radio-operation" id="radio7" />
+            <label for="radio7">Цикл завантаження</label>
+          </div>
+          <div class="funkyradio-primary">
+            <input type="radio" name="radio-operation" id="radio8" />
+            <label for="radio8">Цикл вигрузки</label>
+          </div>
 
-<footer>
-  <%- include('../partials/footer'); %>
-</footer>
+        </div>
+        
+        <div class="col-sm-6">
+          <!-- <h4>Radio Buttons Right</h4> -->
+          <div class="funkyradio-primary">
+            <input type="radio" name="radio-operation" id="radio9" />
+            <label for="radio9">Обкатка</label>
+          </div>
+          <div class="funkyradio-primary">
+            <input type="radio" name="radio-operation" id="radio10" checked/>
+            <label for="radio10">Вигружач</label>
+          </div>
+          <div class="funkyradio-success">
+            <input type="radio" name="radio-operation" id="radio11" />
+            <label for="radio11">Виштовхувач</label>
+          </div>
+          <div class="funkyradio-danger">
+            <input type="radio" name="radio-operation" id="radio12" />
+            <label for="radio12">Патрон шпінделя</label>
+          </div>
+          <div class="funkyradio-warning">
+            <input type="radio" name="radio-operation" id="radio13" />
+            <label for="radio13">Загружач</label>
+          </div>
+          <div class="funkyradio-info">
+            <input type="radio" name="radio-operation" id="radio14" />
+            <label for="radio14">Заштовхувач</label>
+          </div>
+          <div class="funkyradio-warning">
+            <input type="radio" name="radio-operation" id="radio15" />
+            <label for="radio15">Загружач</label>
+          </div>
+          <div class="funkyradio-info">
+            <input type="radio" name="radio-operation" id="radio16" />
+            <label for="radio16">Підвод до шпінделя</label>
+          </div>
+          <div class="funkyradio-warning">
+            <input type="radio" name="radio-operation" id="radio17" />
+            <label for="radio17">Вхідний поток</label>
+          </div>
+          <div class="funkyradio-info">
+            <input type="radio" name="radio-operation" id="radio18" />
+            <label for="radio18">Відсікач</label>
+          </div>
 
-</body>
+        </div>
+
+        <!-- Radio end -->
+      </div>
+    </div>
+    
+    <footer>
+      <%- include('../partials/footer'); %>
+    </footer>
+
+  </body>
 </html>
