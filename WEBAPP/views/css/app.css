@@ -108,6 +108,9 @@
   background-color: #5bc0de;
 }
 
-circle-progress::part(base) {width: 200px; height: auto;}
+circle-progress::part(base) {
+  width: 200px;
+  height: auto;
+}
 
 
