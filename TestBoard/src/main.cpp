@@ -4,22 +4,19 @@
 
 #define PRINT_SPEED 5 // Modbus update per second
 #define BAUD_RATE 9600
-#define MCP_LAST_PIN 6 // MCP23017 has problematic GPA7/GPB7
-#define BOARD_IN_FIRST 7
-#define BOARD_IN_LAST 10
-#define GPA_SHIFT_B 8
+#define MCP_LAST_PIN 2 // MCP23017 has problematic GPA7/GPB7
+#define MCP_OUTPUT_SHIFT 4
 
-MCP23017 mcp0 = MCP23017(0x20);
-MCP23017 mcp1 = MCP23017(0x21);
+MCP23017 mcp = MCP23017(0x20);
 
 void gpioInit();
 void mcpInit();
 void registersInit();
-void writePins();
+void testMcp();
 
 
-const int MODBUS_ID = 10;
-const int HOLDING_REGS_SIZE = 32;
+const int MODBUS_ID = 20;
+const int HOLDING_REGS_SIZE = 3;
 unsigned int holdingRegisters[HOLDING_REGS_SIZE] = {};
 
 void setup() {
@@ -33,7 +30,7 @@ void setup() {
 
 void loop() {
   modbus_update(holdingRegisters);
-  writePins();
+  testMcp();
 }
 
 void registersInit() {
@@ -41,7 +38,7 @@ void registersInit() {
 }
 
 void gpioInit() {
-  for (int i=BOARD_IN_FIRST; i<= BOARD_IN_LAST; i++) pinMode(i, OUTPUT);
+  // for (int i=BOARD_IN_FIRST; i<= BOARD_IN_LAST; i++) pinMode(i, OUTPUT);
 }
 
 /**
@@ -52,39 +49,16 @@ void mcpInit() {
   pinMode(2, OUTPUT);  digitalWrite(2, LOW);   // MCP0, addr 20
   pinMode(3, OUTPUT);  digitalWrite(3, LOW);
   pinMode(4, OUTPUT);  digitalWrite(4, LOW);
-  pinMode(A1, OUTPUT); digitalWrite(A1, LOW);  // MCP1, addr 21
-  pinMode(A2, OUTPUT); digitalWrite(A2, LOW);
-  pinMode(A3, OUTPUT); digitalWrite(A3, LOW);
-  mcp0.init();
-  // mcp1.init();
-  for (int i=0; i<= MCP_LAST_PIN; i++) { // GPA/GPB init
-    mcp0.pinMode(i, OUTPUT); mcp0.pinMode(i+GPA_SHIFT_B, OUTPUT);
-    // mcp1.pinMode(i, OUTPUT); mcp1.pinMode(i+GPA_SHIFT_B, OUTPUT);
-  }
-}
-
-void writePins() {
-  void fixBoardPinOrder(int pin0, int pin1);
-  fixBoardPinOrder(4, 6); fixBoardPinOrder(22, 24);
-  const char PRC_PINS = 4;   // Processor pins are in the middle of the board
-  const char DS       = 14;  // Direction shift
-  const char HS       = 7;   // GPA/GBP shift in holding registers
-  // Write holding registers in reverce order according to board design
+  mcp.init();
   for (int i=0; i<= MCP_LAST_PIN; i++) {
-    // mcp1.digitalWrite(i, !holdingRegisters[MCP_LAST_PIN-i+HS]);          // GBP
-    // mcp1.digitalWrite(i+GPA_SHIFT_B, !holdingRegisters[MCP_LAST_PIN-i]); // GPA
-    mcp0.digitalWrite(i, !holdingRegisters[MCP_LAST_PIN-i+DS+HS+PRC_PINS]); // GPA
-    mcp0.digitalWrite(i+GPA_SHIFT_B, !holdingRegisters[MCP_LAST_PIN-i+DS+PRC_PINS]); //GPB
-  }
-
-  int regBrdPins = 17; // Reading processor pins (PRC_PINS)
-  for (int i=BOARD_IN_FIRST; i<= BOARD_IN_LAST; i++) {
-    digitalWrite(i, !holdingRegisters[regBrdPins--]);
+    mcp.pinMode(i, INPUT_PULLUP);             // pins 0-2
+    mcp.pinMode(i+MCP_OUTPUT_SHIFT, OUTPUT);  // pins 4-6
   }
 }
 
-void fixBoardPinOrder(int pin0, int pin1) {
-  char tmp = holdingRegisters[pin0];
-  holdingRegisters[pin0] = holdingRegisters[pin1];
-  holdingRegisters[pin1] = tmp;
+void testMcp() {
+  for (int i=0; i<= MCP_LAST_PIN; i++) {
+    holdingRegisters[i] = mcp.digitalRead(i);
+    mcp.digitalWrite(i+MCP_OUTPUT_SHIFT, holdingRegisters[i]); // Input -> output transfer
+  }
 }
