@@ -5,7 +5,7 @@
 #define PRINT_SPEED 5 // Modbus update per second
 #define BAUD_RATE 9600
 #define MCP_LAST_PIN 2 // MCP23017 has problematic GPA7/GPB7
-#define MCP_OUTPUT_SHIFT 4
+#define MCP_OUTPUT_SHIFT 4 // [0-2] input; 4-6 output
 
 MCP23017 mcp = MCP23017(0x20);
 
@@ -13,10 +13,10 @@ void gpioInit();
 void mcpInit();
 void registersInit();
 void testMcp();
-
+void writePins();
 
 const int MODBUS_ID = 20;
-const int HOLDING_REGS_SIZE = 3;
+const int HOLDING_REGS_SIZE = 6; // [0-2] input; 4-6 output
 unsigned int holdingRegisters[HOLDING_REGS_SIZE] = {};
 
 void setup() {
@@ -31,6 +31,7 @@ void setup() {
 void loop() {
   modbus_update(holdingRegisters);
   testMcp();
+  writePins();
 }
 
 void registersInit() {
@@ -53,12 +54,20 @@ void mcpInit() {
   for (int i=0; i<= MCP_LAST_PIN; i++) {
     mcp.pinMode(i, INPUT_PULLUP);             // pins 0-2
     mcp.pinMode(i+MCP_OUTPUT_SHIFT, OUTPUT);  // pins 4-6
+    mcp.digitalWrite(i+MCP_OUTPUT_SHIFT, HIGH);
   }
 }
 
 void testMcp() {
   for (int i=0; i<= MCP_LAST_PIN; i++) {
     holdingRegisters[i] = mcp.digitalRead(i);
-    mcp.digitalWrite(i+MCP_OUTPUT_SHIFT, holdingRegisters[i]); // Input -> output transfer
+    // mcp.digitalWrite(i+MCP_OUTPUT_SHIFT, holdingRegisters[i]); // Input -> output transfer
+  }
+}
+
+void writePins() {
+  const int outStart=4, outEnd=6;
+  for (int i=outStart; i<=outEnd; i++) {
+    mcp.digitalWrite(i, holdingRegisters[i-1]);
   }
 }
