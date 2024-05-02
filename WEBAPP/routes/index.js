@@ -21,8 +21,7 @@ router.get('/state', (req, res) => {
 });
 
 router.get("/radio", (req, res) => {
-    console.log(req.query.id);
-    communicator.send("radio1");
+    communicator.send("radio&r"+req.query.id);
     res.send("ok");
 });
 

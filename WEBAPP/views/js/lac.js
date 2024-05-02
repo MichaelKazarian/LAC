@@ -51,3 +51,15 @@ btn9.addEventListener('click', async function () {
   let response = await fetch('/radio?id=9',
                             {method: 'GET'});
 });
+
+btn10 = document.getElementById("radio10");
+btn10.addEventListener('click', async function () {
+  let response = await fetch('/radio?id=10',
+                            {method: 'GET'});
+});
+
+btn11 = document.getElementById("radio11");
+btn11.addEventListener('click', async function () {
+  let response = await fetch('/radio?id=11',
+                            {method: 'GET'});
+});

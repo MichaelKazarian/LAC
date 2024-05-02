@@ -14,6 +14,7 @@ class ModeAuto extends Mode {
 
 class Communicator {
 #inputState;
+#outputState;
 #mode;
 #device
     constructor(modbusId=20) {
@@ -33,6 +34,11 @@ class Communicator {
             degree: -1,
             rawinput: "[]",
             error: ""
+        };
+        this.#outputState = {
+            r9: 1,
+            r10: 1,
+            r11: 1
         };
     }
 
@@ -58,7 +64,21 @@ class Communicator {
      */
     write = (data) => {
         this.#device.writeRegisters(3, data);
-        then(console.log);
+        // then(console.log);
+    }
+
+    parseOutput = (msg) => {
+        let res = [];
+        let ids = msg.split("&")[1];
+        for (let i in this.#outputState) {
+            if (i === ids) {
+                console.log("ID:", Math.abs(this.#outputState[i]-1));
+                this.#outputState[i] = Math.abs(this.#outputState[i]-1);
+            }
+            res.push(this.#outputState[i]);
+        }
+        console.log(res);
+        return res;
     }
 }
 
@@ -74,8 +94,8 @@ process.on('message', (msg) => {
     if (msg === "read") {
         communicator.read();
     }
-    if (msg === "radio1") {
-        communicator.write([1, 1, 0]);
+    if (msg.startsWith("radio&")) {
+        communicator.write(communicator.parseOutput(msg));
     }
 
 });
@@ -88,7 +108,7 @@ var i = setInterval(() => {
     communicator.read();
     // console.log("XZ", communicator.inputState);
     process.send(JSON.stringify(communicator.inputState));
-}, 100);
+}, 10000);
 
 // process.on('SIGINT', () => {
 //     console.log(
