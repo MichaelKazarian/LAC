@@ -4,9 +4,7 @@ const { fork } = require('child_process');
 const communicator = fork('routes/communicator.js');
 const router = express.Router();
 
-communicator.on("close", (msg) => {
-    console.log('Child exited', msg);
-});
+/*    Queries serving     */
 
 // use res.render to load up an ejs view file
 router.get('/', function(req, res) {  // index page
@@ -17,14 +15,41 @@ router.get('/test', (req, res) => {
     res.send('It works!');
 });
 
-let x = "";
 router.get('/state', (req, res) => {
-    res.send(JSON.parse(x));
+    // console.log("JSON", result);
+    res.send(dataInput);
 });
 
-communicator.on('message', msg => {
-    console.log("CHILD MSG", msg);
-    x = msg;//JSON.parse(msg);
+router.get("/radio", (req, res) => {
+    console.log(req.query.id);
+    communicator.send("radio1");
+    res.send("ok");
 });
+
+/*     Communications with equipment     */
+
+let dataInput = [];
+communicator.on('message', msg => {
+    dataInput = parseInput(msg);//JSON.parse(msg);
+});
+
+communicator.on("close", (msg) => {
+    console.log('Child exited', msg);
+});
+
+function parseInput(data) {
+    jsonObj = JSON.parse(data);
+    result = {
+        degree: jsonObj["degree"],
+        error: jsonObj["error"],
+        state: "ok"
+    };
+    a = 1;
+    for (var i in jsonObj["rawinput"]) {
+        result[`param${a}`] = jsonObj["rawinput"][i];
+        a++;
+    }
+    return result;
+}
 
 module.exports = router;

@@ -31,7 +31,7 @@ class Communicator {
         this.#device.setID(modbusId);
         this.#inputState = {
             degree: -1,
-            input: "[]",
+            rawinput: "[]",
             error: ""
         };
     }
@@ -47,8 +47,8 @@ class Communicator {
      */
     read = () => {
         this.#device.readHoldingRegisters(0, 3, (err, data) => {
-                this.#inputState.input = (data.data);
-            });
+            this.#inputState.rawinput = (data.data);
+        });
     }
 
     /**
@@ -74,6 +74,10 @@ process.on('message', (msg) => {
     if (msg === "read") {
         communicator.read();
     }
+    if (msg === "radio1") {
+        communicator.write([1, 1, 0]);
+    }
+
 });
 
 var i = setInterval(() => {
