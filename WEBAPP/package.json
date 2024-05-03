@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "async-lock": "^1.4.1",
     "bootstrap": "^5.3.3",
     "ejb": "^0.0.0-alpha.0",
     "ejs": "^3.1.10",

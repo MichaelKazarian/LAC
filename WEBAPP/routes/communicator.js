@@ -1,4 +1,7 @@
 const ModbusRTU = require("modbus-serial");
+var AsyncLock = require('async-lock');
+
+var lock = new AsyncLock();
 
 class Mode {
     
@@ -12,13 +15,17 @@ class ModeAuto extends Mode {
     
 }
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 class Communicator {
 #inputState;
 #outputState;
 #mode;
 #device
+#que
     constructor(modbusId=20) {
         this.connectionInit(modbusId);
+        this.#que = [];
         this.#mode = new ModeManual();
     }
 
@@ -51,8 +58,8 @@ class Communicator {
      * It is similar to executing
      * mbpoll -0 -m rtu -a 20 -b 9600 -t 4 -r 0 -c 3 -P none /dev/ttyUSB0
      */
-    read = () => {
-        this.#device.readHoldingRegisters(0, 3, (err, data) => {
+    read = async () => {
+        await this.#device.readHoldingRegisters(0, 3, (err, data) => {
             this.#inputState.rawinput = (data.data);
         });
     }
@@ -62,12 +69,36 @@ class Communicator {
      * It is similar to executing
      * mbpoll -0 -m rtu -a 20 -b 19200 -t 4 -r 3 -P none /dev/ttyUSB0 1 0 1
      */
-    write = (data) => {
-        this.#device.writeRegisters(3, data);
-        // then(console.log);
+    write = async (data) => {
+        await this.#device.writeRegisters(3, data);
+        console.log("B", new Date().getSeconds());
     }
 
-    parseOutput = (msg) => {
+    add = (f, pos="end") => {
+        lock.acquire("key", () => {
+            if (pos === "end") this.#que.push(f);
+            else this.#que.unshift(f);
+        });
+    }
+
+    do = () => {
+        lock.acquire("key", () => {
+	          return this.#que.shift();
+        }).then((task) => {
+            if (task === "read") {
+                this.read();
+                process.send(JSON.stringify(communicator.inputState));
+            } else if (task.startsWith("radio&")) {
+                let r = this.parseRadio(task);
+                this.write(r);
+            };
+        })
+            .catch(function(err) {
+	              console.log("Err:", err.message); // output: error
+            });
+    }
+
+    parseRadio = (msg) => {
         let res = [];
         let ids = msg.split("&")[1];
         for (let i in this.#outputState) {
@@ -92,10 +123,11 @@ process.on('message', (msg) => {
         allowInterval = false;
     }
     if (msg === "read") {
-        communicator.read();
+        communicator.add("read");
     }
     if (msg.startsWith("radio&")) {
-        communicator.write(communicator.parseOutput(msg));
+        communicator.add(msg);
+        console.log("A", new Date().getSeconds());
     }
 
 });
@@ -105,10 +137,9 @@ var i = setInterval(() => {
         clearInterval(i);
         process.exit();
     }
-    communicator.read();
-    // console.log("XZ", communicator.inputState);
-    process.send(JSON.stringify(communicator.inputState));
-}, 10000);
+    communicator.add("read");
+    communicator.do();
+}, 50);
 
 // process.on('SIGINT', () => {
 //     console.log(

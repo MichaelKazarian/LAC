@@ -41,9 +41,9 @@ async function getCabinetState() {
 if (document.getElementById("state-area")) {
     function cabinetState() {
         getCabinetState();
-        setTimeout(cabinetState, 250);
+        setTimeout(cabinetState, 70);
     }
-    setTimeout(cabinetState, 100);
+    setTimeout(cabinetState, 70);
 }
 
 btn9 = document.getElementById("radio9");
