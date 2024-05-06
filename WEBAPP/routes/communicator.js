@@ -8,7 +8,6 @@ class Mode {
 }
 
 class ModeManual extends Mode {
-    
 }
 
 class ModeAuto extends Mode {
@@ -22,12 +21,19 @@ function sleep(ms) {
 }
 
 
+/**
+ * Input/output Boards communicator via Modbus RTU.
+ */
 class Communicator {
 #inputState;
 #outputState;
 #mode;
 #device
 #que
+    /**
+     * @constructs
+     * @param {Number} modbusId - slave Id. Default is 20.
+     */
     constructor(modbusId=20) {
         this.connectionInit(modbusId);
         this.#que = [];
@@ -74,7 +80,7 @@ class Communicator {
     }
 
     /**
-     * write the values [0 ... 0xffff] to registers starting at address 3
+     * Write the values [0 ... 0xffff] to registers starting at address 3
      * It is similar to executing
      * mbpoll -0 -m rtu -a 20 -b 19200 -t 4 -r 3 -P none /dev/ttyUSB0 1 0 1
      * Note: Note: time of writeRegisters near 0.04 sec
@@ -85,39 +91,50 @@ class Communicator {
         // await sleep(50);
     }
 
-    add = (f, pos="end") => {
-            lock.acquire("key", () => {
-                let lastIsSame = () => (this.#que.length > 0 && this.#que.at(-1) === f);
-                // console.log("!@!", this.#que, !lastIsSame());
-                if (!lastIsSame())
-                    this.#que.push(f);
-            }).then(this.do);
+    /**
+     * Add and execute new task. First task executes first.
+     * @param {String} task - "read" or "radio&rN"
+     */
+    addTask = (task) => {
+        lock.acquire("key", () => {
+            let lastIsSame = () => (this.#que.length > 0 && this.#que.at(-1) === task);
+            // console.log("!@!", this.#que, !lastIsSame());
+            if (!lastIsSame())
+                this.#que.push(task);
+        }).then(this.#do);
     }
 
-    do = async () => {
-        lock.acquire("key", async() => {
-            while (this.#que.length > 0) {
-                if (this.#que.length > 1) console.log("que0:", this.#que);
-                try {
-                    let task = this.#que.pop();
-                    if (task === "read") {
-                        await this.read();
-                        process.send(JSON.stringify(this.#inputState));
-                    } else if (task.startsWith("radio&")) {
-                        let r = this.parseRadio(task);
-                        await this.write(r);
-                    };
-                } catch (err) {
-                    console.error("Err:", err.message); // output: error
-                }
+    /**
+     * Executes tasks from queue.
+     */
+#do = async () => {
+    lock.acquire("key", async() => {
+        while (this.#que.length > 0) {
+            if (this.#que.length > 1) console.log("que0:", this.#que);
+            try {
+                let task = this.#que.shift();
+                if (task === "read") {
+                    await this.read();
+                    process.send(JSON.stringify(this.#inputState));
+                } else if (task.startsWith("radio&")) {
+                    let r = this.parseOperationMessage(task);
+                    await this.write(r);
+                };
+            } catch (err) {
+                console.error("Err:", err.message); // output: error
             }
-        })
-            .catch((e) => {
-                console.error("ERRR: ", e.message);
-            });
-    }
+        }
+    })
+        .catch((e) => {
+            console.error("ERRR: ", e.message);
+        });
+}
     
-    parseRadio = (msg) => {
+    /**
+     * Parse message to recognize current operation.
+     * @param {String} msg message like radio&r10. r10 is a instuction.
+     */
+    parseOperationMessage = (msg) => {
         let res = [];
         let ids = msg.split("&")[1];
         for (let i in this.#outputState) {
@@ -140,10 +157,10 @@ process.on('message', (msg) => {
         allowInterval = false;
     }
     if (msg === "read") {
-        communicator.add("read");
+        communicator.addTask("read");
     }
     if (msg.startsWith("radio&")) {
-        communicator.add(msg);
+        communicator.addTask(msg);
     }
 
 });
@@ -153,7 +170,7 @@ var i = setInterval(() => {
         clearInterval(i);
         process.exit();
     }
-    communicator.add("read");
+    communicator.addTask("read");
     // communicator.do();
 }, 50);
 
