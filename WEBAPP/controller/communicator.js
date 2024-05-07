@@ -1,18 +1,8 @@
-const ModbusRTU = require("modbus-serial");
-var AsyncLock = require('async-lock');
+import  {Mode, ModeManual, ModeOnceСycle, ModeAuto}  from "./modes.js";
+import  ModbusRTU from "modbus-serial";
+import AsyncLock from 'async-lock';
 
 var lock = new AsyncLock();
-
-class Mode {
-
-}
-
-class ModeManual extends Mode {
-}
-
-class ModeAuto extends Mode {
-
-}
 
 function sleep(ms) {
   return new Promise((resolve) => {
