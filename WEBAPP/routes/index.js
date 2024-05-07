@@ -1,7 +1,7 @@
 const express = require('express');
 const { fork } = require('child_process');
 
-const communicator = fork('controller/communicator.js');
+const communicator = fork('controller/process_controller.js');
 const router = express.Router();
 
 /*    Queries serving     */

@@ -1,4 +1,4 @@
-import  {Mode, ModeManual, ModeOnceСycle, ModeAuto}  from "./modes.js";
+import  { Mode, ModeManual, ModeOnceСycle, ModeAuto }  from "./modes.js";
 import  ModbusRTU from "modbus-serial";
 import AsyncLock from 'async-lock';
 
@@ -10,14 +10,12 @@ function sleep(ms) {
   });
 }
 
-
 /**
  * Input/output Boards communicator via Modbus RTU.
  */
 class Communicator {
 #inputState;
 #outputState;
-#mode;
 #device
 #que
   /**
@@ -27,7 +25,6 @@ class Communicator {
   constructor(modbusId=20) {
     this.connectionInit(modbusId);
     this.#que = [];
-    this.#mode = new ModeManual();
   }
 
   /**
@@ -137,34 +134,4 @@ class Communicator {
   }
 }
 
-let communicator = new Communicator();
-// let manualState = false;
-
-let allowInterval = true;
-process.on('message', (msg) => {
-  console.log('Message from parent:', msg, typeof(msg));
-  if (msg === "STOP") {
-    allowInterval = false;
-  }
-  if (msg === "read") {
-    communicator.addTask("read");
-  }
-  if (msg.startsWith("radio&")) {
-    communicator.addTask(msg);
-  }
-});
-
-var i = setInterval(() => {
-  if (!allowInterval) {
-    clearInterval(i);
-    process.exit();
-  }
-  communicator.addTask("read");
-  // communicator.do();
-}, 50);
-
-// process.on('SIGINT', () => {
-//     console.log(
-//         `Child process terminated due to receipt of SIGINT`);
-//     process.exit(0);
-// });
+export { Communicator }
