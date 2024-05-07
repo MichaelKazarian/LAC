@@ -25,11 +25,18 @@ router.get("/radio", (req, res) => {
     res.send("ok");
 });
 
+router.get("/modeset", (req, res) => {
+  communicator.send(req.query.id);
+  res.send("ok");
+});
+
+
 /*     Communications with equipment     */
 
 let dataInput = [];
 communicator.on('message', msg => {
-    dataInput = parseInput(msg);//JSON.parse(msg);
+  if (msg.startsWith("mode-set:")) console.log(msg);
+  else dataInput = parseInput(msg);//JSON.parse(msg);
 });
 
 communicator.on("close", (msg) => {

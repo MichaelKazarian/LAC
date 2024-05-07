@@ -1,3 +1,8 @@
+const MODE            = 0;
+const MODE_MANUAL     = 1;
+const MODE_ONCE_CYCLE = 2;
+const MODE_AUTO       = 3;
+
 class Mode {
 _description
   constructor() {
@@ -5,6 +10,14 @@ _description
   }
   get description() {
     return this._description;
+  }
+
+  /**
+   * Activate mode.
+   * @return true if success; false otherwise;
+   */
+  activate() {
+    return true;
   }
 }
 
@@ -34,5 +47,8 @@ export {
   Mode,
   ModeManual,
   ModeOnceСycle,
-  ModeAuto
+  ModeAuto,
+  MODE_MANUAL,
+  MODE_ONCE_CYCLE,
+  MODE_AUTO
 };

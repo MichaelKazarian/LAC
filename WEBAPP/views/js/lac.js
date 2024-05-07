@@ -63,3 +63,22 @@ btn11.addEventListener('click', async function () {
   let response = await fetch('/radio?id=11',
                             {method: 'GET'});
 });
+
+btnModeManual = document.getElementById("mode-manual");
+btnModeManual.addEventListener('click', async function () {
+  let response = await fetch('/modeset?id=mode-manual',
+                             {method: 'GET'});
+});
+
+btnModeCycleOnce = document.getElementById("mode-cycle-once");
+btnModeCycleOnce.addEventListener('click', async function () {
+  let response = await fetch('/modeset?id=mode-cycle-once',
+                             {method: 'GET'});
+});
+
+btnModeAuto = document.getElementById("mode-auto");
+btnModeAuto.addEventListener('click', async function () {
+  let response = await fetch('/modeset?id=mode-auto',
+                             {method: 'GET'});
+});
+
