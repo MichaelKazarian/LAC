@@ -8,21 +8,22 @@ const router = express.Router();
 
 // use res.render to load up an ejs view file
 router.get('/', function(req, res) {  // index page
-    res.render('pages/index');
-});
-
-router.get('/test', (req, res) => {
-    res.send('It works!');
+  const params = {
+    "modes": [
+      {"id": "mode-manual", name: "Вручну", class: "btn-outline-warning"},
+      {"id": "mode-once-cycle", name: "Одиночний цикл", class: "btn-outline-success"},
+      {"id": "mode-auto", name: "Автомат", class: "btn-outline-success"}
+    ]};
+  res.render('pages/index', params);
 });
 
 router.get('/state', (req, res) => {
-    // console.log("JSON", result);
     res.send(dataInput);
 });
 
 router.get("/radio", (req, res) => {
-    communicator.send("radio&r"+req.query.id);
-    res.send("ok");
+  communicator.send("radio&r"+req.query.id);
+  res.send("ok");
 });
 
 router.get("/modeset", (req, res) => {
@@ -36,9 +37,9 @@ router.get("/modeset", (req, res) => {
 let dataInput = {
   degree: undefined,
   error: undefined,
-  modeId: undefined,
-  modeDescription: undefined,
-  modeStatus: undefined,
+  modeId: 'mode-manual',
+  modeDescription: 'Manual mode',
+  modeStatus: 'error',
   state: undefined,
 };
 
