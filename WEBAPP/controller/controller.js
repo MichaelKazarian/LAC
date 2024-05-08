@@ -32,7 +32,7 @@ class Controller {
   setMode(mode) {
     switch (mode) {
     case MODE_ONCE_CYCLE:
-      this.#mode = new ModeOnceCycle();
+      this.#mode = new ModeOnceСycle();
       break;
     case MODE_AUTO:
       this.#mode = new ModeAuto();
@@ -41,9 +41,18 @@ class Controller {
       this.#mode = new ModeManual();
     }
     return new Promise((resolve, reject) => {
+      let status = {
+        type: "mode",
+        modeId: this.#mode.id,
+        modeDescription: this.#mode.description,
+        modeStatus: "success"
+      };
       if (this.#mode.activate() === true) {
-        resolve();
-      } else reject();
+        resolve(JSON.stringify(status));
+      } else {
+        status.modeStatus = "error";
+        reject(JSON.stringify(status));
+      }
     });
   }
 

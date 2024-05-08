@@ -1,15 +1,21 @@
-const MODE            = 0;
-const MODE_MANUAL     = 1;
-const MODE_ONCE_CYCLE = 2;
-const MODE_AUTO       = 3;
+const MODE            = "mode";
+const MODE_MANUAL     = "mode-manual";
+const MODE_ONCE_CYCLE = "mode-once-cycle";
+const MODE_AUTO       = "mode-auto";
 
 class Mode {
-_description
+  _id;
+  _description;
   constructor() {
     this._description = "Base mode";
+    this._id = MODE;
   }
   get description() {
     return this._description;
+  }
+
+  get id() {
+    return this._id;
   }
 
   /**
@@ -25,6 +31,7 @@ class ModeManual extends Mode {
   constructor() {
     super();
     this._description = "Manual mode";
+    this._id = MODE_MANUAL;
   }
 
 }
@@ -33,6 +40,7 @@ class ModeOnceСycle extends Mode {
   constructor() {
     super();
     this._description = "Once cycle mode";
+    this._id = MODE_ONCE_CYCLE;
   }  
 }
 
@@ -40,6 +48,7 @@ class ModeAuto extends ModeOnceСycle {
   constructor() {
     super();
     this._description = "Automatic mode";
+    this._id = MODE_AUTO;
   }
 }
 

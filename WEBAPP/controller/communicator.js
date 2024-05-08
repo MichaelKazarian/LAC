@@ -36,11 +36,13 @@ class Communicator {
     this.#device.setTimeout(500);
     this.#device.setID(modbusId);
     this.#inputState = {
+      type: "input",
       degree: -1,
       rawinput: "[]",
       error: ""
     };
     this.#outputState = {
+      type: "output",
       r9: 1,
       r10: 1,
       r11: 1
@@ -85,7 +87,6 @@ class Communicator {
   addTask = (task) => {
     lock.acquire("key", () => {
       let lastIsSame = () => (this.#que.length > 0 && this.#que.at(-1) === task);
-      // console.log("!@!", this.#que, !lastIsSame());
       if (!lastIsSame())
         this.#que.push(task);
     }).then(this.#do);

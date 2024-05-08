@@ -70,9 +70,9 @@ btnModeManual.addEventListener('click', async function () {
                              {method: 'GET'});
 });
 
-btnModeCycleOnce = document.getElementById("mode-cycle-once");
+btnModeCycleOnce = document.getElementById("mode-once-cycle");
 btnModeCycleOnce.addEventListener('click', async function () {
-  let response = await fetch('/modeset?id=mode-cycle-once',
+  let response = await fetch('/modeset?id=mode-once-cycle',
                              {method: 'GET'});
 });
 

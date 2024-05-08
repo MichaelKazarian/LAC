@@ -33,29 +33,46 @@ router.get("/modeset", (req, res) => {
 
 /*     Communications with equipment     */
 
-let dataInput = [];
+let dataInput = {
+  degree: undefined,
+  error: undefined,
+  modeId: undefined,
+  modeDescription: undefined,
+  modeStatus: undefined,
+  state: undefined,
+};
+
 communicator.on('message', msg => {
-  if (msg.startsWith("mode-set:")) console.log(msg);
-  else dataInput = parseInput(msg);//JSON.parse(msg);
+  if (!msg.includes("type")) {
+    console.log(msg);
+    return;
+  };
+  json = JSON.parse(msg);
+  let t = json["type"];
+  if (t === "input")  setInputData(json);
+  if (t === "mode") setMode(json);
+  console.log(dataInput);
 });
 
 communicator.on("close", (msg) => {
     console.log('Child exited', msg);
 });
 
-function parseInput(data) {
-    jsonObj = JSON.parse(data);
-    result = {
-        degree: jsonObj["degree"],
-        error: jsonObj["error"],
-        state: "ok"
-    };
-    a = 1;
-    for (var i in jsonObj["rawinput"]) {
-        result[`param${a}`] = jsonObj["rawinput"][i];
-        a++;
-    }
-    return result;
+function setMode(json) {
+  dataInput["modeId"] = json["modeId"];
+  dataInput["modeDescription"] = json["modeDescription"];
+  dataInput["modeStatus"] = json["modeStatus"];
+}
+
+function setInputData(json) {
+  dataInput["degree"] = json["degree"];
+  dataInput["error"] = json["error"];
+  dataInput["state"] = "ok";
+  a = 1;
+  for (var i in json["rawinput"]) {
+    dataInput[`param${a}`] = json["rawinput"][i];
+    a++;
+  }
 }
 
 module.exports = router;
