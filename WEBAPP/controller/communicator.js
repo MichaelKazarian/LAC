@@ -42,7 +42,6 @@ class Communicator {
       error: ""
     };
     this.#outputState = {
-      type: "output",
       r9: 1,
       r10: 1,
       r11: 1
