@@ -1,4 +1,5 @@
 let STATE_UPD_TIMEOUT = 0;
+let prevControlMode;
 
 function setRadioState(elementId, value) {
   var NAME = document.getElementById(elementId);
@@ -17,26 +18,6 @@ function onCabinetError() {
   STATE_UPD_TIMEOUT = 200;
   document.getElementById("state-area").innerHTML = "Нема зв'язку";
 };
-
-function updDashboardElements(object) {
-    document.getElementById("state-area").innerHTML = object["state"];
-    setRadioState("lRadio1", object["param1"]);
-    setRadioState("lRadio2", object["param2"]);
-    setRadioState("lRadio3", object["param3"]);
-  // document.getElementById("network_state").innerHTML = "";
-  // STATE_UPD_TIMEOUT = 0;
-  /* console.log(document.getElementById("my_smoke").className); */
-}
-
-async function getCabinetState() {
-    let response = await fetch("/state");
-    if (response.ok) {
-        let json = await response.json();
-        updDashboardElements(json);
-    } else {
-        onCabinetError();
-    }
-}
 
 if (document.getElementById("state-area")) {
     function cabinetState() {
@@ -82,3 +63,44 @@ btnModeAuto.addEventListener('click', async function () {
                              {method: 'GET'});
 });
 
+function setOperationsActive(state) {
+  let operations = document.getElementsByName("radio-operation");
+  for (let i=0; i<operations.length; i++) {
+    let r = operations[i];
+    r.disabled = !state;
+  }
+}
+
+function updDashboardElements(object) {
+  if (object["modeId"] !== prevControlMode) {
+    switch (object["modeId"]) {
+    case "mode-auto":
+      btnModeAuto.checked = true;
+      setOperationsActive(false);
+      break;
+    case "mode-once-cycle":
+      btnModeCycleOnce.checked = true;
+      setOperationsActive(false);
+      break;
+    default:
+      btnModeManual.checked = true;
+      setOperationsActive(true);
+    }
+    prevControlMode = object["modeId"];
+  }
+}
+
+function updControlState(object) {
+}
+
+
+
+async function getCabinetState() {
+    let response = await fetch("/state");
+    if (response.ok) {
+        let json = await response.json();
+        updDashboardElements(json);
+    } else {
+        onCabinetError();
+    }
+}
