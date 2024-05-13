@@ -39,8 +39,8 @@ let dataInput = {
   error: undefined,
   modeId: 'mode-manual',
   modeDescription: 'Manual mode',
-  modeStatus: 'error',
-  state: undefined,
+  modeState: 'error',
+  operationState: undefined,
 };
 
 communicator.on('message', msg => {
@@ -52,7 +52,7 @@ communicator.on('message', msg => {
   let t = json["type"];
   if (t === "input")  setInputData(json);
   if (t === "mode") setMode(json);
-  // console.log(dataInput);
+  console.log(dataInput);
 });
 
 communicator.on("close", (msg) => {
@@ -62,16 +62,16 @@ communicator.on("close", (msg) => {
 function setMode(json) {
   dataInput["modeId"] = json["modeId"];
   dataInput["modeDescription"] = json["modeDescription"];
-  dataInput["modeStatus"] = json["modeStatus"];
+  dataInput["modeState"] = json["modeState"];
 }
 
 function setInputData(json) {
   dataInput["degree"] = json["degree"];
   dataInput["error"] = json["error"];
-  dataInput["state"] = "ok";
+  dataInput["operationState"] = "idle";
   a = 1;
   for (var i in json["rawinput"]) {
-    dataInput[`param${a}`] = json["rawinput"][i];
+    dataInput[`operation${a}`] = json["rawinput"][i];
     a++;
   }
 }

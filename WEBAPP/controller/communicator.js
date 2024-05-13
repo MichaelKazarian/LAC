@@ -37,7 +37,7 @@ class Communicator {
     this.#device.setID(modbusId);
     this.#inputState = {
       type: "input",
-      degree: -1,
+      degree: 51,
       rawinput: "[]",
       error: ""
     };

@@ -1,13 +1,13 @@
 let STATE_UPD_TIMEOUT = 0;
 let prevControlMode;
 
-function setRadioState(elementId, value) {
+function setOperationState(elementId, value) {
   var NAME = document.getElementById(elementId);
   var currentClass = NAME.className;
   if (value === 0) {
-    NAME.className = "btn btn-success btn-lg";
+    NAME.className = "btn btn-primary btn-lg";
   } else if (value === 1) {
-    NAME.className = "btn btn-outline-secondary btn-lg";
+    NAME.className = "btn btn-outline-primary btn-lg";
   } else {
     NAME.className = "btn btn-danger btn-lg";
   }
@@ -27,19 +27,20 @@ if (document.getElementById("state-area")) {
     setTimeout(cabinetState, 70);
 }
 
-btn9 = document.getElementById("radio9");
+btn9 = document.getElementById("operation9");
 btn9.addEventListener('click', async function () {
+  console.log("UOD9");
   let response = await fetch('/radio?id=9',
                             {method: 'GET'});
 });
 
-btn10 = document.getElementById("radio10");
+btn10 = document.getElementById("operation10");
 btn10.addEventListener('click', async function () {
   let response = await fetch('/radio?id=10',
                             {method: 'GET'});
 });
 
-btn11 = document.getElementById("radio11");
+btn11 = document.getElementById("operation11");
 btn11.addEventListener('click', async function () {
   let response = await fetch('/radio?id=11',
                             {method: 'GET'});
@@ -63,7 +64,7 @@ btnModeAuto.addEventListener('click', async function () {
                              {method: 'GET'});
 });
 
-function setOperationsActive(state) {
+function setOperationsActiveState(state) {
   let operations = document.getElementsByName("radio-operation");
   for (let i=0; i<operations.length; i++) {
     let r = operations[i];
@@ -71,35 +72,37 @@ function setOperationsActive(state) {
   }
 }
 
-function updDashboardElements(object) {
+function updModeState(object) {
   if (object["modeId"] !== prevControlMode) {
     switch (object["modeId"]) {
     case "mode-auto":
       btnModeAuto.checked = true;
-      setOperationsActive(false);
+      setOperationsActiveState(false);
       break;
     case "mode-once-cycle":
       btnModeCycleOnce.checked = true;
-      setOperationsActive(false);
+      setOperationsActiveState(false);
       break;
     default:
       btnModeManual.checked = true;
-      setOperationsActive(true);
+      setOperationsActiveState(true);
     }
     prevControlMode = object["modeId"];
   }
 }
 
-function updControlState(object) {
+function updOperationList(object) {
+  setOperationState("lRadio1", object["operation1"]);
+  setOperationState("lRadio2", object["operation2"]);
+  setOperationState("lRadio3", object["operation3"]);
 }
-
-
 
 async function getCabinetState() {
     let response = await fetch("/state");
     if (response.ok) {
         let json = await response.json();
-        updDashboardElements(json);
+      updModeState(json);
+      updOperationList(json);
     } else {
         onCabinetError();
     }
