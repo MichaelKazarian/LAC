@@ -2,14 +2,16 @@ let STATE_UPD_TIMEOUT = 0;
 let prevControlMode;
 
 function setOperationState(elementId, value) {
-  var NAME = document.getElementById(elementId);
-  var currentClass = NAME.className;
+  var element = document.getElementById(elementId);
+  var currentClass = element.className;
   if (value === 0) {
-    NAME.className = "btn btn-primary btn-lg";
+    element.className = "btn btn-primary btn-lg";
+    clearOperationsActiveState();
+    element.checked = true;
   } else if (value === 1) {
-    NAME.className = "btn btn-outline-primary btn-lg";
+    element.className = "btn btn-outline-primary btn-lg";
   } else {
-    NAME.className = "btn btn-danger btn-lg";
+    element.className = "btn btn-danger btn-lg";
   }
 }  
 
@@ -64,13 +66,32 @@ btnModeAuto.addEventListener('click', async function () {
                              {method: 'GET'});
 });
 
+let circleProgress = document.getElementById("circle-progress");
+circleProgress.textFormat = "value";
+
+function setDegree(json) {
+  circleProgress.value = parseInt(json["degree"])/2;
+}
+
 function setOperationsActiveState(state) {
   let operations = document.getElementsByName("radio-operation");
   for (let i=0; i<operations.length; i++) {
     let r = operations[i];
     r.disabled = !state;
   }
+  if (!state) {
+    clearOperationsActiveState();
+  }
 }
+
+function clearOperationsActiveState() {
+  let operations = document.getElementsByName("radio-operation");
+  for (let i=0; i<operations.length; i++) {
+    let r = operations[i];
+    r.checked = false;
+  }
+}
+
 
 function updModeState(object) {
   if (object["modeId"] !== prevControlMode) {
@@ -86,6 +107,7 @@ function updModeState(object) {
     default:
       btnModeManual.checked = true;
       setOperationsActiveState(true);
+      clearOperationsActiveState();
     }
     prevControlMode = object["modeId"];
   }
@@ -102,7 +124,9 @@ async function getCabinetState() {
     if (response.ok) {
         let json = await response.json();
       updModeState(json);
-      updOperationList(json);
+      setDegree(json);
+      if (json["modeId"] !== "mode-manual")
+        updOperationList(json);
     } else {
         onCabinetError();
     }
