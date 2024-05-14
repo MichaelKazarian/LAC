@@ -36,7 +36,6 @@ router.get("/modeset", (req, res) => {
 
 let dataInput = {
   degree: undefined,
-  error: undefined,
   modeId: 'mode-manual',
   modeDescription: 'Manual mode',
   modeState: 'error',
@@ -62,13 +61,12 @@ communicator.on("close", (msg) => {
 function setMode(json) {
   dataInput["modeId"] = json["modeId"];
   dataInput["modeDescription"] = json["modeDescription"];
-  dataInput["modeState"] = json["modeState"];
+  dataInput["modeState"] = json["modeStatus"];
 }
 
 function setInputData(json) {
   dataInput["degree"] = json["degree"];
-  dataInput["error"] = json["error"];
-  dataInput["operationState"] = "idle";
+  dataInput["operationState"] = json["error"] !==""? json["error"]: "idle";
   a = 1;
   for (var i in json["rawinput"]) {
     dataInput[`operation${a}`] = json["rawinput"][i];
@@ -76,4 +74,5 @@ function setInputData(json) {
   }
 }
 
+communicator.send("mode-manual");
 module.exports = router;

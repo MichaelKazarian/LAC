@@ -1,5 +1,70 @@
-let STATE_UPD_TIMEOUT = 0;
 let prevControlMode;
+let errorMessage = "";
+let infoMessage = "";
+
+let btn9 = document.getElementById("operation9");
+btn9.addEventListener('click', async function () {
+  let response = await fetch('/radio?id=9',
+                            {method: 'GET'});
+});
+
+let btn10 = document.getElementById("operation10");
+btn10.addEventListener('click', async function () {
+  let response = await fetch('/radio?id=10',
+                            {method: 'GET'});
+});
+
+let btn11 = document.getElementById("operation11");
+btn11.addEventListener('click', async function () {
+  let response = await fetch('/radio?id=11',
+                            {method: 'GET'});
+});
+
+let btnModeManual = document.getElementById("mode-manual");
+btnModeManual.addEventListener('click', async function () {
+  let response = await fetch('/modeset?id=mode-manual',
+                             {method: 'GET'});
+});
+
+let btnModeCycleOnce = document.getElementById("mode-once-cycle");
+btnModeCycleOnce.addEventListener('click', async function () {
+  let response = await fetch('/modeset?id=mode-once-cycle',
+                             {method: 'GET'});
+});
+
+let btnModeAuto = document.getElementById("mode-auto");
+btnModeAuto.addEventListener('click', async function () {
+  let response = await fetch('/modeset?id=mode-auto',
+                             {method: 'GET'});
+});
+
+let circleProgress = document.getElementById("circle-progress");
+circleProgress.textFormat = "value";
+
+let stateArea = document.getElementById("state-area");
+
+function getErrorInfo(json) {
+  if (json["operationState"].startsWith("error")) return json["operationState"];
+  if (json["modeState"].startsWith("error")) return json["modeState"];
+  return "";
+}
+
+function onCabinetError(error) {
+  console.log("** An error occurred during the connection");
+  if (errorMessage !== error) {
+    stateArea.className = "alert alert-danger";
+    stateArea.innerHTML = error;
+    errorMessage = error;
+  }
+};
+
+function setInfoMessage(msg) {
+  if (infoMessage !== msg) {
+    stateArea.className = "alert alert-info";
+    stateArea.innerHTML = msg;
+    infoMessage = msg;
+  }
+}
 
 function setOperationState(elementId, value) {
   var element = document.getElementById(elementId);
@@ -14,60 +79,6 @@ function setOperationState(elementId, value) {
     element.className = "btn btn-danger btn-lg";
   }
 }  
-
-function onCabinetError() {
-  console.log("** An error occurred during the transaction");
-  STATE_UPD_TIMEOUT = 200;
-  document.getElementById("state-area").innerHTML = "Нема зв'язку";
-};
-
-if (document.getElementById("state-area")) {
-    function cabinetState() {
-        getCabinetState();
-        setTimeout(cabinetState, 70);
-    }
-    setTimeout(cabinetState, 70);
-}
-
-btn9 = document.getElementById("operation9");
-btn9.addEventListener('click', async function () {
-  console.log("UOD9");
-  let response = await fetch('/radio?id=9',
-                            {method: 'GET'});
-});
-
-btn10 = document.getElementById("operation10");
-btn10.addEventListener('click', async function () {
-  let response = await fetch('/radio?id=10',
-                            {method: 'GET'});
-});
-
-btn11 = document.getElementById("operation11");
-btn11.addEventListener('click', async function () {
-  let response = await fetch('/radio?id=11',
-                            {method: 'GET'});
-});
-
-btnModeManual = document.getElementById("mode-manual");
-btnModeManual.addEventListener('click', async function () {
-  let response = await fetch('/modeset?id=mode-manual',
-                             {method: 'GET'});
-});
-
-btnModeCycleOnce = document.getElementById("mode-once-cycle");
-btnModeCycleOnce.addEventListener('click', async function () {
-  let response = await fetch('/modeset?id=mode-once-cycle',
-                             {method: 'GET'});
-});
-
-btnModeAuto = document.getElementById("mode-auto");
-btnModeAuto.addEventListener('click', async function () {
-  let response = await fetch('/modeset?id=mode-auto',
-                             {method: 'GET'});
-});
-
-let circleProgress = document.getElementById("circle-progress");
-circleProgress.textFormat = "value";
 
 function setDegree(json) {
   circleProgress.value = parseInt(json["degree"])/2;
@@ -92,10 +103,9 @@ function clearOperationsActiveState() {
   }
 }
 
-
-function updModeState(object) {
-  if (object["modeId"] !== prevControlMode) {
-    switch (object["modeId"]) {
+function updModeState(modeId) {
+  if (modeId !== prevControlMode) {
+    switch (modeId) {
     case "mode-auto":
       btnModeAuto.checked = true;
       setOperationsActiveState(false);
@@ -109,25 +119,47 @@ function updModeState(object) {
       setOperationsActiveState(true);
       clearOperationsActiveState();
     }
-    prevControlMode = object["modeId"];
+    prevControlMode = modeId;
   }
 }
 
-function updOperationList(object) {
-  setOperationState("lRadio1", object["operation1"]);
-  setOperationState("lRadio2", object["operation2"]);
-  setOperationState("lRadio3", object["operation3"]);
+function updOperationList(json) {
+  setOperationState("lRadio1", json["operation1"]);
+  setOperationState("lRadio2", json["operation2"]);
+  setOperationState("lRadio3", json["operation3"]);
 }
 
 async function getCabinetState() {
-    let response = await fetch("/state");
+  //try {
+    let response = await fetch("/state");  
     if (response.ok) {
-        let json = await response.json();
-      updModeState(json);
+      let json = await response.json();
+      let modeId = json["modeId"];
+      updModeState(modeId);
       setDegree(json);
-      if (json["modeId"] !== "mode-manual")
+      if (modeId !== "mode-manual")
         updOperationList(json);
+
+      let errState = getErrorInfo(json);
+      if (errState !== "") {
+        onCabinetError(errState);
+        updModeState("mode-manual");
+      }
+      else setInfoMessage(json["modeDescription"]);
     } else {
-        onCabinetError();
+      onCabinetError("Нема зв'язку з контролером!");
     }
+  // } catch (TypeError) {
+  //   onCabinetError("Нема зв'язку з контролером!");
+  // }
 }
+
+function main() {
+  function cabinetState() {
+        getCabinetState();
+        setTimeout(cabinetState, 70);
+    }
+    setTimeout(cabinetState, 70);
+}
+
+if (stateArea !== null) main();
