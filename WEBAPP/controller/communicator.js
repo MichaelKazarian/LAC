@@ -103,6 +103,8 @@ class Communicator {
         if (task === "read") {
           await this.read();
           process.send(JSON.stringify(this.#inputState));
+        } else if (task === "stop") {
+          await this.write([1, 1, 1]);
         } else if (task.startsWith("radio&")) {
           let r = this.parseOperationMessage(task);
           await this.write(r);

@@ -57,8 +57,10 @@ class Controller {
   }
 
   stop() {
-    clearInterval(this.#mainInterval);
-    process.exit();
+    this.#communicator.addTask("stop");
+    return this.setMode(MODE_MANUAL);
+    // clearInterval(this.#mainInterval);
+    // process.exit();
   }
 }
 

@@ -32,6 +32,11 @@ router.get("/modeset", (req, res) => {
 });
 
 
+router.get("/stop", (req, res) => {
+  communicator.send("stop");
+  res.send("stop");
+});
+
 /*     Communications with equipment     */
 
 let dataInput = {
@@ -51,7 +56,7 @@ communicator.on('message', msg => {
   let t = json["type"];
   if (t === "input")  setInputData(json);
   if (t === "mode") setMode(json);
-  console.log(dataInput);
+  // console.log(dataInput);
 });
 
 communicator.on("close", (msg) => {

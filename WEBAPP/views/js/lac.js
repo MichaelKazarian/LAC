@@ -38,6 +38,12 @@ btnModeAuto.addEventListener('click', async function () {
                              {method: 'GET'});
 });
 
+let btnStop = document.getElementById("btnStop");
+btnStop.addEventListener('click', async function () {
+  let response = await fetch('/stop',
+                             {method: 'GET'});
+});
+
 let circleProgress = document.getElementById("circle-progress");
 circleProgress.textFormat = "value";
 
@@ -108,14 +114,17 @@ function updModeState(modeId) {
     switch (modeId) {
     case "mode-auto":
       btnModeAuto.checked = true;
+      btnStop.className = "btn btn-danger btn-lg";
       setOperationsActiveState(false);
       break;
     case "mode-once-cycle":
       btnModeCycleOnce.checked = true;
       setOperationsActiveState(false);
+      btnStop.className = "btn btn-danger btn-lg";
       break;
     default:
       btnModeManual.checked = true;
+      btnStop.className = 'btn btn-danger btn-lg invisible';
       setOperationsActiveState(true);
       clearOperationsActiveState();
     }

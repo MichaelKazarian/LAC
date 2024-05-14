@@ -8,8 +8,10 @@ controller.run();
 
 process.on('message', (msg) => {
   console.log('Message from parent:', msg, typeof(msg));
-  if (msg === "STOP") {
-    controller.stop();
+  if (msg === "stop") {
+    controller.stop()
+      .then(status => process.send(status))
+      .catch(status => process.send(status));
   }
   if (msg === "read") {
     controller.addTask("read");
