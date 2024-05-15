@@ -25,6 +25,10 @@ class Mode {
   activate() {
     return true;
   }
+
+  stop() {
+    console.log("Mode stop");
+  }
 }
 
 class ModeManual extends Mode {

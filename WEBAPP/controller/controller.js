@@ -30,6 +30,7 @@ class Controller {
   }
 
   setMode(mode) {
+    this.#mode.stop();
     switch (mode) {
     case MODE_ONCE_CYCLE:
       this.#mode = new ModeOnceСycle();
