@@ -58,21 +58,9 @@ class Mode {
     });
   }
 
-
   // TODO merge with activate
   run() {
     this._mainInterval = setInterval(() => {
-      // let readTask = new Promise((resolve, reject) => {
-      //   let d = this._communicator.device;
-      //   d.readHoldingRegisters(0, 3, async (err, data) => {
-      //     if (data != null) resolve(data.data);
-      //     else reject();
-      //   });       
-      // }).then((data) => {
-      //   this._inputState.rawinput = (data);
-      //   process.send(JSON.stringify(this._inputState));
-      // }).catch(sleep(50));
-      // this.addTask(readTask);
       this.addTask(this._read);
     }, this._intervalVal);
   }
