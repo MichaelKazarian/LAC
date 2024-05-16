@@ -4,7 +4,6 @@ import {
 } from "./modes.js";
 
 let controller = new Controller();
-controller.run();
 
 process.on('message', (msg) => {
   console.log('Message from parent:', msg, typeof(msg));
@@ -12,9 +11,6 @@ process.on('message', (msg) => {
     controller.stop()
       .then(status => process.send(status))
       .catch(status => process.send(status));
-  }
-  if (msg === "read") {
-    controller.addTask("read");
   }
   if (msg.startsWith("radio&")) {
     controller.addTask(msg);

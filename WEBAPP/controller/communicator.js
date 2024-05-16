@@ -39,12 +39,6 @@ class Communicator {
     this.#device.connectRTUBuffered("/dev/ttyUSB0", { baudRate: 9600, debug: true });
     this.#device.setTimeout(500);
     this.#device.setID(modbusId);
-    this.#inputState = {
-      type: "input",
-      degree: 51,
-      rawinput: "[]",
-      error: ""
-    };
     this.#outputState = {
       r9: 1,
       r10: 1,
@@ -56,20 +50,24 @@ class Communicator {
     return this.#inputState;
   }
 
-  /**
-   * Read the 3 registers starting at address 0 on device number this.#device
-   * It is similar to executing
-   * mbpoll -0 -m rtu -a 20 -b 9600 -t 4 -r 0 -c 3 -P none /dev/ttyUSB0
-   * Note: time of readHoldingRegisters near 0.03 sec
-   */
-  read = async () => {
-    await this.#device.readHoldingRegisters(0, 3, async (err, data) => {
-      if (data != null) {
-        this.#inputState.rawinput = (data.data);
-      }
-      else await sleep(50); // more than time of readHoldingRegisters to avoid crashes
-    });
+  get device() {
+    return this.#device;
   }
+
+  // /**
+  //  * Read the 3 registers starting at address 0 on device number this.#device
+  //  * It is similar to executing
+  //  * mbpoll -0 -m rtu -a 20 -b 9600 -t 4 -r 0 -c 3 -P none /dev/ttyUSB0
+  //  * Note: time of readHoldingRegisters near 0.03 sec
+  //  */
+  // read = async () => {
+  //   await this.#device.readHoldingRegisters(0, 3, async (err, data) => {
+  //     if (data != null) {
+  //       this.#inputState.rawinput = (data.data);
+  //     }
+  //     else await sleep(50); // more than time of readHoldingRegisters to avoid crashes
+  //   });
+  // }
 
   /**
    * Write the values [0 ... 0xffff] to registers starting at address 3
@@ -103,16 +101,18 @@ class Communicator {
     while (this.#que.length > 0) {
       if (this.#que.length > 1) console.log("que0:", this.#que);
       try {
+        // console.log("que0:", this.#que);
         let task = this.#que.shift();
-        if (task === "read") {
-          await this.read();
-          process.send(JSON.stringify(this.#inputState));
-        } else if (task === "stop") {
-          await this.write([1, 1, 1]);
-        } else if (task.startsWith("radio&")) {
-          let r = this.parseOperationMessage(task);
-          await this.write(r);
-        };
+        task();
+        // if (task === "read") {
+        //   await this.read();
+        //   process.send(JSON.stringify(this.#inputState));
+        // } else if (task === "stop") {
+        //   await this.write([1, 1, 1]);
+        // } else if (task.startsWith("radio&")) {
+        //   let r = this.parseOperationMessage(task);
+        //   await this.write(r);
+        // };
       } catch (err) {
         console.error("Err:", err.message); // output: error
       }

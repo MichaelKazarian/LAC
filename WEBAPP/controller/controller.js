@@ -8,22 +8,17 @@ import {
  */
 class Controller {
 #allowInterval
-#mainInterval
 #mode
-#intervalVal = 50
   constructor() {
     this.#allowInterval = true;
     this.#mode = new ModeManual();
   }
 
+  /**
+   * Add the task to the current mode.
+   */
   addTask(task) {
     this.#mode.addTask(task);
-  }
-
-  run() {
-    this.#mainInterval = setInterval(() => {
-      this.addTask("read");
-    }, this.#intervalVal);
   }
 
   setMode(mode) {

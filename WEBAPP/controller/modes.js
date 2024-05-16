@@ -5,14 +5,33 @@ const MODE_MANUAL     = "mode-manual";
 const MODE_ONCE_CYCLE = "mode-once-cycle";
 const MODE_AUTO       = "mode-auto";
 
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+
 class Mode {
   _id;
   _description;
   _communicator
+  _mainInterval
+  _intervalVal = 50
+  _inputState
+  #task
   constructor() {
     this._description = "Base mode";
     this._id = MODE;
     this._communicator = new Communicator();
+    this._inputState = {
+      type: "input",
+      degree: 51,
+      rawinput: "[]",
+      error: ""
+    };
+
   }
   get description() {
     return this._description;
@@ -23,10 +42,48 @@ class Mode {
   }
 
   /**
+   * Read the 3 registers starting at address 0 on device number this.#device
+   * It is similar to executing
+   * mbpoll -0 -m rtu -a 20 -b 9600 -t 4 -r 0 -c 3 -P none /dev/ttyUSB0
+   * Note: time of readHoldingRegisters near 0.03 sec
+   */
+  _read = async () => {
+    let d = this._communicator.device;
+    await d.readHoldingRegisters(0, 3, async (err, data) => {
+      if (data != null) {
+        this._inputState.rawinput = (data.data);
+        process.send(JSON.stringify(this._inputState));
+      }
+      else await sleep(50); // more than time of readHoldingRegisters to avoid crashes
+    });
+  }
+
+
+  // TODO merge with activate
+  run() {
+    this._mainInterval = setInterval(() => {
+      // let readTask = new Promise((resolve, reject) => {
+      //   let d = this._communicator.device;
+      //   d.readHoldingRegisters(0, 3, async (err, data) => {
+      //     if (data != null) resolve(data.data);
+      //     else reject();
+      //   });       
+      // }).then((data) => {
+      //   this._inputState.rawinput = (data);
+      //   process.send(JSON.stringify(this._inputState));
+      // }).catch(sleep(50));
+      // this.addTask(readTask);
+      this.addTask(this._read);
+    }, this._intervalVal);
+  }
+
+  
+  /**
    * Activate mode.
    * @return true if success; false otherwise;
    */
   activate() {
+    this.run();   // TODO merge with run
     return true;
   }
 
@@ -36,10 +93,12 @@ class Mode {
   
   stop() {
     this._communicator.addTask("stop");
-    console.log("Mode stop");
+    clearInterval(this._mainInterval);
+    console.log(`${this._description} stop`);
   }
 }
 
+//*****************************************************
 class ModeManual extends Mode {
   constructor() {
     super();
