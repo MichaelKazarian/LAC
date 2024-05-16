@@ -23,8 +23,12 @@ class Communicator {
    * @param {Number} modbusId - slave Id. Default is 20.
    */
   constructor(modbusId=20) {
+    if (Communicator._instance) {
+      return Communicator._instance;
+    }
     this.connectionInit(modbusId);
     this.#que = [];
+    Communicator._instance = this;
   }
 
   /**

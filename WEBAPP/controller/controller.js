@@ -1,4 +1,3 @@
-import { Communicator } from "./communicator.js";
 import {
   MODE_MANUAL, MODE_ONCE_CYCLE, MODE_AUTO,
   Mode, ModeManual, ModeOnceСycle, ModeAuto
@@ -8,19 +7,17 @@ import {
  * Class controls equipment mode.
  */
 class Controller {
-#communicator
 #allowInterval
 #mainInterval
 #mode
 #intervalVal = 50
   constructor() {
-    this.#communicator = new Communicator();
     this.#allowInterval = true;
     this.#mode = new ModeManual();
   }
 
   addTask(task) {
-    this.#communicator.addTask(task);
+    this.#mode.addTask(task);
   }
 
   run() {
@@ -58,7 +55,7 @@ class Controller {
   }
 
   stop() {
-    this.#communicator.addTask("stop");
+    this.#mode.stop();
     return this.setMode(MODE_MANUAL);
     // clearInterval(this.#mainInterval);
     // process.exit();
