@@ -31,6 +31,11 @@ class Mode {
       rawinput: "[]",
       error: ""
     };
+    this._outputState = {
+      r9: 1,
+      r10: 1,
+      r11: 1
+    };
 
   }
   get description() {
@@ -58,6 +63,22 @@ class Mode {
     });
   }
 
+  /**
+   * Write the values [0 ... 0xffff] to registers starting at address 3
+   * It is similar to executing
+   * mbpoll -0 -m rtu -a 20 -b 19200 -t 4 -r 3 -P none /dev/ttyUSB0 1 0 1
+   * Note: Note: time of writeRegisters near 0.04 sec
+   */
+  _write = async (data) => {
+    await sleep(50); // more than time of writeRegisters to avoid crashes
+    await this._communicator.device.writeRegisters(3, data);
+    // await sleep(50);
+  }
+
+  _stop = () => {
+    console.log("DO STOP");
+  }
+
   // TODO merge with activate
   run() {
     this._mainInterval = setInterval(() => {
@@ -80,7 +101,7 @@ class Mode {
   }
   
   stop() {
-    this._communicator.addTask("stop");
+    this._communicator.addTask(this._stop);
     clearInterval(this._mainInterval);
     console.log(`${this._description} stop`);
   }
@@ -92,6 +113,33 @@ class ModeManual extends Mode {
     super();
     this._description = "Manual mode";
     this._id = MODE_MANUAL;
+  }
+
+  addTask(task) {
+    if (typeof(task) === "string" && task.startsWith("radio&")) {
+      let r = this.parseOperationMessage(task);
+      super.addTask(async () => {
+        await this._write(r);
+      });
+      return;
+    };
+    super.addTask(task);
+  }
+
+  /**
+   * Parse message to recognize current operation.
+   * @param {String} msg message like radio&r10. r10 is a instuction.
+   */
+  parseOperationMessage = (msg) => {
+    let res = [];
+    let ids = msg.split("&")[1];
+    for (let i in this._outputState) {
+      if (i === ids) {
+        this._outputState[i] = Math.abs(this._outputState[i]-1);
+      }
+      res.push(this._outputState[i]);
+    }
+    return res;
   }
 
 }
