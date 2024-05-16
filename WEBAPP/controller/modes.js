@@ -27,7 +27,7 @@ class Mode {
     this._communicator = new Communicator();
     this._inputState = {
       type: "input",
-      degree: 51,
+      degree: 0,
       rawinput: "[]",
       error: ""
     };
@@ -57,6 +57,8 @@ class Mode {
     await d.readHoldingRegisters(0, 3, async (err, data) => {
       if (data != null) {
         this._inputState.rawinput = (data.data);
+        this._inputState.degree++;
+        if (this._inputState.degree > 719) this._inputState.degree = 0;
         process.send(JSON.stringify(this._inputState));
       }
       else await sleep(50); // more than time of readHoldingRegisters to avoid crashes
