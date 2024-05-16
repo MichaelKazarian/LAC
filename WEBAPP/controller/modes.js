@@ -77,6 +77,10 @@ class Mode {
 
   _stop = () => {
     console.log("DO STOP");
+    let sendStop = async () => {
+      await this._write([1, 1, 1]);
+    };
+    this.addTask(sendStop);
   }
 
   // TODO merge with activate
