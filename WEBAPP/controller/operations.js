@@ -35,15 +35,12 @@ function* operation3() {
       yield {type: "write", data: [1, 1, 1], operation: "radio&r7"};
     };
     if (i.degree>250 && i.degree<300) {
-      console.log("Degree", i.degree, [0, 1, 1]);
       yield {type: "write", data: [0, 1, 1], operation: "radio&r9"};
     }
     if (i.degree>300 && i.degree<500) {
-      console.log("Degree", i.degree, [0, 0, 1]);
       yield {type: "write", data: [0, 0, 1], operation: "radio&r10"};
     };
     if (i.degree>500 && i.degree<719) {
-      console.log("Degree", i.degree, [0, 0, 0]);
       yield {type: "write", data: [0, 0, 0], operation: "radio&r11"};
     };
     i = yield {type: "read", operation: "radio&r7"};
