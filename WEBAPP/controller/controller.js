@@ -21,14 +21,24 @@ class Controller {
     this.#mode.addTask(task);
   }
 
-  setMode(mode) {
-    this.#mode.stop();
+  setMode(mode, manualStop=true) {
+    if (manualStop) this.#mode.stop();
     switch (mode) {
     case MODE_ONCE_CYCLE:
       this.#mode = new ModeOnceСycle();
+      this.#mode.onX = () => {
+        this.setMode(MODE_MANUAL, false)
+          .then(status => process.send(status))
+          .catch(status => process.send(status));
+      };
       break;
     case MODE_AUTO:
       this.#mode = new ModeAuto();
+      this.#mode.onX = () => {
+        this.setMode(MODE_MANUAL, false)
+          .then(status => process.send(status))
+          .catch(status => process.send(status));
+      };
       break;
     default:
       this.#mode = new ModeManual();

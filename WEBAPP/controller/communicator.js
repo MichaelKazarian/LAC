@@ -67,7 +67,7 @@ class Communicator {
 #do = async () => {
   lock.acquire("key", async() => {
     while (this.#que.length > 0) {
-      if (this.#que.length > 1) console.log("que0:", this.#que);
+      // if (this.#que.length > 1) console.log("que0:", this.#que);
       let task = this.#que.shift();
       await task();
     }

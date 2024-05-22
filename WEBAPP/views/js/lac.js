@@ -87,7 +87,7 @@ function setOperationState(elementId, value) {
 }  
 
 function setDegree(json) {
-  circleProgress.value = parseInt(json["degree"])/2;
+  circleProgress.value = parseInt(json["degree"]/2);
 }
 
 function setOperationsActiveState(state) {
