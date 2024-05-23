@@ -45,7 +45,7 @@ class Mode {
       degree: 0,
       rawinput: "[]",
       error: ""
-    };    
+    };
   }
 
   get description() {
@@ -166,7 +166,7 @@ class ModeСycle extends Mode {
     super.init();
     this._cycleState = operation();
   }
-  
+
   operate () {
     this.nextPiece();
     if (this.isPieceWritable()) {
@@ -185,9 +185,9 @@ class ModeСycle extends Mode {
    * Runs next operation if exists. Stop cycle otherwise.
    */
   startNextOperation() {
-    if (this._operation.value !== undefined) { // start next operation
+    if (this._operation.value !== undefined) {      // Start next operation
       this._cycleState = this._operation.value();
-    } else { // cycle done
+    } else {                                        // Cycle done
       this.stop();
     }
   }
