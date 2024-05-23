@@ -91,13 +91,11 @@ class Mode {
     // await sleep(50);
   }
 
-  _stop = () => {
-    // console.log("DO STOP");
-    let sendStop = async () => {
+   //Send stop message to this.#device
+  _sendStop = async () => {
+    // console.log("SEND STOP");
       await this._write([1, 0, 1]);
-    };
-    this.addTask(sendStop);
-  }
+  };
 
   operate() {}
 
@@ -118,7 +116,7 @@ class Mode {
   }
   
   stop() {
-    this._communicator.addTask(this._stop);
+    this._communicator.addTask(this._sendStop);
     clearInterval(this._mainInterval);
     console.log(`${this._description} stop`);
   }
@@ -201,7 +199,6 @@ class ModeСycle extends Mode {
 
   /**
    * Returns state of current operation.
-   *
    * @return true if current operation done; false otherwise.
    */
   isOperationDone() {
@@ -210,7 +207,6 @@ class ModeСycle extends Mode {
 
   /**
    * Returns state of current operation.
-   *
    * @return true if current operation done; false otherwise.
    */
   isPieceWritable() {
