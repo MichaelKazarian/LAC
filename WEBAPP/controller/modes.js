@@ -22,7 +22,6 @@ class Mode {
   _mainInterval
   _intervalVal = 50
   _inputState
-  _cycleState
   _onX
   _operation
   #task
@@ -30,13 +29,6 @@ class Mode {
     this._description = "Base mode";
     this._id = MODE;
     this._communicator = new Communicator();
-    this._cycleState = operation();
-    this._inputState = {
-      type: "input",
-      degree: 0,
-      rawinput: "[]",
-      error: ""
-    };
     this._outputState = {
       r7: [1, 1, 1],
       r8: [0, 0, 0],
@@ -44,7 +36,17 @@ class Mode {
       r10: [1, 0, 1],
       r11: [0, 1, 1]
     };
+    this.init();
+  }
 
+  init() {
+    console.log("CM init");
+    this._inputState = {
+      type: "input",
+      degree: 0,
+      rawinput: "[]",
+      error: ""
+    };    
   }
 
   get description() {
@@ -153,14 +155,21 @@ class ModeManual extends Mode {
 }
 
 class ModeСycle extends Mode {
+  _cycleState;
   constructor() {
     super();
     this._description = "Cycle mode";
     this._id = MODE_CYCLE;
+    this.init();
   }
 
+  init() {
+    super.init();
+    this._cycleState = operation();
+  }
+  
   operate () {
-    this._operation = this._cycleState.next(this._inputState);
+    this.nextOperation();
     if (!this._operation.done) {
       if (this._operation.value.type === "write") {
         let r = this.parseOperationMessage(this._operation.value.operation);
@@ -176,6 +185,13 @@ class ModeСycle extends Mode {
         this.stop();
       }
     }
+  }
+
+  /**
+   * Set next operation.
+   */
+  nextOperation(){
+    this._operation = this._cycleState.next(this._inputState);
   }
 }
 
@@ -204,13 +220,7 @@ class ModeAuto extends ModeСycle {
   async operate() {
     await super.operate();
     if (this._operation.done && this._operation.value === undefined) { // cycle done
-      this._inputState = {
-        type: "input",
-        degree: 0,
-        rawinput: "[]",
-        error: ""
-      };
-      this._cycleState = operation();
+      this.init();
       await sleep(2000);
       await this.activate();
     }
