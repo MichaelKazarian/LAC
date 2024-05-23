@@ -40,7 +40,6 @@ class Mode {
   }
 
   init() {
-    console.log("CM init");
     this._inputState = {
       type: "input",
       degree: 0,
@@ -169,29 +168,53 @@ class ModeСycle extends Mode {
   }
   
   operate () {
-    this.nextOperation();
-    if (!this._operation.done) {
-      if (this._operation.value.type === "write") {
-        let r = this.parseOperationMessage(this._operation.value.operation);
-        super.addTask(async () => {
-          console.log("r", r);
-          await this._write(r);
-        });
-      }
-    } else {
-      if (this._operation.value !== undefined) { // start next operation
-        this._cycleState = this._operation.value();
-      } else { // cycle done
-        this.stop();
-      }
+    this.nextPiece();
+    if (this.isPieceWritable()) {
+      let r = this.parseOperationMessage(this._operation.value.operation);
+      this.addTask(async () => {
+        console.log("r", r);
+        await this._write(r);
+      });
+    };
+    if (this.isOperationDone()) {
+      this.startNextOperation();
     }
   }
 
   /**
-   * Set next operation.
+   * Runs next operation if exists. Stop cycle otherwise.
    */
-  nextOperation(){
+  startNextOperation() {
+    if (this._operation.value !== undefined) { // start next operation
+      this._cycleState = this._operation.value();
+    } else { // cycle done
+      this.stop();
+    }
+  }
+
+  /**
+   * Set next piece of the operation.
+   */
+  nextPiece(){
     this._operation = this._cycleState.next(this._inputState);
+  }
+
+  /**
+   * Returns state of current operation.
+   *
+   * @return true if current operation done; false otherwise.
+   */
+  isOperationDone() {
+    return this._operation.done;
+  }
+
+  /**
+   * Returns state of current operation.
+   *
+   * @return true if current operation done; false otherwise.
+   */
+  isPieceWritable() {
+    return !this.isOperationDone() && this._operation.value.type === "write";
   }
 }
 
