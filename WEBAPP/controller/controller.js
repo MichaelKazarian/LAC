@@ -60,8 +60,8 @@ class Controller {
   }
 
   stop() {
-    this.#mode.stop();
-    return this.setMode(MODE_MANUAL);
+    //this.#mode.stop();
+    return this.setMode(MODE_MANUAL, true);
     // process.exit();
   }
 }
