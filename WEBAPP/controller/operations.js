@@ -4,8 +4,8 @@ function* operation() {
   console.log("Operation 1");
   while (i.degree <= 100) {
     // console.log("i:", i);
-    if (parseInt(i.degree)%2 == 0) yield {type: "write", data: [0, 0, 0], operation: "radio&r7"};
-    else yield {type: "write", data: [1, 1, 1], operation: "radio&r8"};
+    if (parseInt(i.degree)%3 == 0) i = yield {type: "write", data: [0, 0, 0], operation: "radio&r7"};
+    else i = yield {type: "write", data: [1, 1, 1], operation: "radio&r8"};
     i = yield {type: "read", operation: "radio&r8"};
   }
   return operation2;
@@ -16,9 +16,10 @@ function* operation2() {
   i = yield {type: "read", operation: "radio&r10"};
   console.log("Operation 2");
   while (i.degree <= 200) {
+    // console.log("i:", i);
     for (const item of i.rawinput) {
       if (item == 0)
-        yield {type: "write", data: [1, 1, 1], operation: "radio&r10"};
+        i = yield {type: "write", data: [1, 1, 1], operation: "radio&r10"};
     }
     i = yield {type: "read", operation: "radio&r10"};
   }

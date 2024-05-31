@@ -55,9 +55,9 @@ class Communicator {
    */
   addTask = (task) => {
     lock.acquire("key", () => {
-      let lastIsSame = () => (this.#que.length > 0 && this.#que.at(-1) === task);
-      if (!lastIsSame())
-        this.#que.push(task);
+      // let lastIsSame = () => (this.#que.length > 0 && this.#que.at(-1) === task);
+      // if (!lastIsSame()) this.#que.push(task);
+      this.#que.push(task);
     }).then(this.#do);
   }
 
@@ -66,8 +66,8 @@ class Communicator {
    */
 #do = async () => {
   lock.acquire("key", async() => {
+    if (this.#que.length > 1) console.log("que0:", this.#que);
     while (this.#que.length > 0) {
-      // if (this.#que.length > 1) console.log("que0:", this.#que);
       let task = this.#que.shift();
       await task();
     }

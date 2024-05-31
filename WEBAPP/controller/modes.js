@@ -20,7 +20,7 @@ class Mode {
   _description;
   _communicator
   _mainInterval
-  _intervalVal = 50
+  _intervalVal = 100
   _inputState
   _onX
   _operation
@@ -69,7 +69,8 @@ class Mode {
   _read = async () => {
     let d = this._communicator.device;
     await d.readHoldingRegisters(0, 3, async (err, data) => {
-      if (data != null) {
+      console.log("READ", data);
+      if (data) {
         this._inputState.rawinput = (data.data);
         this._inputState.degree++;
         if (this._inputState.degree > 719) this._inputState.degree = 0;
@@ -105,7 +106,7 @@ class Mode {
    */
   activate() {
     this._mainInterval = setInterval(() => {
-      this.addTask(this._read);
+      // this.addTask(this._read);
       this.operate();
     }, this._intervalVal);
     return true;
@@ -165,15 +166,18 @@ class ModeСycle extends Mode {
     this._cycleState = operation();
   }
 
-  operate () {
+  async operate () {
+    // console.log("IS", this._inputState);
     this.nextPiece();
     if (this.isPieceWritable()) {
       let r = this.parseOperationMessage(this._operation.value.operation);
       this.addTask(async () => {
-        console.log("r", r);
+        console.log("WRITE", r);
         await this._write(r);
       });
-    };
+    } else {
+      await this.addTask(this._read);
+    }
     if (this.isOperationDone()) {
       this.startNextOperation();
     }
