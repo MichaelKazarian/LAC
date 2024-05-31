@@ -1,5 +1,5 @@
 import { Communicator } from "./communicator.js";
-import { operation } from "./operations.js";
+import { manual, operation } from "./operations.js";
 
 const MODE            = "mode";
 const MODE_MANUAL     = "mode-manual";
@@ -24,6 +24,7 @@ class Mode {
   _inputState
   _onX
   _operation
+  _cycleState;
   #task
   constructor() {
     this._description = "Base mode";
@@ -98,7 +99,22 @@ class Mode {
       await this._write([1, 0, 1]);
   };
 
-  operate() {}
+  async operate () {
+    // console.log("IS", this._inputState);
+    this.nextPiece();
+    if (this.isPieceWritable()) {
+      let r = this.parseOperationMessage(this._operation.value.operation);
+      this.addTask(async () => {
+        console.log("WRITE", r);
+        await this._write(r);
+      });
+    } else {
+      await this.addTask(this._read);
+    }
+    if (this.isOperationDone()) {
+      this.startNextOperation();
+    }
+  }
 
   /**
    * Activate mode.
@@ -106,7 +122,6 @@ class Mode {
    */
   activate() {
     this._mainInterval = setInterval(() => {
-      // this.addTask(this._read);
       this.operate();
     }, this._intervalVal);
     return true;
@@ -129,58 +144,6 @@ class Mode {
   parseOperationMessage = (msg) => {
     let id = msg.split("&")[1];
     return this._outputState[id];
-  }
-}
-
-//*****************************************************
-class ModeManual extends Mode {
-  constructor() {
-    super();
-    this._description = "Manual mode";
-    this._id = MODE_MANUAL;
-  }
-
-  addTask(task) {
-    if (typeof(task) === "string" && task.startsWith("radio&")) {
-      let r = this.parseOperationMessage(task);
-      super.addTask(async () => {
-        await this._write(r);
-      });
-      return;
-    };
-    super.addTask(task);
-  }
-}
-
-class ModeСycle extends Mode {
-  _cycleState;
-  constructor() {
-    super();
-    this._description = "Cycle mode";
-    this._id = MODE_CYCLE;
-    this.init();
-  }
-
-  init() {
-    super.init();
-    this._cycleState = operation();
-  }
-
-  async operate () {
-    // console.log("IS", this._inputState);
-    this.nextPiece();
-    if (this.isPieceWritable()) {
-      let r = this.parseOperationMessage(this._operation.value.operation);
-      this.addTask(async () => {
-        console.log("WRITE", r);
-        await this._write(r);
-      });
-    } else {
-      await this.addTask(this._read);
-    }
-    if (this.isOperationDone()) {
-      this.startNextOperation();
-    }
   }
 
   /**
@@ -215,6 +178,45 @@ class ModeСycle extends Mode {
    */
   isPieceWritable() {
     return !this.isOperationDone() && this._operation.value.type === "write";
+  }
+}
+
+//*****************************************************
+class ModeManual extends Mode {
+  constructor() {
+    super();
+    this._description = "Manual mode";
+    this._id = MODE_MANUAL;
+  }
+
+  init() {
+    super.init();
+    this._cycleState = manual();
+  }
+
+  addTask(task) {
+    if (typeof(task) === "string" && task.startsWith("radio&")) {
+      let r = this.parseOperationMessage(task);
+      super.addTask(async () => {
+        await this._write(r);
+      });
+      return;
+    };
+    super.addTask(task);
+  }
+}
+
+class ModeСycle extends Mode {
+  constructor() {
+    super();
+    this._description = "Cycle mode";
+    this._id = MODE_CYCLE;
+    this.init();
+  }
+
+  init() {
+    super.init();
+    this._cycleState = operation();
   }
 }
 

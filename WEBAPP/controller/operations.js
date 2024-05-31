@@ -1,3 +1,13 @@
+function* manual() {
+  let i;
+  i = yield {type: "read", operation: "radio&r8"};
+  console.log("Manual operation");
+  while (true) {
+    i = yield {type: "read", operation: "radio&r8"};
+  }
+  return;
+}
+
 function* operation() {
   let i;
   i = yield {type: "read", operation: "radio&r8"};
@@ -74,4 +84,4 @@ class Operation1 {
 }
 
 
-export { operation }
+export { manual, operation }
