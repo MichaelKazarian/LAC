@@ -22,10 +22,10 @@ class Mode {
   _mainInterval
   _intervalVal = 100
   _inputState
-  _onX
+  _onStopped
   _operation
   _cycleState;
-  #task
+#task
   constructor() {
     this._description = "Base mode";
     this._id = MODE;
@@ -57,8 +57,8 @@ class Mode {
     return this._id;
   }
 
-  set onX(f) {
-    this._onX = f;
+  set onStopped(f) {
+    this._onStopped = f;
   }
 
   /**
@@ -93,10 +93,10 @@ class Mode {
     // await sleep(50);
   }
 
-   //Send stop message to this.#device
+  //Send stop message to this.#device
   _sendStop = async () => {
     // console.log("SEND STOP");
-      await this._write([1, 0, 1]);
+    await this._write([1, 0, 1]);
   };
 
   async operate () {
@@ -226,20 +226,22 @@ class ModeOnceСycle extends ModeСycle {
     this._description = "Once cycle mode";
     this._id = MODE_ONCE_CYCLE;
   }
- 
+  
   stop () {
     super.stop();
     if (this._operation.value === undefined) {
-      if (this._onX !== undefined) this._onX();
+      if (this._onStopped !== undefined) this._onStopped();
     }
   }
 }
 
 class ModeAuto extends ModeСycle {
+  _doStop
   constructor() {
     super();
     this._description = "Automatic mode";
     this._id = MODE_AUTO;
+    this._doStop = false;
   }
 
   async operate() {
@@ -249,6 +251,22 @@ class ModeAuto extends ModeСycle {
       await sleep(2000);
       await this.activate();
     }
+  }
+
+  startNextOperation() {
+    if (this._doStop) {
+      this.stop();
+    } else super.startNextOperation();
+  }
+
+  sendStop() {
+    console.log("Send stop");
+    this._doStop = true;
+  }
+
+  stop () {
+    super.stop();
+    if (this._onStopped !== undefined) this._onStopped();
   }
 }
 

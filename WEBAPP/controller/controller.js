@@ -26,7 +26,7 @@ class Controller {
     switch (mode) {
     case MODE_ONCE_CYCLE:
       this.#mode = new ModeOnceСycle();
-      this.#mode.onX = () => {
+      this.#mode.onStopped = () => {
         this.setMode(MODE_MANUAL, false)
           .then(status => process.send(status))
           .catch(status => process.send(status));
@@ -34,7 +34,7 @@ class Controller {
       break;
     case MODE_AUTO:
       this.#mode = new ModeAuto();
-      this.#mode.onX = () => {
+      this.#mode.onStopped = () => {
         this.setMode(MODE_MANUAL, false)
           .then(status => process.send(status))
           .catch(status => process.send(status));
@@ -61,7 +61,18 @@ class Controller {
 
   stop() {
     //this.#mode.stop();
-    return this.setMode(MODE_MANUAL, true);
+    if (this.#mode.id === "mode-auto") {
+      this.#mode.sendStop();
+      return new Promise((resolve, reject) => {
+        let status = {
+          type: "mode",
+          modeId: this.#mode.id,
+          modeDescription: this.#mode.description,
+          modeStatus: "sended-stop"
+        };
+        resolve(JSON.stringify(status));
+    });
+    } else return this.setMode(MODE_MANUAL, true);
     // process.exit();
   }
 }
