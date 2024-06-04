@@ -8,17 +8,17 @@ let controller = new Controller();
 process.on('message', (msg) => {
   console.log('Message from parent:', msg, typeof(msg));
   if (msg === "stop") {
-    controller.stop()
-      .then(status => process.send(status))
-      .catch(status => process.send(status));
+    controller.stop();
+      // .then(status => process.send(status))
+      // .catch(status => process.send(status));
   }
   if (msg.startsWith("radio&")) {
     controller.addTask(msg);
   }
   if (msg.startsWith("mode-")) {
-    controller.setMode(msg)
-      .then(status => process.send(status))
-      .catch(status => process.send(status));
+    controller.setMode(msg);
+      // .then(status => process.send(status))
+      // .catch(status => process.send(status));
   }
 });
 

@@ -130,10 +130,17 @@ class Mode {
   addTask(task) {
     this._communicator.addTask(task);
   }
-  
-  stop() {
-    this._communicator.addTask(this._sendStop);
-    clearInterval(this._mainInterval);
+
+  async stop() {
+    this._stop();
+  }
+
+  /**
+   * Private stop executor
+   */
+  async _stop() {
+    await this._communicator.addTask(this._sendStop);
+    await clearInterval(this._mainInterval);
     console.log(`${this._description} stop`);
   }
 
@@ -149,11 +156,11 @@ class Mode {
   /**
    * Runs next operation if exists. Stop cycle otherwise.
    */
-  startNextOperation() {
+  async startNextOperation() {
     if (this._operation.value !== undefined) {      // Start next operation
       this._cycleState = this._operation.value();
     } else {                                        // Cycle done
-      this.stop();
+      await this._stop();
     }
   }
 
@@ -182,6 +189,7 @@ class Mode {
 }
 
 //*****************************************************
+
 class ModeManual extends Mode {
   constructor() {
     super();
@@ -206,7 +214,10 @@ class ModeManual extends Mode {
   }
 }
 
+//*****************************************************
+
 class ModeСycle extends Mode {
+  _doStop
   constructor() {
     super();
     this._description = "Cycle mode";
@@ -217,8 +228,11 @@ class ModeСycle extends Mode {
   init() {
     super.init();
     this._cycleState = operation();
+    this._doStop = false;
   }
 }
+
+//*****************************************************
 
 class ModeOnceСycle extends ModeСycle {
   constructor() {
@@ -226,47 +240,55 @@ class ModeOnceСycle extends ModeСycle {
     this._description = "Once cycle mode";
     this._id = MODE_ONCE_CYCLE;
   }
-  
-  stop () {
-    super.stop();
-    if (this._operation.value === undefined) {
-      if (this._onStopped !== undefined) this._onStopped();
+
+  async stop() {
+    console.log("STOP MANUALLY");
+    this._doStop = true;
+    await this._stop();
+    }
+
+  async _stop() {
+    await super._stop();
+    if (this._operation.value === undefined || this._doStop) {
+      if (this._onStopped !== undefined) await this._onStopped();
     }
   }
 }
 
+//*****************************************************
+
 class ModeAuto extends ModeСycle {
-  _doStop
   constructor() {
     super();
     this._description = "Automatic mode";
     this._id = MODE_AUTO;
-    this._doStop = false;
   }
 
   async operate() {
     await super.operate();
-    if (this._operation.done && this._operation.value === undefined) { // cycle done
+    if (!this._doStop
+        && this._operation.done
+        && this._operation.value === undefined) { // cycle done
       this.init();
       await sleep(2000);
       await this.activate();
     }
   }
 
-  startNextOperation() {
+  async startNextOperation() {
     if (this._doStop) {
-      this.stop();
-    } else super.startNextOperation();
+      await this._stop();
+    } else await super.startNextOperation();
   }
 
-  sendStop() {
-    console.log("Send stop");
+  stop() {
+    console.log("STOP MANUALLY");
     this._doStop = true;
   }
 
-  stop () {
-    super.stop();
-    if (this._onStopped !== undefined) this._onStopped();
+  async _stop() {
+    await super._stop();
+    if (this._doStop && this._onStopped !== undefined) await this._onStopped();
   }
 }
 
