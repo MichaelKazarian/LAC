@@ -57,6 +57,9 @@ class Mode {
     return this._id;
   }
 
+  /**
+   * After stop callback
+   */
   set onStopped(f) {
     this._onStopped = f;
   }
@@ -131,12 +134,15 @@ class Mode {
     this._communicator.addTask(task);
   }
 
+  /**
+   * Public stop message. Calls mode-based stop implementations.
+   */
   async stop() {
-    this._stop();
+    await this._stop();
   }
 
   /**
-   * Private stop executor
+   * Private stop executor.
    */
   async _stop() {
     await this._communicator.addTask(this._sendStop);
@@ -217,7 +223,7 @@ class ModeManual extends Mode {
 //*****************************************************
 
 class ModeСycle extends Mode {
-  _doStop
+  _manualStop
   constructor() {
     super();
     this._description = "Cycle mode";
@@ -228,7 +234,7 @@ class ModeСycle extends Mode {
   init() {
     super.init();
     this._cycleState = operation();
-    this._doStop = false;
+    this._manualStop = false;
   }
 }
 
@@ -241,15 +247,19 @@ class ModeOnceСycle extends ModeСycle {
     this._id = MODE_ONCE_CYCLE;
   }
 
+  /**
+   * Immediately terminate the cycle and current operation.
+   * Executes onStopped() behavior if present.
+   */
   async stop() {
     console.log("STOP MANUALLY");
-    this._doStop = true;
+    this._manualStop = true;
     await this._stop();
     }
 
   async _stop() {
     await super._stop();
-    if (this._operation.value === undefined || this._doStop) {
+    if (this._operation.value === undefined || this._manualStop) {
       if (this._onStopped !== undefined) await this._onStopped();
     }
   }
@@ -266,7 +276,7 @@ class ModeAuto extends ModeСycle {
 
   async operate() {
     await super.operate();
-    if (!this._doStop
+    if (!this._manualStop
         && this._operation.done
         && this._operation.value === undefined) { // cycle done
       this.init();
@@ -275,20 +285,29 @@ class ModeAuto extends ModeСycle {
     }
   }
 
+  /**
+   * Runs next operation if exists. Stop the cycle otherwise.
+   * Also, terminates the cycle after the current operation is done.
+   */
   async startNextOperation() {
-    if (this._doStop) {
+    if (this._manualStop) {
       await this._stop();
     } else await super.startNextOperation();
   }
 
+  /**
+   * Sends stop signal and waits for current operation to be done to stop.
+   */
   stop() {
-    console.log("STOP MANUALLY");
-    this._doStop = true;
+    this._manualStop = true;
   }
 
   async _stop() {
     await super._stop();
-    if (this._doStop && this._onStopped !== undefined) await this._onStopped();
+    if (this._manualStop
+        && this._onStopped !== undefined) {
+      await this._onStopped();
+    }
   }
 }
 

@@ -9,9 +9,10 @@ import {
 class Controller {
 #allowInterval
 #mode
+  _info
   constructor() {
     this.#allowInterval = true;
-    this.#mode = new ModeManual();
+    this._setManual();
   }
 
   /**
@@ -21,6 +22,10 @@ class Controller {
     this.#mode.addTask(task);
   }
 
+  /**
+   * Waits while the current mode stops and switches to another.
+   * Note: Stop implementation is mode-based.
+   */
   async setMode(mode) {
     await this.stop();
     switch (mode) {
@@ -35,41 +40,39 @@ class Controller {
     }
   }
 
+  /** Switches to manual mode */
   _setManual() {
     this.#mode = new ModeManual();
-    let status = {
-      type: "mode",
-      modeId: this.#mode.id,
-      modeDescription: this.#mode.description,
-      modeStatus: this.#mode.activate()? "success": "error"
-    };
-    process.send(JSON.stringify(status));
+    this._infoUpdate(this.#mode.activate()? "success": "error");
   }
 
+  /** Switches to once-cycle mode */
   _setOnceCycle() {
     this.#mode = new ModeOnceСycle();
     this.#mode.onStopped = () => this._setManual();
-    let status = {
-      type: "mode",
-      modeId: this.#mode.id,
-      modeDescription: this.#mode.description,
-      modeStatus: this.#mode.activate()? "success": "error"
-    };
-    process.send(JSON.stringify(status));
+    this._infoUpdate(this.#mode.activate()? "success": "error");
   }
 
+  /** Switches to automatic mode */
   _setAuto() {
     this.#mode = new ModeAuto();
     this.#mode.onStopped = () => this._setManual();
-    let status = {
+    this._infoUpdate(this.#mode.activate()? "success": "error");
+  }
+
+  _infoUpdate(as) {
+    this._info = {
       type: "mode",
       modeId: this.#mode.id,
       modeDescription: this.#mode.description,
-      modeStatus: this.#mode.activate()? "success": "error"
+      modeStatus: as
     };
-    process.send(JSON.stringify(status));
+    process.send(JSON.stringify(this._info));
   }
 
+  /**
+   * Sends stop command to current mode. Stop implementation is mode-based.
+   */
   async stop() {
     await this.#mode.stop();
     // process.exit();
