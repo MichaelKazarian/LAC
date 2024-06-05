@@ -10,7 +10,7 @@ const router = express.Router();
 router.get('/', function(req, res) {  // index page
   const params = {
     "modes": [
-      {"id": "mode-manual", name: "Вручну", class: "btn-outline-warning"},
+      // {"id": "mode-manual", name: "Вручну", class: "btn-outline-warning"},
       {"id": "mode-once-cycle", name: "Одиночний цикл", class: "btn-outline-success"},
       {"id": "mode-auto", name: "Автомат", class: "btn-outline-success"}
     ]};

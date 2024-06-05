@@ -20,11 +20,11 @@ btn11.addEventListener('click', async function () {
                             {method: 'GET'});
 });
 
-let btnModeManual = document.getElementById("mode-manual");
-btnModeManual.addEventListener('click', async function () {
-  let response = await fetch('/modeset?id=mode-manual',
-                             {method: 'GET'});
-});
+// let btnModeManual = document.getElementById("mode-manual");
+// btnModeManual.addEventListener('click', async function () {
+//   let response = await fetch('/modeset?id=mode-manual',
+//                              {method: 'GET'});
+// });
 
 let btnModeCycleOnce = document.getElementById("mode-once-cycle");
 btnModeCycleOnce.addEventListener('click', async function () {
@@ -123,7 +123,7 @@ function updModeState(modeId) {
       btnStop.className = "btn btn-danger btn-lg";
       break;
     default:
-      btnModeManual.checked = true;
+      // btnModeManual.checked = true;
       btnStop.className = 'btn btn-danger btn-lg invisible';
       setOperationsActiveState(true);
       clearOperationsActiveState();
