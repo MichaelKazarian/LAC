@@ -73,14 +73,16 @@ class Mode {
   _read = async () => {
     let d = this._communicator.device;
     await d.readHoldingRegisters(0, 3, async (err, data) => {
-      console.log("READ", data);
       if (data) {
         this._inputState.rawinput = (data.data);
         this._inputState.degree++;
         if (this._inputState.degree > 719) this._inputState.degree = 0;
         process.send(JSON.stringify(this._inputState));
       }
-      else await sleep(50); // more than time of readHoldingRegisters to avoid crashes
+      else {
+        console.log("READ error", data);
+        await sleep(50);
+      } // more than time of readHoldingRegisters to avoid crashes
     });
   }
 
@@ -98,7 +100,6 @@ class Mode {
 
   //Send stop message to this.#device
   _sendStop = async () => {
-    // console.log("SEND STOP");
     await this._write([1, 0, 1]);
   };
 
@@ -108,7 +109,7 @@ class Mode {
     if (this.isPieceWritable()) {
       let r = this.parseOperationMessage(this._operation.value.operation);
       this.addTask(async () => {
-        console.log("WRITE", r);
+        // console.log("WRITE", r);
         await this._write(r);
       });
     } else {
@@ -145,9 +146,9 @@ class Mode {
    * Private stop executor.
    */
   async _stop() {
-    await this._communicator.addTask(this._sendStop);
     await clearInterval(this._mainInterval);
-    console.log(`${this._description} stop`);
+    await this._communicator.addTask(this._sendStop);
+    await console.log(`${this._description} stop`);
   }
 
   /**
@@ -252,7 +253,7 @@ class ModeOnceСycle extends ModeСycle {
    * Executes onStopped() behavior if present.
    */
   async stop() {
-    console.log("STOP MANUALLY");
+    // console.log("STOP MANUALLY");
     this._manualStop = true;
     await this._stop();
     }

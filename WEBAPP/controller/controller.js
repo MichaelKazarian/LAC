@@ -3,6 +3,13 @@ import {
   Mode, ModeManual, ModeOnceСycle, ModeAuto
 } from "./modes.js";
 
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+
 /**
  * Class controls equipment mode.
  */
@@ -27,6 +34,12 @@ class Controller {
    * Note: Stop implementation is mode-based.
    */
   async setMode(mode) {
+    // Mode not changed, prevent double mode calling
+    if (mode === this.#mode.id ) return;
+    if (mode !== MODE_MANUAL                // Prevent serial port access racing
+        && this.#mode.id !== MODE_MANUAL) { // during mode change
+      this.#mode.onStopped = undefined;
+    }
     await this.stop();
     switch (mode) {
     case MODE_ONCE_CYCLE:
@@ -35,8 +48,8 @@ class Controller {
     case MODE_AUTO:
       this._setAuto();
       break;
-    default:
-      this._setManual();
+    // default: // Sets manual mode during onStopped() call
+    //   this._setManual();
     }
   }
 
@@ -60,12 +73,12 @@ class Controller {
     this._infoUpdate(this.#mode.activate()? "success": "error");
   }
 
-  _infoUpdate(as) {
+  _infoUpdate(status) {
     this._info = {
       type: "mode",
       modeId: this.#mode.id,
       modeDescription: this.#mode.description,
-      modeStatus: as
+      modeStatus: status
     };
     process.send(JSON.stringify(this._info));
   }
