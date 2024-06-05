@@ -26,12 +26,14 @@ btn11.addEventListener('click', async function () {
 //                              {method: 'GET'});
 // });
 
+let lbModeCycleOnce = document.getElementById("lb-mode-once-cycle");
 let btnModeCycleOnce = document.getElementById("mode-once-cycle");
 btnModeCycleOnce.addEventListener('click', async function () {
   let response = await fetch('/modeset?id=mode-once-cycle',
                              {method: 'GET'});
 });
 
+let lbModeAuto = document.getElementById("lb-mode-auto");
 let btnModeAuto = document.getElementById("mode-auto");
 btnModeAuto.addEventListener('click', async function () {
   let response = await fetch('/modeset?id=mode-auto',
@@ -115,16 +117,22 @@ function updModeState(modeId) {
     case "mode-auto":
       btnModeAuto.checked = true;
       btnStop.className = "btn btn-danger btn-lg";
+      lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
+      lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
       setOperationsActiveState(false);
       break;
     case "mode-once-cycle":
       btnModeCycleOnce.checked = true;
       setOperationsActiveState(false);
       btnStop.className = "btn btn-danger btn-lg";
+      lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
+      lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
       break;
     default:
       // btnModeManual.checked = true;
       btnStop.className = 'btn btn-danger btn-lg invisible';
+      lbModeAuto.className = "btn btn-outline-success btn-lg";
+      lbModeCycleOnce.className = "btn btn-outline-success btn-lg";
       setOperationsActiveState(true);
       clearOperationsActiveState();
     }

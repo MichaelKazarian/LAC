@@ -27,13 +27,13 @@
             <div class="col-sm-4 d-flex justify-content-center">
               <div>
                 <div class="row mb-1 mt-1">
-                  <button class="btn btn-danger btn-lg" id="btnStop" type="button">СТОП</button>
+                  <button class="btn btn-danger btn-lg invisible" id="btnStop" type="button">СТОП</button>
                 </div>
-                <div class="row mb-1 mt-3">
+                <div id="modes-switcher" class="row mb-1 mt-3">
                   <% for(var i = 0; i < modes.length; i++) { %>
                     <div class="row mb-1 mt-1">
                       <input type="radio" class="btn-check" name="radio-auto-mode" id=<%= modes[i]["id"] %> autocomplete="off">
-                      <label class="btn <%= modes[i]["class"] %> btn-lg" for=<%= modes[i]["id"] %>><%= modes[i]["name"] %></label>
+                      <label id=<%= "lb-"+modes[i]["id"] %> class="btn <%= modes[i]["class"] %> btn-lg" for=<%= modes[i]["id"] %>><%= modes[i]["name"] %></label>
                     </div>
                   <% } %>
                 </div>
