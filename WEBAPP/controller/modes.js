@@ -46,6 +46,7 @@ class Mode {
       degree: 0,
       rawinput: "[]",
       quantity: 0,
+      manualOperations: [],
       error: ""
     };
   }
@@ -208,6 +209,11 @@ class ModeManual extends Mode {
   init() {
     super.init();
     this._cycleState = manual();
+  }
+
+  nextPiece(){
+    super.nextPiece();
+    this._inputState.manualOperations = this._operation.value["available"];
   }
 
   addTask(task) {

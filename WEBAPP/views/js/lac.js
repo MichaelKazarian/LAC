@@ -2,6 +2,7 @@ let prevControlMode;
 let errorMessage = "";
 let infoMessage = "";
 let warningMessage = "";
+let manualOperations = [];
 
 let btn9 = document.getElementById("operation9");
 btn9.addEventListener('click', async function () {
@@ -120,8 +121,24 @@ function clearOperationsActiveState() {
   for (let i=0; i<operations.length; i++) {
     let r = operations[i];
     r.checked = false;
+    let n = `lRadio${i+1}`;
+    let l = document.getElementById(n);
+    l.className = "btn btn-outline-secondary btn-lg";
   }
 }
+
+function updAvailableManualOperations(json){
+  if (manualOperations === json["manualOperations"]) return;
+  setOperationsActiveState(false);
+  for (let operation in json["manualOperations"]) {
+    let e = json["manualOperations"][operation].replace("operation", "lRadio");
+    let element = document.getElementById(e);
+    element.className = "btn btn-outline-primary btn-lg fw-bold";
+    element.disabled = false;
+  }
+  manualOperations = json["manualOperations"];
+}
+
 
 function updModeState(modeId) {
   if (modeId !== prevControlMode) {
@@ -176,9 +193,11 @@ async function getCabinetState() {
       let modeId = json["modeId"];
       updModeState(modeId);
       setDegree(json);
-      if (modeId !== "mode-manual")
+      if (modeId !== "mode-manual") {
         updOperationList(json);
-
+        setOperationsActiveState(false);
+      }
+      else updAvailableManualOperations(json);
       let errState = getErrorInfo(json);
       if (errState !== "") {
         onCabinetError(errState);

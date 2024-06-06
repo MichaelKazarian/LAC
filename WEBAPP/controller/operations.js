@@ -3,7 +3,17 @@ function* manual() {
   i = yield {type: "read", operation: "radio&r8"};
   console.log("Manual operation");
   while (true) {
-    i = yield {type: "read", operation: "radio&r8"};
+    if (parseInt(i.degree)/2 <= 120)
+      i = yield {type: "read", operation: "radio&r8",
+                 available: ["operation1", "operation2", "operation3"]};
+    else if (parseInt(i.degree)/2 <= 240)
+      i = yield {type: "read", operation: "radio&r8",
+                 available: ["operation4", "operation5", "operation6"]};
+    else if (parseInt(i.degree)/2 <= 360)
+      i = yield {type: "read", operation: "radio&r8",
+                 available: ["operation7", "operation8", "operation9"]};
+    else i = yield {type: "read", operation: "radio&r8",
+                 available: ["operation10", "operation11", "operation12"]};
   }
   return;
 }
