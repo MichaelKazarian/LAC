@@ -19,15 +19,20 @@
               <circle-progress id="circle-progress" value="0" max="360"></circle-progress>
             </div>
             <div class="col-sm-2">
-              <div class="fs-5 fw-normal mb-2">
-                Кіл-ть:
-              </div>
-              <h2 class="fs-3 fw-extrabold">1122</h2>
+              
             </div>
             <div class="col-sm-4 d-flex justify-content-center">
               <div>
                 <div class="row mb-1 mt-1">
                   <button class="btn btn-danger btn-lg invisible" id="btnStop" type="button">СТОП</button>
+                </div>
+                <div class="row mb-1 mt-1">
+                  <div class="col">
+                    <label id="lb-product-counter" class="fs-5 fw-bold mb-0">Кіл-ть:</label>
+                  </div>
+                  <div class="col text-end">
+                    <label id="product-counter" class="fs-5 fw-bold mb-0">1122</label>
+                  </div>
                 </div>
                 <div id="modes-switcher" class="row mb-1 mt-3">
                   <% for(var i = 0; i < modes.length; i++) { %>

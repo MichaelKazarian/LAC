@@ -51,6 +51,8 @@ let circleProgress = document.getElementById("circle-progress");
 circleProgress.textFormat = "value";
 
 let stateArea = document.getElementById("state-area");
+let productCounter = document.getElementById("product-counter");
+let lbProductCounter = document.getElementById("lb-product-counter");
 
 function getErrorInfo(json) {
   if (json["operationState"].startsWith("error")) return json["operationState"];
@@ -99,6 +101,7 @@ function setOperationState(elementId, value) {
 
 function setDegree(json) {
   circleProgress.value = parseInt(json["degree"]/2);
+  productCounter.innerHTML = json["quantity"];
 }
 
 function setOperationsActiveState(state) {
@@ -132,6 +135,8 @@ function updModeState(modeId) {
       btnStop.className = "btn btn-danger btn-lg";
       lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
       lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
+      lbProductCounter.className = "fs-5 fw-bold mb-0";
+      productCounter.className = "fs-5 fw-bold mb-0";
       setOperationsActiveState(false);
       break;
     case "mode-once-cycle":
@@ -140,12 +145,16 @@ function updModeState(modeId) {
       btnStop.className = "btn btn-danger btn-lg";
       lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
       lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
+      lbProductCounter.className = "fs-5 fw-bold mb-0 invisible";
+      productCounter.className = "fs-5 fw-bold mb-0 invisible";
       break;
     default:
       // btnModeManual.checked = true;
       btnStop.className = 'btn btn-danger btn-lg invisible';
       lbModeAuto.className = "btn btn-outline-success btn-lg";
       lbModeCycleOnce.className = "btn btn-outline-success btn-lg";
+      lbProductCounter.className = "fs-5 fw-bold mb-0 invisible";
+      productCounter.className = "fs-5 fw-bold mb-0 invisible";
       setOperationsActiveState(true);
       clearOperationsActiveState();
     }

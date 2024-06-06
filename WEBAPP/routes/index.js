@@ -71,6 +71,7 @@ function setMode(json) {
 
 function setInputData(json) {
   dataInput["degree"] = json["degree"];
+  dataInput["quantity"] = json["quantity"];
   dataInput["operationState"] = json["error"] !==""? json["error"]: "idle";
   a = 1;
   for (var i in json["rawinput"]) {

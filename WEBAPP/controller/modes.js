@@ -45,6 +45,7 @@ class Mode {
       type: "input",
       degree: 0,
       rawinput: "[]",
+      quantity: 0,
       error: ""
     };
   }
@@ -270,22 +271,29 @@ class ModeOnceСycle extends ModeСycle {
 
 class ModeAuto extends ModeСycle {
   _beforeStop
+  _quantity
   constructor() {
     super();
     this._description = "Automatic mode";
     this._id = MODE_AUTO;
+    this._quantity = 0;
   }
 
+  /**
+   * Before stop callback
+   */
   set beforeStop(f) {
     this._beforeStop = f;
   }
 
   async operate() {
     await super.operate();
+    this._inputState.quantity = this._quantity;
     if (!this._manualStop
         && this._operation.done
         && this._operation.value === undefined) { // cycle done
       this.init();
+      this._quantity++;
       await sleep(2000);
       await this.activate();
     }
