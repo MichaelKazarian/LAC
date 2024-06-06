@@ -269,10 +269,15 @@ class ModeOnceСycle extends ModeСycle {
 //*****************************************************
 
 class ModeAuto extends ModeСycle {
+  _beforeStop
   constructor() {
     super();
     this._description = "Automatic mode";
     this._id = MODE_AUTO;
+  }
+
+  set beforeStop(f) {
+    this._beforeStop = f;
   }
 
   async operate() {
@@ -297,10 +302,12 @@ class ModeAuto extends ModeСycle {
   }
 
   /**
-   * Sends stop signal and waits for current operation to be done to stop.
+   * Executes beforeStop(), sends stop signal and waits for current operation
+   * to be done to stop.
    */
   stop() {
     this._manualStop = true;
+    if (this._beforeStop) this._beforeStop();
   }
 
   async _stop() {

@@ -69,6 +69,9 @@ class Controller {
   /** Switches to automatic mode */
   _setAuto() {
     this.#mode = new ModeAuto();
+    this.#mode.beforeStop = () => {
+      this._infoUpdate("warning-Wait for the operation to end.");
+    };
     this.#mode.onStopped = () => this._setManual();
     this._infoUpdate(this.#mode.activate()? "success": "error");
   }
@@ -88,9 +91,6 @@ class Controller {
    */
   async stop() {
     await this.#mode.stop();
-    if (this.#mode.id === MODE_AUTO) {
-      this._infoUpdate("warning-Wait for the operation to end.");
-    }
     // process.exit();
   }
 }
