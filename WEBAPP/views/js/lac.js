@@ -1,6 +1,7 @@
 let prevControlMode;
 let errorMessage = "";
 let infoMessage = "";
+let warningMessage = "";
 
 let btn9 = document.getElementById("operation9");
 btn9.addEventListener('click', async function () {
@@ -74,6 +75,14 @@ function setInfoMessage(msg) {
   }
 }
 
+function setWarningMessage(msg) {
+  if (warningMessage !== msg) {
+    stateArea.className = "alert alert-warning";
+    stateArea.innerHTML = `${infoMessage}, ${msg}`;
+    warningMessage = msg;
+  }
+}
+
 function setOperationState(elementId, value) {
   var element = document.getElementById(elementId);
   var currentClass = element.className;
@@ -113,6 +122,10 @@ function clearOperationsActiveState() {
 
 function updModeState(modeId) {
   if (modeId !== prevControlMode) {
+    errorMessage = "";
+    infoMessage = "";
+    warningMessage = "";
+
     switch (modeId) {
     case "mode-auto":
       btnModeAuto.checked = true;
@@ -162,6 +175,7 @@ async function getCabinetState() {
         onCabinetError(errState);
         updModeState("mode-manual");
       }
+      else if (json["modeState"].startsWith("warning-")) setWarningMessage(json["modeState"].split("-")[1]);
       else setInfoMessage(json["modeDescription"]);
     } else {
       onCabinetError("Нема зв'язку з контролером!");

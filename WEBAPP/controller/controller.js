@@ -88,6 +88,9 @@ class Controller {
    */
   async stop() {
     await this.#mode.stop();
+    if (this.#mode.id === MODE_AUTO) {
+      this._infoUpdate("warning-Wait for the operation to end.");
+    }
     // process.exit();
   }
 }
