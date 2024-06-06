@@ -55,6 +55,11 @@ let stateArea = document.getElementById("state-area");
 let productCounter = document.getElementById("product-counter");
 let lbProductCounter = document.getElementById("lb-product-counter");
 
+function arraysEqual(a1,a2) {
+    /* WARNING: arrays must not contain {objects} or behavior may be undefined */
+    return JSON.stringify(a1)==JSON.stringify(a2);
+}
+
 function getErrorInfo(json) {
   if (json["operationState"].startsWith("error")) return json["operationState"];
   if (json["modeState"].startsWith("error")) return json["modeState"];
@@ -128,12 +133,13 @@ function clearOperationsActiveState() {
 }
 
 function updAvailableManualOperations(json){
-  if (manualOperations === json["manualOperations"]) return;
+  if (arraysEqual(manualOperations, json["manualOperations"])) return;
   setOperationsActiveState(false);
   for (let operation in json["manualOperations"]) {
     let e = json["manualOperations"][operation].replace("operation", "lRadio");
     let element = document.getElementById(e);
     element.className = "btn btn-outline-primary btn-lg fw-bold";
+    element = document.getElementById(json["manualOperations"][operation]);
     element.disabled = false;
   }
   manualOperations = json["manualOperations"];
