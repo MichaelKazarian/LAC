@@ -36,7 +36,7 @@ class Communicator {
    */
   connectionInit(modbusId) {
     this.#device = new ModbusRTU();
-    this.#device.connectRTUBuffered("/dev/ttyUSB0", { baudRate: 9600, debug: true });
+    this.#device.connectRTUBuffered("/dev/ttyS0", { baudRate: 9600, debug: true });
     this.#device.setTimeout(500);
     this.#device.setID(modbusId);
   }
