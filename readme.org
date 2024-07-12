@@ -28,7 +28,7 @@ Data type.............: 16-bit register, output (holding) register table
 #+END_EXAMPLE
 You can read the encoder this way:
 #+BEGIN_SRC sh
-mbpoll -0 -B -m rtu -a 3 -b 9600 -l 200 -t 4 -r 0 -c 1 -P none /dev/ttyUSB0
+mbpoll -0 -B -m rtu -a 3 -b 9600 -l 200 -t 4 -r 0 -c 1 -P none /dev/ttyS0
 #+END_SRC
 
 mbpoll is a Modbus reader app available in the Ubuntu repository or [[Github][https://github.com/epsilonrt/mbpoll]].
@@ -46,14 +46,14 @@ You can read inputs state using Modbus RTU protocol this way:
 Protocol configuration: Modbus RTU
 Slave configuration...: address = [10]
                         start reference = 1, count = 32
-Communication.........: /dev/ttyUSB0,       9600-8N1 
+Communication.........: /dev/ttyS0,       9600-8N1 
                         t/o 1.00 s, poll rate 1000 ms
 Data type.............: 16-bit register, output (holding) register table
 #+END_EXAMPLE
 
 Reading example:
 #+BEGIN_EXAMPLE
-$ mbpoll -B -m rtu -a 10 -b 9600 -t 4 -r 1 -c 32 -P none /dev/ttyUSB0
+$ mbpoll -B -m rtu -a 10 -b 9600 -t 4 -r 1 -c 32 -P none /dev/ttyS0
 -- Polling slave 10... Ctrl-C to stop)
 [1]:    1
 [2]:    0
@@ -65,7 +65,20 @@ $ mbpoll -B -m rtu -a 10 -b 9600 -t 4 -r 1 -c 32 -P none /dev/ttyUSB0
 [32]:   1
 #+END_EXAMPLE
 
-*** TODO OUTPUT
+*** OUTPUT
+Output module similar to input module. Protocol configuration and write example.
+#+BEGIN_EXAMPLE
+mbpoll -0 -m rtu -a 20 -b 19200 -t 4 -r 3 -P none /dev/ttyS0 1 0 1
+
+Protocol configuration: Modbus RTU
+Slave configuration...: address = [20]
+                        start reference = 3, count = 3
+Communication.........: /dev/ttyS0,       9600-8N1 
+                        t/o 1.00 s, poll rate 1000 ms
+Data type.............: 16-bit register, output (holding) register table
+
+Written 3 references.
+#+END_EXAMPLE
 
 *** WEBAPP
 LACs web application. Read more in the readme.org
