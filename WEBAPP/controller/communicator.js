@@ -22,11 +22,11 @@ class Communicator {
    * @constructs
    * @param {Number} modbusId - slave Id. Default is 20.
    */
-  constructor(modbusId=20) {
+  constructor() {
     if (Communicator._instance) {
       return Communicator._instance;
     }
-    this.connectionInit(modbusId);
+    this.connectionInit();
     this.#que = [];
     Communicator._instance = this;
   }
@@ -38,13 +38,16 @@ class Communicator {
     this.#device = new ModbusRTU();
     this.#device.connectRTUBuffered("/dev/ttyS0", { baudRate: 9600, debug: true });
     this.#device.setTimeout(500);
-    this.#device.setID(modbusId);
   }
 
   get inputState() {
     return this.#inputState;
   }
 
+  /**
+   * Access to modbus device communicator.
+   * @return instance of modbus-serial.ModbusRTU
+   */
   get device() {
     return this.#device;
   }

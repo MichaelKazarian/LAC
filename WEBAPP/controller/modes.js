@@ -20,7 +20,7 @@ class Mode {
   _description;
   _communicator
   _mainInterval
-  _intervalVal = 100
+  _intervalVal = 50
   _inputState
   _onStopped
   _operation
@@ -69,23 +69,44 @@ class Mode {
   /**
    * Read the 3 registers starting at address 0 on device number this.#device
    * It is similar to executing
-   * mbpoll -0 -m rtu -a 20 -b 9600 -t 4 -r 0 -c 3 -P none /dev/ttyUSB0
+   * mbpoll -0 -m rtu -a 10 -b 9600 -t 4 -r 0 -c 3 -P none /dev/ttyUSB0
    * Note: time of readHoldingRegisters near 0.03 sec
    */
   _read = async () => {
-    let d = this._communicator.device;
-    await d.readHoldingRegisters(0, 3, async (err, data) => {
-      if (data) {
-        this._inputState.rawinput = (data.data);
-        this._inputState.degree++;
-        if (this._inputState.degree > 719) this._inputState.degree = 0;
-        process.send(JSON.stringify(this._inputState));
-      }
-      else {
-        console.log("READ error", data);
-        await sleep(50);
-      } // more than time of readHoldingRegisters to avoid crashes
-    });
+    let paused = false;
+    try {
+      // Events pause to prevent paralell access
+      await clearInterval(this._mainInterval); paused = true;
+      let d = this._communicator.device;
+      await d.setID(10);
+      await d.readHoldingRegisters(0, 32, async (err, data) => {
+        if (data) {
+          console.log("READ INPUT data", data.data);
+          this._inputState.rawinput = (data.data);
+        }
+        else {
+          console.log("READ INPUT error", data);
+          await sleep(50);
+        }
+      });
+      await sleep(150);
+      await d.setID(3);
+      await d.readHoldingRegisters(0, 1, async (err, data) => {
+        if (data) {
+          console.log("READ ENCODER data", data.data);
+          this._inputState.degree = 163; //data.data[0];
+        }
+        else {
+          console.log("READ ENCODER error", data);
+          await sleep(50);
+        } // more than time of readHoldingRegisters to avoid crashes
+      });
+      process.send(JSON.stringify(this._inputState));
+    } catch (e) {
+      console.log("READ error", e);
+    } finally {
+      if (paused) await this.activate();
+    }
   }
 
   /**
@@ -95,8 +116,12 @@ class Mode {
    * Note: Note: time of writeRegisters near 0.04 sec
    */
   _write = async (data) => {
+    await clearInterval(this._mainInterval); // Events pause to prevent paralell access
     await sleep(50); // more than time of writeRegisters to avoid crashes
+    await this._communicator.device.setID(20);
+    await console.log("WRITE DATA", data);
     await this._communicator.device.writeRegisters(3, data);
+    await this.activate();
     // await sleep(50);
   }
 
@@ -127,6 +152,7 @@ class Mode {
    * @return true if success; false otherwise;
    */
   activate() {
+    console.log("Activate");
     this._mainInterval = setInterval(() => {
       this.operate();
     }, this._intervalVal);
