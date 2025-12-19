@@ -36,4 +36,6 @@
 .clang_complete
 .ccls
 
+go-backend/bin/
+
 TAGS
