@@ -3,7 +3,7 @@
 #include <MCP23017.h>
 
 #define PRINT_SPEED 5 // Modbus update per second
-#define BAUD_RATE 9600
+#define BAUD_RATE 38400
 #define MCP_LAST_PIN 6 // MCP23017 has problematic GPA7/GPB7
 #define BOARD_IN_FIRST 7
 #define BOARD_IN_LAST 10

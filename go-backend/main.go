@@ -116,7 +116,7 @@ func startServer(state *HardwareState) {
 }
 
 func main() {
-	client, handler, err := InitModbus("/dev/ttyUSB0", 9600, 3)
+	client, handler, err := InitModbus("/dev/ttyUSB0", 38400, 3)
 	if err != nil {
 		log.Fatalf("Помилка порту: %v", err)
 	}
@@ -135,17 +135,19 @@ func main() {
 		start := time.Now()
 
 		// --- Опитування Slave 3 ---
-		handler.SlaveId = 3
-		res3, err3 := client.ReadHoldingRegisters(0, 1)
-		if err3 == nil {
-			val := uint16(res3[0])<<8 | uint16(res3[1])
-			state.UpdateSlave3(val, true)
-		} else {
-			state.UpdateSlave3(0, false)
-		}
+		// handler.SlaveId = 3
+		// res3, err3 := client.ReadHoldingRegisters(0, 1)
+		// if err3 == nil {
+		// 	val := uint16(res3[0])<<8 | uint16(res3[1])
+		// 	state.UpdateSlave3(val, true)
+		// } else {
+		// 	state.UpdateSlave3(0, false)
+		// }
 
-		time.Sleep(10 * time.Millisecond) // Міжкадровий інтервал
+		// time.Sleep(10 * time.Millisecond) // Міжкадровий інтервал
 
+    state.UpdateSlave3(0, true)
+    
     // --- Опитування Slave 10 ---
     handler.SlaveId = 10
     // Читаємо лише 2 регістри (4 байти), які містять 32 біти стану
@@ -187,7 +189,7 @@ func main() {
         packedBytes := make([]byte, 4)
         binary.BigEndian.PutUint16(packedBytes[0:2], r0_out)
         binary.BigEndian.PutUint16(packedBytes[2:4], r1_out)
-        time.Sleep(20 * time.Millisecond)
+        time.Sleep(10 * time.Millisecond)
         _, err20 := client.WriteMultipleRegisters(0, 2, packedBytes)
 
         if err20 == nil {
