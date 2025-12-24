@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
-
+  "encoding/binary"
 	"github.com/goburrow/modbus"
 )
 
@@ -23,6 +23,42 @@ type HardwareState struct {
   ReadCycleMs int64     `json:"read_cycle_ms"`
 }
 
+// Pack32 перетворює масив із 32 значень у два регістри uint16
+func Pack32(data *[32]uint16) (uint16, uint16) {
+	var reg0, reg1 uint16
+
+	for i := 0; i < 16; i++ {
+		if data[i] > 0 {
+			reg0 |= (1 << i)
+		}
+		if data[i+16] > 0 {
+			reg1 |= (1 << i)
+		}
+	}
+	return reg0, reg1
+}
+
+// Unpack32 розпаковує два регістри uint16 назад у масив із 32 елементів
+func Unpack32(reg0, reg1 uint16) [32]uint16 {
+	var data [32]uint16
+	for i := 0; i < 16; i++ {
+		data[i] = (reg0 >> i) & 1
+		data[i+16] = (reg1 >> i) & 1
+	}
+	return data
+}
+
+// ShowResults друкує масив та отримані регістри для перевірки
+func ShowResults(data [32]uint16, r0, r1 uint16) {
+	fmt.Printf("Reg0: %016b | Reg1: %016b\n", r0, r1)
+	for i := 0; i < 32; i++ {
+		fmt.Printf("%d:%d ", i, data[i])
+		if (i+1)%16 == 0 {
+			fmt.Println()
+		}
+	}
+}
+
 // UpdateSlave3 безпечно оновлює дані першого пристрою
 func (s *HardwareState) UpdateSlave3(val uint16, online bool) {
 	s.mu.Lock()
@@ -33,14 +69,16 @@ func (s *HardwareState) UpdateSlave3(val uint16, online bool) {
 }
 
 // UpdateSlave10 безпечно оновлює масив даних другого пристрою
-func (s *HardwareState) UpdateSlave10(data []uint16, online bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.IsOnline10 = online
-	if online && len(data) == 32 {
-		copy(s.Device10In[:], data)
-	}
-	s.LastUpdate = time.Now()
+func (s *HardwareState) UpdateSlave10(data *[32]uint16, online bool) {
+    s.mu.Lock()
+    defer s.mu.Unlock()   
+    s.IsOnline10 = online
+    // Якщо пристрій онлайн і дані передані (data не nil)
+    if online && data != nil {
+        // Копіюємо вміст масиву за вказівником у стан системи
+        s.Device10In = *data
+    }
+    s.LastUpdate = time.Now()
 }
 
 // Додамо окремий метод для оновлення часу циклу
@@ -88,8 +126,9 @@ func main() {
 	go startServer(state)
 
   // Буфер для порівняння змін
-  var lastSyncedData [32]uint16 // Зберігає те, що ми ОСТАННІЙ РАЗ успішно записали в Slave 20
   firstRun := true
+  var lastReg0 uint16
+  var lastReg1 uint16
 
 	for {
 		// Фіксуємо час початку циклу
@@ -110,38 +149,46 @@ func main() {
 		// --- Опитування Slave 10 ---
 		handler.SlaveId = 10
 		res10, err10 := client.ReadHoldingRegisters(0, 32)
+    var currentData [32]uint16
 
     if err10 == nil {
-      // Створюємо слайс для поточних даних
-      currentData := make([]uint16, 32)
       for i := 0; i < 32; i++ {
-        currentData[i] = uint16(res10[i*2])<<8 | uint16(res10[i*2+1])
+        currentData[i] = uint16(res10[i * 2]) << 8 | uint16(res10[i * 2 + 1])
       }
-      
-      // Оновлюємо спільний стан (для JSON)
-      state.UpdateSlave10(currentData, true)
 
-      // 2. СИНХРОНІЗАЦІЯ ЗІ SLAVE 20 (запис у циклі)
+      // Оновлюємо спільний стан (для JSON API)
+      state.UpdateSlave10(&currentData, true)
+
+      // 2. СИНХРОНІЗАЦІЯ ЗІ SLAVE 20 (стиснутий запис)
       handler.SlaveId = 20
-      for i := 0; i < 32; i++ {
-        // Пишемо, якщо значення змінилося або це перший запуск
-        if currentData[i] != lastSyncedData[i] || firstRun {
-          time.Sleep(20 * time.Millisecond) // Пауза для Arduino
-          _, err20 := client.WriteSingleRegister(uint16(i), currentData[i])
-          
-          if err20 == nil {
-            lastSyncedData[i] = currentData[i]
-            fmt.Printf("[%s] Регістр %d -> %d (OK)\n", time.Now().Format("15:04:05"), i, currentData[i])
-          } else {
-            fmt.Printf("Помилка запису регістра %d: %v\n", i, err20)
-          }
+      r0, r1 := Pack32(&currentData)
+
+      // Перевіряємо, чи змінилося хоча б щось у запакованих даних
+      if r0 != lastReg0 || r1 != lastReg1 || firstRun {
+        // Формуємо слайс із двох регістрів
+        packedBytes := make([]byte, 4)
+        // Записуємо r0 (адреса 0)
+        binary.BigEndian.PutUint16(packedBytes[0:2], r0)
+        // Записуємо r1 (адреса 1)
+        binary.BigEndian.PutUint16(packedBytes[2:4], r1)
+    
+        // Тепер передаємо []byte. Другий аргумент (2) - це кількість РЕГІСТРІВ
+        time.Sleep(20 * time.Millisecond)
+        _, err20 := client.WriteMultipleRegisters(0, 2, packedBytes)
+
+        if err20 == nil {
+          lastReg0 = r0
+          lastReg1 = r1
+          fmt.Printf("[%s] Slave 20 оновлено: Reg0=%04X, Reg1=%04X (OK)\n", 
+            time.Now().Format("15:04:05"), r0, r1)
+        } else {
+          fmt.Printf("[%s] Помилка запису Slave 20: %v\n", time.Now().Format("15:04:05"), err20)
         }
       }
       firstRun = false
     } else {
       state.UpdateSlave10(nil, false)
     }
-    
 		// Рахуємо скільки пройшло часу від start до завершення всіх читань
 		duration := time.Since(start).Milliseconds()
 		state.UpdateCycleTime(duration)
