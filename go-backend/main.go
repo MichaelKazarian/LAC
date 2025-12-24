@@ -126,7 +126,7 @@ func main() {
       for i := 0; i < 32; i++ {
         // Пишемо, якщо значення змінилося або це перший запуск
         if currentData[i] != lastSyncedData[i] || firstRun {
-          time.Sleep(10 * time.Millisecond) // Пауза для Arduino
+          time.Sleep(20 * time.Millisecond) // Пауза для Arduino
           _, err20 := client.WriteSingleRegister(uint16(i), currentData[i])
           
           if err20 == nil {
