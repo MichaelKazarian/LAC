@@ -16,23 +16,28 @@ void gpioInit();
 void mcpInit();
 void registersInit();
 void readPins();
+void packModbusData();
 
 
 const int MODBUS_ID = 10;
 const int HOLDING_REGS_SIZE = 32;
 unsigned int holdingRegisters[HOLDING_REGS_SIZE] = {};
 
+const int MODBUS_PACKED_REGS = 2;
+unsigned int packedRegisters[MODBUS_PACKED_REGS] = {0, 0};
+
 void setup() {
   // Serial.begin(BAUD_RATE);
   registersInit();
   gpioInit();
   mcpInit();
-  modbus_configure(BAUD_RATE, MODBUS_ID, 1, HOLDING_REGS_SIZE, 0);
+  modbus_configure(BAUD_RATE, MODBUS_ID, 1, MODBUS_PACKED_REGS, 0);
 }
 
 void loop() {
-  modbus_update(holdingRegisters);
   readPins();
+  packModbusData();
+  modbus_update(packedRegisters);
   delay(PRINT_SPEED);
 }
 
@@ -96,4 +101,14 @@ void readPins() {
   holdingRegisters[29] = !mcp0.digitalRead(2);
   holdingRegisters[30] = !mcp0.digitalRead(1);
   holdingRegisters[31] = !mcp0.digitalRead(0);
+}
+
+void packModbusData() {
+  unsigned int r0 = 0, r1 = 0;
+  for (int i = 0; i < 16; i++) {
+    if (holdingRegisters[i])      bitWrite(r0, i, 1);
+    if (holdingRegisters[i + 16]) bitWrite(r1, i, 1);
+  }
+  packedRegisters[0] = r0;
+  packedRegisters[1] = r1;
 }
