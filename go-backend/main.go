@@ -146,47 +146,64 @@ func main() {
 
 		time.Sleep(10 * time.Millisecond) // Міжкадровий інтервал
 
-		// --- Опитування Slave 10 ---
-		handler.SlaveId = 10
-		res10, err10 := client.ReadHoldingRegisters(0, 32)
+    // --- Опитування Slave 10 ---
+    handler.SlaveId = 10
+    // Читаємо лише 2 регістри (4 байти), які містять 32 біти стану
+    res10, err10 := client.ReadHoldingRegisters(0, 2)
+
     var currentData [32]uint16
 
-    if err10 == nil {
-      for i := 0; i < 32; i++ {
-        currentData[i] = uint16(res10[i * 2]) << 8 | uint16(res10[i * 2 + 1])
+    if err10 == nil && len(res10) == 4 {
+      // 1. Отримуємо два uint16 із отриманих байтів
+      r0_in := binary.BigEndian.Uint16(res10[0:2])
+      r1_in := binary.BigEndian.Uint16(res10[2:4])
+
+      // 2. Розпаковуємо біти у масив [32]uint16
+      // Проходимо по 16 біт для кожного регістру
+      for i := 0; i < 16; i++ {
+        // Перевіряємо i-й біт у першому регістрі
+        if (r0_in & (1 << uint(i))) != 0 {
+          currentData[i] = 1
+        } else {
+          currentData[i] = 0
+        }
+        // Перевіряємо i-й біт у другому регістрі (зміщення +16)
+        if (r1_in & (1 << uint(i))) != 0 {
+          currentData[i+16] = 1
+        } else {
+          currentData[i+16] = 0
+        }
       }
 
       // Оновлюємо спільний стан (для JSON API)
       state.UpdateSlave10(&currentData, true)
 
-      // 2. СИНХРОНІЗАЦІЯ ЗІ SLAVE 20 (стиснутий запис)
+      // 3. СИНХРОНІЗАЦІЯ ЗІ SLAVE 20 (стиснутий запис)
       handler.SlaveId = 20
-      r0, r1 := Pack32(&currentData)
+      r0_out, r1_out := Pack32(&currentData)
 
       // Перевіряємо, чи змінилося хоча б щось у запакованих даних
-      if r0 != lastReg0 || r1 != lastReg1 || firstRun {
-        // Формуємо слайс із двох регістрів
+      if r0_out != lastReg0 || r1_out != lastReg1 || firstRun {
         packedBytes := make([]byte, 4)
-        // Записуємо r0 (адреса 0)
-        binary.BigEndian.PutUint16(packedBytes[0:2], r0)
-        // Записуємо r1 (адреса 1)
-        binary.BigEndian.PutUint16(packedBytes[2:4], r1)
-    
-        // Тепер передаємо []byte. Другий аргумент (2) - це кількість РЕГІСТРІВ
+        binary.BigEndian.PutUint16(packedBytes[0:2], r0_out)
+        binary.BigEndian.PutUint16(packedBytes[2:4], r1_out)
         time.Sleep(20 * time.Millisecond)
         _, err20 := client.WriteMultipleRegisters(0, 2, packedBytes)
 
         if err20 == nil {
-          lastReg0 = r0
-          lastReg1 = r1
+          lastReg0 = r0_out
+          lastReg1 = r1_out
           fmt.Printf("[%s] Slave 20 оновлено: Reg0=%04X, Reg1=%04X (OK)\n", 
-            time.Now().Format("15:04:05"), r0, r1)
+            time.Now().Format("15:04:05"), r0_out, r1_out)
         } else {
           fmt.Printf("[%s] Помилка запису Slave 20: %v\n", time.Now().Format("15:04:05"), err20)
         }
       }
       firstRun = false
     } else {
+      if err10 != nil {
+        fmt.Printf("[%s] Помилка опитування Slave 10: %v\n", time.Now().Format("15:04:05"), err10)
+      }
       state.UpdateSlave10(nil, false)
     }
 		// Рахуємо скільки пройшло часу від start до завершення всіх читань
