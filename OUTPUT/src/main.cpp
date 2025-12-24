@@ -15,12 +15,24 @@ MCP23017 mcp1 = MCP23017(0x21);
 void gpioInit();
 void mcpInit();
 void registersInit();
+bool isStateChanged();
+void unpackModbusData();
 void writePins();
+void updateModbusState();
 
 
 const int MODBUS_ID = 20;
+// Кількість регістрів для фізичної передачі по Modbus (32 біти = 2 регістри по 16 біт)
+const int MODBUS_PACKED_REGS = 2;
+//масив для логіки (на 32 виходи)
 const int HOLDING_REGS_SIZE = 32;
 unsigned int holdingRegisters[HOLDING_REGS_SIZE] = {};
+
+
+//UNPACK LAYER
+unsigned int compressedRegisters[MODBUS_PACKED_REGS] = {0, 0};
+unsigned int lastReg0 = 0;
+unsigned int lastReg1 = 0;
 
 void setup() {
   while (!Serial) { delay(10); }
@@ -28,12 +40,16 @@ void setup() {
   registersInit();
   gpioInit();
   mcpInit();
-  modbus_configure(BAUD_RATE, MODBUS_ID, 13, HOLDING_REGS_SIZE, 0);
+  modbus_configure(BAUD_RATE, MODBUS_ID, 13, MODBUS_PACKED_REGS, 0);
 }
 
 void loop() {
-  modbus_update(holdingRegisters);
-  writePins();
+  modbus_update(compressedRegisters);
+  if (isStateChanged()) {
+    unpackModbusData(); // Розпаковуємо
+    writePins();        // Пишемо в піни та MCP
+    updateModbusState();
+  }
 }
 
 void registersInit() {
@@ -62,6 +78,21 @@ void mcpInit() {
     mcp1.pinMode(i, OUTPUT); mcp1.pinMode(i+GPA_SHIFT_B, OUTPUT);
     mcp0.digitalWrite(i, LOW); mcp0.digitalWrite(i+GPA_SHIFT_B, LOW);
     mcp1.digitalWrite(i, LOW); mcp1.digitalWrite(i+GPA_SHIFT_B, LOW);
+  }
+}
+
+bool isStateChanged() {
+  return (compressedRegisters[0] != lastReg0 || compressedRegisters[1] != lastReg1);
+}
+
+void unpackModbusData() {
+  // Розпаковуємо перший регістр (біти 0-15 -> індекси 0-15)
+  for (int i = 0; i < 16; i++) {
+    holdingRegisters[i] = bitRead(compressedRegisters[0], i);
+  }
+  // Розпаковуємо другий регістр (біти 0-15 -> індекси 16-31)
+  for (int i = 0; i < 16; i++) {
+    holdingRegisters[i + 16] = bitRead(compressedRegisters[1], i);
   }
 }
 
@@ -98,4 +129,9 @@ void writePins() {
   mcp0.digitalWrite(2, holdingRegisters[29]);
   mcp0.digitalWrite(1, holdingRegisters[30]);
   mcp0.digitalWrite(0, holdingRegisters[31]);
+}
+
+void updateModbusState() {
+  lastReg0 = compressedRegisters[0];
+  lastReg1 = compressedRegisters[1];
 }
