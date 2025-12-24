@@ -1,40 +1,55 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
-	// "os"
-  "encoding/json"
-  "net/http"
+	"net/http"
+	"sync"
 	"time"
-  "sync"
+
 	"github.com/goburrow/modbus"
 )
 
+// HardwareState - спільне сховище даних
 type HardwareState struct {
 	mu          sync.RWMutex
-	SensorValue uint16    `json:"sensor_value"` // Теги для JSON
+	SensorValue uint16    `json:"sensor_value"` // Дані з Slave 3
+	Device10In  [32]uint16 `json:"device10_in"`  // Дані з Slave 10 (32 регістри)
 	LastUpdate  time.Time `json:"last_update"`
-	IsOnline    bool      `json:"is_online"`
+	IsOnline3   bool      `json:"is_online_3"`  // Стан Slave 3
+	IsOnline10  bool      `json:"is_online_10"` // Стан Slave 10
+  IsOnline20  bool      `json:"is_online_20"` // Стан Slave 20
+  ReadCycleMs int64     `json:"read_cycle_ms"`
 }
 
-// Метод для безпечного оновлення даних (використовує Controller)
-func (s *HardwareState) Update(val uint16, online bool) {
-    s.mu.Lock()         // Блокуємо на запис
-    defer s.mu.Unlock()
-    s.SensorValue = val
-    s.IsOnline = online
-    s.LastUpdate = time.Now()
+// UpdateSlave3 безпечно оновлює дані першого пристрою
+func (s *HardwareState) UpdateSlave3(val uint16, online bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.SensorValue = val
+	s.IsOnline3 = online
+	s.LastUpdate = time.Now()
 }
 
-// Метод для безпечного читання (використовує UserUI)
-func (s *HardwareState) GetSnapshot() (uint16, bool) {
-    s.mu.RLock()        // Блокуємо тільки для читання (RLock)
-    defer s.mu.RUnlock()
-    return s.SensorValue, s.IsOnline
+// UpdateSlave10 безпечно оновлює масив даних другого пристрою
+func (s *HardwareState) UpdateSlave10(data []uint16, online bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.IsOnline10 = online
+	if online && len(data) == 32 {
+		copy(s.Device10In[:], data)
+	}
+	s.LastUpdate = time.Now()
 }
 
-// InitModbus створює та підключає RTU обробник
+// Додамо окремий метод для оновлення часу циклу
+func (s *HardwareState) UpdateCycleTime(ms int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.ReadCycleMs = ms
+}
+
 func InitModbus(device string, baud int, slaveID byte) (modbus.Client, *modbus.RTUClientHandler, error) {
 	handler := modbus.NewRTUClientHandler(device)
 	handler.BaudRate = baud
@@ -48,58 +63,90 @@ func InitModbus(device string, baud int, slaveID byte) (modbus.Client, *modbus.R
 	if err != nil {
 		return nil, nil, err
 	}
-
-	client := modbus.NewClient(handler)
-	return client, handler, nil
+	return modbus.NewClient(handler), handler, nil
 }
 
-// startServer запускає HTTP сервер
 func startServer(state *HardwareState) {
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		state.mu.RLock() // Читаємо безпечно
+		state.mu.RLock()
 		defer state.mu.RUnlock()
-
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(state)
 	})
-
-	fmt.Println("Сервер UserUI запущено на http://localhost:8080/status")
+	fmt.Println("Сервер запущено на http://localhost:8080/status")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func main() {
-    client, handler, err := InitModbus("/dev/ttyUSB0", 9600, 3)
-    if err != nil {
-        log.Fatalf("Помилка зв'язку: %v", err)
-    }
-    defer handler.Close()
+	client, handler, err := InitModbus("/dev/ttyUSB0", 9600, 3)
+	if err != nil {
+		log.Fatalf("Помилка порту: %v", err)
+	}
+	defer handler.Close()
 
-    // Створюємо екземпляр спільного буфера
-    state := &HardwareState{}
-
-  fmt.Println("Контролер запущено. Запис у HardwareState...")
-  // ЗАПУСКАЄМО СЕРВЕР В ОКРЕМІЙ ГОРУТИНІ
+	state := &HardwareState{}
 	go startServer(state)
 
-    for {
-        results, err := client.ReadHoldingRegisters(0, 1)
-        
-        if err != nil {
-            // Оновлюємо стан: зв'язок втрачено
-            state.Update(0, false)
-            fmt.Printf("[%s] Error: %v\n", time.Now().Format("15:04:05"), err)
-        } else {
-            value := uint16(results[0])<<8 | uint16(results[1])
-            
-            // Записуємо в спільний буфер
-            state.Update(value, true)
-            
-            // Для перевірки виведемо те, що реально лежить в буфері
-            //v, ok := state.GetSnapshot()
-            //fmt.Printf("[%s] State: Value=%d Online=%v\n", 
-            //    time.Now().Format("15:04:05"), v, ok)
-        }
+  // Буфер для порівняння змін
+  var lastSyncedData [32]uint16 // Зберігає те, що ми ОСТАННІЙ РАЗ успішно записали в Slave 20
+  firstRun := true
 
-        time.Sleep(20 * time.Millisecond)
+	for {
+		// Фіксуємо час початку циклу
+		start := time.Now()
+
+		// --- Опитування Slave 3 ---
+		handler.SlaveId = 3
+		res3, err3 := client.ReadHoldingRegisters(0, 1)
+		if err3 == nil {
+			val := uint16(res3[0])<<8 | uint16(res3[1])
+			state.UpdateSlave3(val, true)
+		} else {
+			state.UpdateSlave3(0, false)
+		}
+
+		time.Sleep(10 * time.Millisecond) // Міжкадровий інтервал
+
+		// --- Опитування Slave 10 ---
+		handler.SlaveId = 10
+		res10, err10 := client.ReadHoldingRegisters(0, 32)
+
+    if err10 == nil {
+      // Створюємо слайс для поточних даних
+      currentData := make([]uint16, 32)
+      for i := 0; i < 32; i++ {
+        currentData[i] = uint16(res10[i*2])<<8 | uint16(res10[i*2+1])
+      }
+      
+      // Оновлюємо спільний стан (для JSON)
+      state.UpdateSlave10(currentData, true)
+
+      // 2. СИНХРОНІЗАЦІЯ ЗІ SLAVE 20 (запис у циклі)
+      handler.SlaveId = 20
+      for i := 0; i < 32; i++ {
+        // Пишемо, якщо значення змінилося або це перший запуск
+        if currentData[i] != lastSyncedData[i] || firstRun {
+          time.Sleep(10 * time.Millisecond) // Пауза для Arduino
+          _, err20 := client.WriteSingleRegister(uint16(i), currentData[i])
+          
+          if err20 == nil {
+            lastSyncedData[i] = currentData[i]
+            fmt.Printf("[%s] Регістр %d -> %d (OK)\n", time.Now().Format("15:04:05"), i, currentData[i])
+          } else {
+            fmt.Printf("Помилка запису регістра %d: %v\n", i, err20)
+          }
+        }
+      }
+      firstRun = false
+    } else {
+      state.UpdateSlave10(nil, false)
     }
+    
+		// Рахуємо скільки пройшло часу від start до завершення всіх читань
+		duration := time.Since(start).Milliseconds()
+		state.UpdateCycleTime(duration)
+
+		// Пауза перед наступним колом
+		time.Sleep(10 * time.Millisecond)
+	}
 }
