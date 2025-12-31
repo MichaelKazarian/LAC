@@ -135,18 +135,15 @@ func main() {
 		start := time.Now()
 
 		// --- Опитування Slave 3 ---
-		// handler.SlaveId = 3
-		// res3, err3 := client.ReadHoldingRegisters(0, 1)
-		// if err3 == nil {
-		// 	val := uint16(res3[0])<<8 | uint16(res3[1])
-		// 	state.UpdateSlave3(val, true)
-		// } else {
-		// 	state.UpdateSlave3(0, false)
-		// }
-
-		// time.Sleep(10 * time.Millisecond) // Міжкадровий інтервал
-
-    state.UpdateSlave3(0, true)
+		handler.SlaveId = 3
+		res3, err3 := client.ReadHoldingRegisters(0, 1)
+		if err3 == nil {
+			val := uint16(res3[0])<<8 | uint16(res3[1])
+			state.UpdateSlave3(val, true)
+		} else {
+			state.UpdateSlave3(0, false)
+		}
+		time.Sleep(10 * time.Millisecond) // Міжкадровий інтервал
     
     // --- Опитування Slave 10 ---
     handler.SlaveId = 10
