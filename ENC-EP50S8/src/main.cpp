@@ -3,7 +3,7 @@
 #include "encoder.h"
 
 #define PRINT_SPEED 5 // Modbus update per second
-#define BAUD_RATE 9600
+#define BAUD_RATE 38400
 
 void gpioInit();
 void readRaw(int *a);
