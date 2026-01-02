@@ -143,7 +143,7 @@ func main() {
 		} else {
 			state.UpdateSlave3(0, false)
 		}
-		time.Sleep(10 * time.Millisecond) // Міжкадровий інтервал
+		time.Sleep(2 * time.Millisecond) // Міжкадровий інтервал
     
     // --- Опитування Slave 10 ---
     handler.SlaveId = 10
@@ -186,7 +186,7 @@ func main() {
         packedBytes := make([]byte, 4)
         binary.BigEndian.PutUint16(packedBytes[0:2], r0_out)
         binary.BigEndian.PutUint16(packedBytes[2:4], r1_out)
-        time.Sleep(10 * time.Millisecond)
+        time.Sleep(2 * time.Millisecond)
         _, err20 := client.WriteMultipleRegisters(0, 2, packedBytes)
 
         if err20 == nil {
@@ -210,6 +210,6 @@ func main() {
 		state.UpdateCycleTime(duration)
 
 		// Пауза перед наступним колом
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 	}
 }

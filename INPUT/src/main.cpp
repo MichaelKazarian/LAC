@@ -38,7 +38,7 @@ void loop() {
   readPins();
   packModbusData();
   modbus_update(packedRegisters);
-  delay(PRINT_SPEED);
+  //delay(PRINT_SPEED);
 }
 
 void registersInit() {

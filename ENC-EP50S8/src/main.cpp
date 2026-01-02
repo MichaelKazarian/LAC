@@ -33,7 +33,7 @@ void loop() {
   // printRaw(RAWVALUES); Serial.print("\t");
   // Serial.println( modbusHoldingRegisters[0] );
   modbus_update(modbusHoldingRegisters);
-  delay(PRINT_SPEED);
+  //delay(PRINT_SPEED);
 }
 
 void gpioInit() {
