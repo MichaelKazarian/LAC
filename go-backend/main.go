@@ -257,7 +257,7 @@ func InitModbus(device string, baud int, slaveID byte) (modbus.Client, *modbus.R
 	handler.Parity = "N"
 	handler.StopBits = 1
 	handler.SlaveId = slaveID
-	handler.Timeout = 1 * time.Second
+	handler.Timeout = 200 * time.Millisecond
 
 	err := handler.Connect()
 	if err != nil {
@@ -300,3 +300,4 @@ func main() {
 
 	// 4. Стартуємо веб-сервер (блокуючий виклик)
 	runWebServer(state)
+}
