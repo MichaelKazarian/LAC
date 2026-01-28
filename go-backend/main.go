@@ -93,12 +93,11 @@ func (s *HardwareState) UpdateCycleTime(ms int64) {
 func runModbusPoll(state *HardwareState, client modbus.Client, handler *modbus.RTUClientHandler) {
 	firstRun := true
 	var lastReg0, lastReg1 uint16
-
 	fmt.Println("🚀 Цикл опитування Modbus запущено")
-
+	
 	for {
 		start := time.Now()
-
+		
 		// --- Опитування Slave 3 ---
 		handler.SlaveId = 3
 		res3, err3 := client.ReadHoldingRegisters(0, 1)
@@ -108,38 +107,49 @@ func runModbusPoll(state *HardwareState, client modbus.Client, handler *modbus.R
 		} else {
 			state.UpdateSlave3(0, false)
 		}
-
 		time.Sleep(2 * time.Millisecond)
-
+		
 		// --- Опитування Slave 10 ---
 		handler.SlaveId = 10
 		res10, err10 := client.ReadHoldingRegisters(0, 2)
-
+		
 		if err10 == nil && len(res10) == 4 {
 			r0_in := binary.BigEndian.Uint16(res10[0:2])
 			r1_in := binary.BigEndian.Uint16(res10[2:4])
-
 			currentData := Unpack32(r0_in, r1_in)
+			
+			// Оновлюємо стан для API
 			state.UpdateSlave10(&currentData, true)
-
-			// Синхронізація зі Slave 20 (тільки при змінах)
+			
+			// --- Синхронізація зі Slave 20 ---
 			r0_out, r1_out := Pack32(&currentData)
+			
 			if r0_out != lastReg0 || r1_out != lastReg1 || firstRun {
 				handler.SlaveId = 20
 				packedBytes := make([]byte, 4)
 				binary.BigEndian.PutUint16(packedBytes[0:2], r0_out)
 				binary.BigEndian.PutUint16(packedBytes[2:4], r1_out)
-        time.Sleep(2 * time.Millisecond)
+				
+				time.Sleep(2 * time.Millisecond)
 				_, err20 := client.WriteMultipleRegisters(0, 2, packedBytes)
 				if err20 == nil {
 					lastReg0, lastReg1 = r0_out, r1_out
 					firstRun = false
+					fmt.Printf("[%s] Slave 20 OK: Reg0=%04X, Reg1=%04X\n", 
+						time.Now().Format("15:04:05"), r0_out, r1_out)
+				} else {
+					fmt.Printf("[%s] Slave 20 Error: %v\n", 
+						time.Now().Format("15:04:05"), err20)
 				}
 			}
 		} else {
+			if err10 != nil {
+				fmt.Printf("[%s] Slave 10 Error: %v\n", 
+					time.Now().Format("15:04:05"), err10)
+			}
 			state.UpdateSlave10(nil, false)
 		}
-
+		
 		state.UpdateCycleTime(time.Since(start).Milliseconds())
 		time.Sleep(2 * time.Millisecond)
 	}
