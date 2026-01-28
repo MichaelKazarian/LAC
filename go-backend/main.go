@@ -149,8 +149,10 @@ func runModbusPoll(state *HardwareState, client modbus.Client, handler *modbus.R
 			}
 			state.UpdateSlave10(nil, false)
 		}
-		
-		state.UpdateCycleTime(time.Since(start).Milliseconds())
+
+    // --- ОНОВЛЕННЯ СЕРВІСНИХ ДАНИХ ---
+		duration := time.Since(start).Milliseconds()
+    state.UpdateCycleTime(duration)
 		time.Sleep(2 * time.Millisecond)
 	}
 }
@@ -264,8 +266,15 @@ func runWebServer(state *HardwareState) {
     w.WriteHeader(http.StatusOK)
   })
 
-    fmt.Println("🌐 Веб-інтерфейс на http://localhost:8080")
-    log.Fatal(http.ListenAndServe(":8080", nil))
+  http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		state.mu.RLock()
+		defer state.mu.RUnlock()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(state)
+	})
+  
+  fmt.Println("🌐 Веб-інтерфейс на http://localhost:8080")
+  log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func InitModbus(device string, baud int, slaveID byte) (modbus.Client, *modbus.RTUClientHandler, error) {
