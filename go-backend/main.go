@@ -129,7 +129,7 @@ func runModbusPoll(state *HardwareState, client modbus.Client, handler *modbus.R
 				packedBytes := make([]byte, 4)
 				binary.BigEndian.PutUint16(packedBytes[0:2], r0_out)
 				binary.BigEndian.PutUint16(packedBytes[2:4], r1_out)
-
+        time.Sleep(2 * time.Millisecond)
 				_, err20 := client.WriteMultipleRegisters(0, 2, packedBytes)
 				if err20 == nil {
 					lastReg0, lastReg1 = r0_out, r1_out
@@ -141,7 +141,7 @@ func runModbusPoll(state *HardwareState, client modbus.Client, handler *modbus.R
 		}
 
 		state.UpdateCycleTime(time.Since(start).Milliseconds())
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 	}
 }
 
@@ -300,4 +300,3 @@ func main() {
 
 	// 4. Стартуємо веб-сервер (блокуючий виклик)
 	runWebServer(state)
-}
