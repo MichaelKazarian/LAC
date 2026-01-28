@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+  "html/template"
 	"sync"
 	"time"
   "encoding/binary"
@@ -70,15 +71,15 @@ func (s *HardwareState) UpdateSlave3(val uint16, online bool) {
 
 // UpdateSlave10 безпечно оновлює масив даних другого пристрою
 func (s *HardwareState) UpdateSlave10(data *[32]uint16, online bool) {
-    s.mu.Lock()
-    defer s.mu.Unlock()   
-    s.IsOnline10 = online
-    // Якщо пристрій онлайн і дані передані (data не nil)
-    if online && data != nil {
-        // Копіюємо вміст масиву за вказівником у стан системи
-        s.Device10In = *data
-    }
-    s.LastUpdate = time.Now()
+  s.mu.Lock()
+  defer s.mu.Unlock()
+  s.IsOnline10 = online
+  // Якщо пристрій онлайн і дані передані (data не nil)
+  if online && data != nil {
+    // Копіюємо вміст масиву за вказівником у стан системи
+    s.Device10In = *data
+  }
+  s.LastUpdate = time.Now()
 }
 
 // Додамо окремий метод для оновлення часу циклу
@@ -86,6 +87,167 @@ func (s *HardwareState) UpdateCycleTime(ms int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.ReadCycleMs = ms
+}
+
+// runModbusPoll містить нескінченний цикл роботи з регістрами
+func runModbusPoll(state *HardwareState, client modbus.Client, handler *modbus.RTUClientHandler) {
+	firstRun := true
+	var lastReg0, lastReg1 uint16
+
+	fmt.Println("🚀 Цикл опитування Modbus запущено")
+
+	for {
+		start := time.Now()
+
+		// --- Опитування Slave 3 ---
+		handler.SlaveId = 3
+		res3, err3 := client.ReadHoldingRegisters(0, 1)
+		if err3 == nil {
+			val := uint16(res3[0])<<8 | uint16(res3[1])
+			state.UpdateSlave3(val, true)
+		} else {
+			state.UpdateSlave3(0, false)
+		}
+
+		time.Sleep(2 * time.Millisecond)
+
+		// --- Опитування Slave 10 ---
+		handler.SlaveId = 10
+		res10, err10 := client.ReadHoldingRegisters(0, 2)
+
+		if err10 == nil && len(res10) == 4 {
+			r0_in := binary.BigEndian.Uint16(res10[0:2])
+			r1_in := binary.BigEndian.Uint16(res10[2:4])
+
+			currentData := Unpack32(r0_in, r1_in)
+			state.UpdateSlave10(&currentData, true)
+
+			// Синхронізація зі Slave 20 (тільки при змінах)
+			r0_out, r1_out := Pack32(&currentData)
+			if r0_out != lastReg0 || r1_out != lastReg1 || firstRun {
+				handler.SlaveId = 20
+				packedBytes := make([]byte, 4)
+				binary.BigEndian.PutUint16(packedBytes[0:2], r0_out)
+				binary.BigEndian.PutUint16(packedBytes[2:4], r1_out)
+
+				_, err20 := client.WriteMultipleRegisters(0, 2, packedBytes)
+				if err20 == nil {
+					lastReg0, lastReg1 = r0_out, r1_out
+					firstRun = false
+				}
+			}
+		} else {
+			state.UpdateSlave10(nil, false)
+		}
+
+		state.UpdateCycleTime(time.Since(start).Milliseconds())
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// runWebServer відповідає за HTTP інтерфейс та API
+func runWebServer(state *HardwareState) {
+	// 1. Карта функцій для шаблонів (додаємо seq)
+	funcMap := template.FuncMap{
+		"seq": func(start, end int) []int {
+			var res []int
+			for i := start; i <= end; i++ {
+				res = append(res, i)
+			}
+			return res
+		},
+	}
+
+	// 2. Роздача статики (CSS, JS)
+	fs := http.FileServer(http.Dir("../../webapp/static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	// 3. Головна сторінка
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Створюємо шаблон з функціями
+		tmpl := template.New("index.html").Funcs(funcMap)
+
+		// Парсимо файли (pages та partials)
+		tmpl, err := tmpl.ParseGlob("../../webapp/templates/pages/*.html")
+		if err != nil {
+			http.Error(w, "Помилка шаблонів сторінок: "+err.Error(), 500)
+			return
+		}
+		tmpl.ParseGlob("../../webapp/templates/partials/*.html")
+
+		// Назви для кнопок операцій (якщо хочете підставити в HTML)
+		opNames := map[int]string{
+			1: "Одиничний цикл", 2: "Подача", 3: "Мотор шпінделя",
+			// ... додайте за потреби
+		}
+
+		data := map[string]interface{}{
+			"modes": []map[string]interface{}{
+				{"id": "mode-auto", "name": "АВТОМАТ", "class": "btn-outline-success"},
+				{"id": "mode-once-cycle", "name": "ОДИН ЦИКЛ", "class": "btn-outline-primary"},
+				{"id": "mode-manual", "name": "РУЧНИЙ", "class": "btn-outline-secondary"},
+			},
+			"opNames": opNames,
+		}
+
+		err = tmpl.Execute(w, data)
+		if err != nil {
+			log.Printf("Помилка виконання шаблону: %v", err)
+		}
+	})
+
+	// 4. API Стан (/state) - те, що викликає lac.js кожні 70мс
+	http.HandleFunc("/state", func(w http.ResponseWriter, r *http.Request) {
+		state.mu.RLock()
+		defer state.mu.RUnlock()
+
+		// Формуємо відповідь, ідентичну до тієї, що чекає ваш JS
+		response := map[string]interface{}{
+			"modeId":          "mode-manual", // Тут має бути логіка вибору реального режиму
+			"modeState":       "ok",
+			"modeDescription": "Система в нормі",
+			"operationState":  "idle",
+			"quantity":        state.SensorValue,
+			"degree":          int(state.SensorValue) % 720, // Для circle-progress (720/2 = 360)
+			"manualOperations": []string{
+				"operation1", "operation2", "operation3", "operation9", "operation10",
+			},
+		}
+
+		// Додаємо стани 18 кнопок зі Slave 10 для updOperationList
+		for i := 0; i < 18; i++ {
+			key := fmt.Sprintf("operation%d", i+1)
+			val := 1 // За замовчуванням "off"
+			if i < len(state.Device10In) {
+				val = int(state.Device10In[i])
+			}
+			response[key] = val
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	})
+
+	// 5. Обробка команд (/radio, /modeset, /stop)
+	http.HandleFunc("/radio", func(w http.ResponseWriter, r *http.Request) {
+		id := r.URL.Query().Get("id")
+		log.Printf("🕹 Modbus Command: Operation %s triggered", id)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	http.HandleFunc("/modeset", func(w http.ResponseWriter, r *http.Request) {
+		mode := r.URL.Query().Get("id")
+		log.Printf("🔄 Mode set to: %s", mode)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("🛑 EMERGENCY STOP")
+		w.WriteHeader(http.StatusOK)
+	})
+
+	fmt.Println("🌐 Веб-інтерфейс доступний на http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func InitModbus(device string, baud int, slaveID byte) (modbus.Client, *modbus.RTUClientHandler, error) {
@@ -104,6 +266,16 @@ func InitModbus(device string, baud int, slaveID byte) (modbus.Client, *modbus.R
 	return modbus.NewClient(handler), handler, nil
 }
 
+// setupHardware відповідає за підключення до Modbus
+func setupHardware() (modbus.Client, *modbus.RTUClientHandler) {
+	client, handler, err := InitModbus("/dev/ttyUSB0", 38400, 3)
+	if err != nil {
+		log.Fatalf("❌ Помилка ініціалізації порту: %v", err)
+	}
+	fmt.Println("✅ Modbus порт успішно відкрито")
+	return client, handler
+}
+
 func startServer(state *HardwareState) {
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		state.mu.RLock()
@@ -116,100 +288,16 @@ func startServer(state *HardwareState) {
 }
 
 func main() {
-	client, handler, err := InitModbus("/dev/ttyUSB0", 38400, 3)
-	if err != nil {
-		log.Fatalf("Помилка порту: %v", err)
-	}
+	// 1. Ініціалізуємо залізо
+	client, handler := setupHardware()
 	defer handler.Close()
 
+	// 2. Створюємо сховище стану
 	state := &HardwareState{}
-	go startServer(state)
 
-  // Буфер для порівняння змін
-  firstRun := true
-  var lastReg0 uint16
-  var lastReg1 uint16
+	// 3. Запускаємо фонове опитування Modbus
+	go runModbusPoll(state, client, handler)
 
-	for {
-		// Фіксуємо час початку циклу
-		start := time.Now()
-
-		// --- Опитування Slave 3 ---
-		handler.SlaveId = 3
-		res3, err3 := client.ReadHoldingRegisters(0, 1)
-		if err3 == nil {
-			val := uint16(res3[0])<<8 | uint16(res3[1])
-			state.UpdateSlave3(val, true)
-		} else {
-			state.UpdateSlave3(0, false)
-		}
-		time.Sleep(2 * time.Millisecond) // Міжкадровий інтервал
-    
-    // --- Опитування Slave 10 ---
-    handler.SlaveId = 10
-    // Читаємо лише 2 регістри (4 байти), які містять 32 біти стану
-    res10, err10 := client.ReadHoldingRegisters(0, 2)
-
-    var currentData [32]uint16
-
-    if err10 == nil && len(res10) == 4 {
-      // 1. Отримуємо два uint16 із отриманих байтів
-      r0_in := binary.BigEndian.Uint16(res10[0:2])
-      r1_in := binary.BigEndian.Uint16(res10[2:4])
-
-      // 2. Розпаковуємо біти у масив [32]uint16
-      // Проходимо по 16 біт для кожного регістру
-      for i := 0; i < 16; i++ {
-        // Перевіряємо i-й біт у першому регістрі
-        if (r0_in & (1 << uint(i))) != 0 {
-          currentData[i] = 1
-        } else {
-          currentData[i] = 0
-        }
-        // Перевіряємо i-й біт у другому регістрі (зміщення +16)
-        if (r1_in & (1 << uint(i))) != 0 {
-          currentData[i+16] = 1
-        } else {
-          currentData[i+16] = 0
-        }
-      }
-
-      // Оновлюємо спільний стан (для JSON API)
-      state.UpdateSlave10(&currentData, true)
-
-      // 3. СИНХРОНІЗАЦІЯ ЗІ SLAVE 20 (стиснутий запис)
-      handler.SlaveId = 20
-      r0_out, r1_out := Pack32(&currentData)
-
-      // Перевіряємо, чи змінилося хоча б щось у запакованих даних
-      if r0_out != lastReg0 || r1_out != lastReg1 || firstRun {
-        packedBytes := make([]byte, 4)
-        binary.BigEndian.PutUint16(packedBytes[0:2], r0_out)
-        binary.BigEndian.PutUint16(packedBytes[2:4], r1_out)
-        time.Sleep(2 * time.Millisecond)
-        _, err20 := client.WriteMultipleRegisters(0, 2, packedBytes)
-
-        if err20 == nil {
-          lastReg0 = r0_out
-          lastReg1 = r1_out
-          fmt.Printf("[%s] Slave 20 оновлено: Reg0=%04X, Reg1=%04X (OK)\n", 
-            time.Now().Format("15:04:05"), r0_out, r1_out)
-        } else {
-          fmt.Printf("[%s] Помилка запису Slave 20: %v\n", time.Now().Format("15:04:05"), err20)
-        }
-      }
-      firstRun = false
-    } else {
-      if err10 != nil {
-        fmt.Printf("[%s] Помилка опитування Slave 10: %v\n", time.Now().Format("15:04:05"), err10)
-      }
-      state.UpdateSlave10(nil, false)
-    }
-		// Рахуємо скільки пройшло часу від start до завершення всіх читань
-		duration := time.Since(start).Milliseconds()
-		state.UpdateCycleTime(duration)
-
-		// Пауза перед наступним колом
-		time.Sleep(2 * time.Millisecond)
-	}
+	// 4. Стартуємо веб-сервер (блокуючий виклик)
+	runWebServer(state)
 }

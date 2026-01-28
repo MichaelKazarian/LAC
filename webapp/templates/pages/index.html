@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {{ template "head" . }}
+    <link rel="stylesheet" type="text/css" href="/static/css/app.css">
+  </head>
+
+  <body>
+    <header>
+      {{ template "header" . }}
+    </header>
+
+    <div class="container-fluid">
+      <div class="card">
+        <div class="card-body">
+          <script src="/static/js/circle-progress.min.js" type="module"></script>
+          
+          <div class="row">
+            <div class="col-sm-6 d-flex justify-content-center">
+              <circle-progress id="circle-progress" value="0" max="360"></circle-progress>
+            </div>
+            
+            <div class="col-sm-2">
+            </div>
+
+            <div class="col-sm-4 d-flex justify-content-center">
+              <div>
+                <div class="row mb-1 mt-1">
+                  <button class="btn btn-danger btn-lg invisible" id="btnStop" type="button">СТОП</button>
+                </div>
+                <div class="row mb-1 mt-1">
+                  <div class="col">
+                    <label id="lb-product-counter" class="fs-5 fw-bold mb-0">Кіл-ть:</label>
+                  </div>
+                  <div class="col text-end">
+                    <label id="product-counter" class="fs-5 fw-bold mb-0">---</label>
+                  </div>
+                </div>
+
+                <div id="modes-switcher" class="row mb-1 mt-3">
+                  {{ range .modes }}
+                  <div class="row mb-1 mt-1">
+                    <input type="radio" class="btn-check" name="radio-auto-mode" id="{{ .id }}" autocomplete="off">
+                    <label id="lb-{{ .id }}" class="btn {{ .class }} btn-lg" for="{{ .id }}">
+                      {{ .name }}
+                    </label>
+                  </div>
+                  {{ end }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-sm-6">
+          {{ range $i := (seq 1 8) }}
+          <div class="row mx-1 my-1">
+            <input type="radio" class="btn-check" name="radio-operation" id="operation{{ $i }}" autocomplete="off">
+            <label class="btn btn-outline-primary btn-lg" for="operation{{ $i }}" id="lRadio{{ $i }}">Операція {{ $i }}</label>
+          </div>
+          {{ end }}
+        </div>
+
+        <div class="col-sm-6">
+          {{ range $i := (seq 9 18) }}
+          <div class="row mx-1 my-1">
+            <input type="radio" class="btn-check" name="radio-operation" id="operation{{ $i }}" autocomplete="off">
+            <label class="btn btn-outline-primary btn-lg" for="operation{{ $i }}" id="lRadio{{ $i }}">Операція {{ $i }}</label>
+          </div>
+          {{ end }}
+        </div>
+      </div>
+
+      <div id="state-area" class="alert alert-light text-center" role="alert">
+        Статус: Очікування даних...
+      </div>
+    </div>
+
+    <footer>
+      {{ template "footer" . }}
+    </footer>
+
+    <script src="/static/js/lac.js" defer></script>
+  </body>
+</html>
