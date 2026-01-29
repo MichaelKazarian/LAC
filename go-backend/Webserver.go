@@ -1,0 +1,176 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"html/template"
+	"log"
+	"net/http"
+)
+
+// WebServer інкапсулює всю логіку веб-сервера
+type WebServer struct {
+	state *HardwareState
+	tmpl  *template.Template
+  mux   *http.ServeMux
+}
+
+// NewWebServer створює новий екземпляр веб-сервера
+func NewWebServer(state *HardwareState) (*WebServer, error) {
+	ws := &WebServer{
+		state: state,
+	}
+	
+	if err := ws.initTemplates(); err != nil {
+		return nil, fmt.Errorf("помилка ініціалізації шаблонів: %w", err)
+	}
+	
+	return ws, nil
+}
+
+// initTemplates завантажує та компілює всі шаблони
+func (ws *WebServer) initTemplates() error {
+	funcMap := template.FuncMap{
+		"seq": func(start, end int) []int {
+			var res []int
+			for i := start; i <= end; i++ {
+				res = append(res, i)
+			}
+			return res
+		},
+	}
+	
+	tmpl := template.New("index.html").Funcs(funcMap)
+	
+	var err error
+	tmpl, err = tmpl.ParseGlob("../../webapp/templates/pages/*.html")
+	if err != nil {
+		return fmt.Errorf("критична помилка шаблонів сторінок: %w", err)
+	}
+	
+	_, err = tmpl.ParseGlob("../../webapp/templates/partials/*.html")
+	if err != nil {
+		log.Printf("⚠️ Попередження: partials не знайдено або помилка: %v", err)
+	}
+	
+	ws.tmpl = tmpl
+	return nil
+}
+
+// setupRoutes налаштовує всі маршрути HTTP
+func (ws *WebServer) setupRoutes() {
+  ws.mux = http.NewServeMux()
+
+	// Статичні файли
+	fs := http.FileServer(http.Dir("../../webapp/static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	
+	// Сторінки
+	http.HandleFunc("/", ws.handleIndex)
+	
+	// API endpoints
+	http.HandleFunc("/state", ws.handleState)
+	http.HandleFunc("/status", ws.handleStatus)
+	
+	// Команди
+	http.HandleFunc("/radio", ws.handleRadio)
+	http.HandleFunc("/modeset", ws.handleModeSet)
+	http.HandleFunc("/stop", ws.handleStop)
+}
+
+// handleIndex обробляє головну сторінку
+func (ws *WebServer) handleIndex(w http.ResponseWriter, r *http.Request) {
+	opNames := map[int]string{
+		1: "Одиничний цикл", 
+		2: "Подача", 
+		3: "Мотор шпінделя",
+	}
+	
+	data := map[string]interface{}{
+		"modes": []map[string]interface{}{
+			{"id": "mode-auto", "name": "АВТОМАТ", "class": "btn-outline-success"},
+			{"id": "mode-once-cycle", "name": "ОДИН ЦИКЛ", "class": "btn-outline-primary"},
+			{"id": "mode-manual", "name": "РУЧНИЙ", "class": "btn-outline-secondary"},
+		},
+		"opNames": opNames,
+	}
+	
+	err := ws.tmpl.Execute(w, data)
+	if err != nil {
+		log.Printf("❌ Помилка виконання шаблону: %v", err)
+		http.Error(w, "Internal Server Error", 500)
+	}
+}
+
+// handleState повертає поточний стан системи для UI
+func (ws *WebServer) handleState(w http.ResponseWriter, r *http.Request) {
+	ws.state.mu.RLock()
+	defer ws.state.mu.RUnlock()
+	
+	response := map[string]interface{}{
+		"modeId":          "mode-manual",
+		"modeState":       "ok",
+		"modeDescription": "Система в нормі",
+		"operationState":  "idle",
+		"quantity":        ws.state.SensorValue,
+		"degree":          int(ws.state.SensorValue) % 720,
+		"manualOperations": []string{"operation1", "operation2", "operation3", "operation9", "operation10"},
+	}
+	
+	for i := 0; i < 18; i++ {
+		key := fmt.Sprintf("operation%d", i+1)
+		val := 1
+		if i < len(ws.state.Device10In) {
+			val = int(ws.state.Device10In[i])
+		}
+		response[key] = val
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleStatus повертає технічний статус системи
+func (ws *WebServer) handleStatus(w http.ResponseWriter, r *http.Request) {
+	ws.state.mu.RLock()
+	defer ws.state.mu.RUnlock()
+	
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(ws.state)
+}
+
+// handleRadio обробляє команди операцій
+func (ws *WebServer) handleRadio(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	log.Printf("🕹 [Web Command] Натиснуто операцію: %s", id)
+	
+	// TODO: Додати логіку запису в Modbus Slave 20
+	
+	w.WriteHeader(http.StatusOK)
+}
+
+// handleModeSet обробляє зміну режиму
+func (ws *WebServer) handleModeSet(w http.ResponseWriter, r *http.Request) {
+	mode := r.URL.Query().Get("id")
+	log.Printf("🔄 [Web Command] Зміна режиму на: %s", mode)
+	
+	// TODO: Додати логіку зміни режиму
+	
+	w.WriteHeader(http.StatusOK)
+}
+
+// handleStop обробляє аварійну зупинку
+func (ws *WebServer) handleStop(w http.ResponseWriter, r *http.Request) {
+	log.Println("🛑 [Web Command] EMERGENCY STOP TRIGGERED")
+	
+	// TODO: Додати логіку аварійної зупинки
+	
+	w.WriteHeader(http.StatusOK)
+}
+
+// Start запускає веб-сервер (блокуючий виклик)
+func (ws *WebServer) Start(addr string) error {
+	ws.setupRoutes()
+	fmt.Printf("🌐 Веб-інтерфейс на http://%s\n", addr)
+	return http.ListenAndServe(addr, ws.mux)
+}

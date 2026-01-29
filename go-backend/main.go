@@ -1,11 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
-  "html/template"
 	"sync"
 	"time"
   "encoding/binary"
@@ -159,122 +156,14 @@ func runModbusPoll(state *HardwareState, client modbus.Client, handler *modbus.R
 
 // runWebServer відповідає за HTTP інтерфейс та API
 func runWebServer(state *HardwareState) {
-    // 1. Карта функцій для шаблонів
-    funcMap := template.FuncMap{
-        "seq": func(start, end int) []int {
-            var res []int
-            for i := start; i <= end; i++ {
-                res = append(res, i)
-            }
-            return res
-        },
-    }
-
-    // 2. ЗАВАНТАЖЕННЯ ТЕМПЛЕЙТІВ ПРИ СТАРТІ
-    // Створюємо базовий шаблон і парсимо всі файли відразу
-    tmpl := template.New("index.html").Funcs(funcMap)
-    
-    // Парсимо сторінки
-    var err error
-    tmpl, err = tmpl.ParseGlob("../../webapp/templates/pages/*.html")
-    if err != nil {
-        log.Fatalf("❌ Критична помилка шаблонів сторінок: %v", err)
-    }
-    
-    // Додаємо фрагменти (partials)
-    _, err = tmpl.ParseGlob("../../webapp/templates/partials/*.html")
-    if err != nil {
-        log.Printf("⚠️ Попередження: partials не знайдено або помилка: %v", err)
-    }
-
-    // 3. Роздача статики
-    fs := http.FileServer(http.Dir("../../webapp/static"))
-    http.Handle("/static/", http.StripPrefix("/static/", fs))
-
-    // 4. Головна сторінка (тепер працює миттєво)
-    http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        opNames := map[int]string{
-            1: "Одиничний цикл", 2: "Подача", 3: "Мотор шпінделя",
-        }
-
-        data := map[string]interface{}{
-            "modes": []map[string]interface{}{
-                {"id": "mode-auto", "name": "АВТОМАТ", "class": "btn-outline-success"},
-                {"id": "mode-once-cycle", "name": "ОДИН ЦИКЛ", "class": "btn-outline-primary"},
-                {"id": "mode-manual", "name": "РУЧНИЙ", "class": "btn-outline-secondary"},
-            },
-            "opNames": opNames,
-        }
-
-        // Використовуємо вже скомпільований tmpl
-        // Якщо у вас кілька сторінок, використовуйте tmpl.ExecuteTemplate(w, "ім'я_файлу.html", data)
-        err = tmpl.Execute(w, data)
-        if err != nil {
-            log.Printf("❌ Помилка виконання шаблону: %v", err)
-            http.Error(w, "Internal Server Error", 500)
-        }
-    })
-
-    // 5. API Стан (/state)
-    http.HandleFunc("/state", func(w http.ResponseWriter, r *http.Request) {
-        state.mu.RLock()
-        defer state.mu.RUnlock()
-
-        response := map[string]interface{}{
-            "modeId":           "mode-manual",
-            "modeState":        "ok",
-            "modeDescription":  "Система в нормі",
-            "operationState":   "idle",
-            "quantity":         state.SensorValue,
-            "degree":           int(state.SensorValue) % 720,
-            "manualOperations": []string{"operation1", "operation2", "operation3", "operation9", "operation10"},
-        }
-
-        for i := 0; i < 18; i++ {
-            key := fmt.Sprintf("operation%d", i+1)
-            val := 1
-            if i < len(state.Device10In) {
-                val = int(state.Device10In[i])
-            }
-            response[key] = val
-        }
-
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(response)
-    })
-
-  // 5. Обробка команд (/radio, /modeset, /stop)
-  http.HandleFunc("/radio", func(w http.ResponseWriter, r *http.Request) {
-    id := r.URL.Query().Get("id")
-    // Повертаємо логування, щоб бачити натискання кнопок
-    log.Printf("🕹 [Web Command] Натиснуто операцію: %s", id)
-    
-    // Тут в майбутньому можна додати запис у Modbus Slave 20 
-    // або зміну внутрішнього стану системи
-    
-    w.WriteHeader(http.StatusOK)
-  })
-
-  http.HandleFunc("/modeset", func(w http.ResponseWriter, r *http.Request) {
-    mode := r.URL.Query().Get("id")
-    log.Printf("🔄 [Web Command] Зміна режиму на: %s", mode)
-    w.WriteHeader(http.StatusOK)
-  })
-
-  http.HandleFunc("/stop", func(w http.ResponseWriter, r *http.Request) {
-    log.Println("🛑 [Web Command] EMERGENCY STOP TRIGGERED")
-    w.WriteHeader(http.StatusOK)
-  })
-
-  http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		state.mu.RLock()
-		defer state.mu.RUnlock()
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(state)
-	})
-  
-  fmt.Println("🌐 Веб-інтерфейс на http://localhost:8080")
-  log.Fatal(http.ListenAndServe(":8080", nil))
+  webServer, err := NewWebServer(state)
+	if err != nil {
+		log.Fatalf("❌ Помилка створення веб-сервера: %v", err)
+	}
+	
+	if err := webServer.Start("localhost:8080"); err != nil {
+		log.Fatalf("❌ Помилка запуску веб-сервера: %v", err)
+	}
 }
 
 func InitModbus(device string, baud int, slaveID byte) (modbus.Client, *modbus.RTUClientHandler, error) {
@@ -301,17 +190,6 @@ func setupHardware() (modbus.Client, *modbus.RTUClientHandler) {
 	}
 	fmt.Println("✅ Modbus порт успішно відкрито")
 	return client, handler
-}
-
-func startServer(state *HardwareState) {
-	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		state.mu.RLock()
-		defer state.mu.RUnlock()
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(state)
-	})
-	fmt.Println("Сервер запущено на http://localhost:8080/status")
-	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func main() {
