@@ -17,11 +17,11 @@ init:
 
 # Стандартна команда: скомпілювати для поточної системи
 build:
-	go build -o bin/$(BINARY_NAME) main.go
+	go build -o bin/$(BINARY_NAME) .
 
 # Крос-компіляція для Raspberry Pi 4
 build-arm:
-	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) go build -o bin/$(BINARY_NAME)-arm main.go
+	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) go build -o bin/$(BINARY_NAME)-arm .
 
 # Запуск локально
 run: build
