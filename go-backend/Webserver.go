@@ -63,19 +63,19 @@ func (ws *WebServer) setupRoutes() {
 
 	// Статичні файли
 	fs := http.FileServer(http.Dir("../../webapp/static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	ws.mux.Handle("/static/", http.StripPrefix("/static/", fs))
 	
 	// Сторінки
-	http.HandleFunc("/", ws.handleIndex)
+	ws.mux.HandleFunc("/", ws.handleIndex)
 	
 	// API endpoints
-	http.HandleFunc("/state", ws.handleState)
-	http.HandleFunc("/status", ws.handleStatus)
+	ws.mux.HandleFunc("/state", ws.handleState)
+	ws.mux.HandleFunc("/status", ws.handleStatus)
 	
 	// Команди
-	http.HandleFunc("/radio", ws.handleRadio)
-	http.HandleFunc("/modeset", ws.handleModeSet)
-	http.HandleFunc("/stop", ws.handleStop)
+	ws.mux.HandleFunc("/radio", ws.handleRadio)
+	ws.mux.HandleFunc("/modeset", ws.handleModeSet)
+	ws.mux.HandleFunc("/stop", ws.handleStop)
 }
 
 // handleIndex обробляє головну сторінку
