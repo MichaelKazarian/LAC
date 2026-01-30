@@ -3,8 +3,13 @@ package main
 // HardwareService - інтерфейс для роботи з обладнанням
 type HardwareService interface {
   // GetState() *HardwareState
-  Run()
-  Close()
+
+  // Read повертає поточні дані з обладнання
+  // (наприклад, SensorValue та Device10In)
+  Read() (sensor uint16, inputs [32]uint16, err error)
+  // Write приймає масив значень для вихідного пристрою
+  Write(values [32]uint16) error
+  Close() error
 }
 
 // Pack32 перетворює масив із 32 значень у два регістри uint16
