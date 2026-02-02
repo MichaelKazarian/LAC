@@ -60,7 +60,7 @@ func (c *Controller) Run() {
 			c.executeLogic()
 		case ModeSingle:
 			c.executeLogic()
-			c.setMode(ModeManual) // Після одного проходу повертаємо в ручний
+			c.SetMode(ModeManual) // Після одного проходу повертаємо в ручний
 			fmt.Println("✅ Одиночний цикл завершено. Перехід у ModeManual")
 		case ModeManual:
 			// У ручному режимі нічого не робимо, чекаємо команд через Device20Out
@@ -108,10 +108,16 @@ func (c *Controller) executeLogic() {
     // }
 }
 
-func (c *Controller) setMode(mode ControlMode) {
-	c.state.mu.Lock()
-	defer c.state.mu.Unlock()
-	c.state.Mode = mode
+// SetMode безпечно оновлює режим роботи контролера
+func (c *Controller) SetMode(mode ControlMode) {
+    c.state.mu.Lock()
+    defer c.state.mu.Unlock()
+    // Якщо ми переходимо в ручний режим, можна відразу скинути певні виходи, якщо треба
+    if mode == ModeManual {
+        fmt.Println("🎛 Контролер переведено в РУЧНИЙ режим")
+    }
+    c.state.Mode = mode
+    fmt.Printf("⚙️ Режим змінено на: %v\n", mode)
 }
 
 func (c *Controller) handleError(err error) {

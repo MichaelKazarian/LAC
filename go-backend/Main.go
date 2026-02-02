@@ -57,7 +57,7 @@ func runWebServer(state *HardwareState, controller *Controller) {
 func main() {
     // 1. Спільний стан
     state := &HardwareState{
-        Mode: ModeAutomatic,
+        Mode:ModeManual,
     }
 
     // 2. Створюємо низькорівневий сервіс (але не запускаємо опитування)

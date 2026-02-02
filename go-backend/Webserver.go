@@ -108,9 +108,16 @@ func (ws *WebServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 func (ws *WebServer) handleState(w http.ResponseWriter, r *http.Request) {
 	ws.state.mu.RLock()
 	defer ws.state.mu.RUnlock()
-	
+
+  // Конвертуємо число режиму назад у рядок для JS
+  modeStr := "mode-manual"
+  switch ws.state.Mode {
+  case ModeAutomatic: modeStr = "mode-auto"
+  case ModeSingle:    modeStr = "mode-once-cycle"
+  }
+
 	response := map[string]interface{}{
-		"modeId":          "mode-manual",
+		"modeId":          modeStr,
 		"modeState":       "ok",
 		"modeDescription": "Система в нормі",
 		"operationState":  "idle",
@@ -151,14 +158,29 @@ func (ws *WebServer) handleRadio(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// handleModeSet обробляє зміну режиму
+// handleModeSet обробляє зміну режиму через API
 func (ws *WebServer) handleModeSet(w http.ResponseWriter, r *http.Request) {
-	mode := r.URL.Query().Get("id")
-	log.Printf("🔄 [Web Command] Зміна режиму на: %s", mode)
-	
-	// TODO: Додати логіку зміни режиму
-	
-	w.WriteHeader(http.StatusOK)
+    modeID := r.URL.Query().Get("id")
+    log.Printf("🔄 [Web Command] Запит на зміну режиму: %s", modeID)
+
+    var targetMode ControlMode
+
+    switch modeID {
+    case "mode-auto":
+        targetMode = ModeAutomatic
+    case "mode-once-cycle":
+        targetMode = ModeSingle
+    case "mode-manual":
+        targetMode = ModeManual
+    default:
+        log.Printf("⚠️ Невідомий режим: %s", modeID)
+        http.Error(w, "Invalid mode", http.StatusBadRequest)
+        return
+    }
+
+    // Викликаємо метод контролера для безпечної зміни режиму
+    ws.ctrl.SetMode(targetMode)
+    w.WriteHeader(http.StatusOK)
 }
 
 // handleStop обробляє аварійну зупинку
