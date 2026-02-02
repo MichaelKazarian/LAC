@@ -12,8 +12,12 @@ btn9.addEventListener('click', async function () {
 
 let btn10 = document.getElementById("operation10");
 btn10.addEventListener('click', async function () {
-  let response = await fetch('/radio?id=10',
-                            {method: 'GET'});
+  // Відправляємо назву операції, яку ми зареєстрували в Controller
+  let response = await fetch('/radio?id=op_safety_stop', {method: 'GET'});
+  
+  if (!response.ok) {
+    console.error("Помилка виконання op_safety_stop");
+  }
 });
 
 let btn11 = document.getElementById("operation11");

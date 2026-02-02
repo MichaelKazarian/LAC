@@ -13,12 +13,14 @@ type WebServer struct {
 	state *HardwareState
 	tmpl  *template.Template
   mux   *http.ServeMux
+  ctrl  *Controller
 }
 
 // NewWebServer створює новий екземпляр веб-сервера
-func NewWebServer(state *HardwareState) (*WebServer, error) {
+func NewWebServer(state *HardwareState, ctrl *Controller) (*WebServer, error) {
 	ws := &WebServer{
 		state: state,
+    ctrl:  ctrl,
 	}
 	
 	if err := ws.initTemplates(); err != nil {
@@ -73,7 +75,7 @@ func (ws *WebServer) setupRoutes() {
 	ws.mux.HandleFunc("/status", ws.handleStatus)
 	
 	// Команди
-	ws.mux.HandleFunc("/radio", ws.handleRadio)
+	ws.mux.HandleFunc("/radio", ws.handleManualOp)
 	ws.mux.HandleFunc("/modeset", ws.handleModeSet)
 	ws.mux.HandleFunc("/stop", ws.handleStop)
 }
@@ -173,4 +175,26 @@ func (ws *WebServer) Start(addr string) error {
 	ws.setupRoutes()
 	fmt.Printf("🌐 Веб-інтерфейс на http://%s\n", addr)
 	return http.ListenAndServe(addr, ws.mux)
+}
+
+// handleManualOp обробляє виклик будь-якої зареєстрованої операції
+func (ws *WebServer) handleManualOp(w http.ResponseWriter, r *http.Request) {
+    // Отримуємо id операції (наприклад, "operation10" або "sync_mirror")
+    opID := r.URL.Query().Get("id")
+    if opID == "" {
+        http.Error(w, "Missing operation id", http.StatusBadRequest)
+        return
+    }
+
+    log.Printf("🕹 [Web Command] Виконання операції: %s", opID)
+
+    // Викликаємо метод контролера
+    err := ws.ctrl.InvokeOperation(opID)
+    if err != nil {
+        log.Printf("⚠️ Операція %s не вдалася: %v", opID, err)
+        http.Error(w, err.Error(), http.StatusNotFound)
+        return
+    }
+
+    w.WriteHeader(http.StatusOK)
 }
