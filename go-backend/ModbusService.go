@@ -8,8 +8,9 @@ import (
 )
 
 type ModbusService struct {
-    client  modbus.Client
-    handler *modbus.RTUClientHandler
+  client  modbus.Client
+  handler *modbus.RTUClientHandler
+  //mu      sync.Mutex
 }
 
 func NewModbusService(device string, baud int) *ModbusService {
@@ -28,6 +29,8 @@ func NewModbusService(device string, baud int) *ModbusService {
 
 // Read реалізує інтерфейс HardwareService
 func (ms *ModbusService) Read() (uint16, [32]uint16, error) {
+    // ms.mu.Lock() // Беремо замок на ВСЕ читання
+    // defer ms.mu.Unlock()
     sensor, err3 := ms.readSlave3()
     if err3 != nil {
         return 0, [32]uint16{}, err3
@@ -71,15 +74,15 @@ func (ms *ModbusService) readSlave10() ([32]uint16, error) {
 // Write реалізує інтерфейс HardwareService
 func (ms *ModbusService) Write(values [32]uint16) error {
     r0, r1 := Pack32(&values)
-    ms.handler.SlaveId = 20
-    
     packedBytes := make([]byte, 4)
     binary.BigEndian.PutUint16(packedBytes[0:2], r0)
     binary.BigEndian.PutUint16(packedBytes[2:4], r1)
     
     time.Sleep(2 * time.Millisecond)
+    // ms.mu.Lock()
+    ms.handler.SlaveId = 20
     _, err := ms.client.WriteMultipleRegisters(0, 2, packedBytes)
-
+    // ms.mu.Unlock()
     ms.logWriteStatus(err, r0, r1)
     return err
 }

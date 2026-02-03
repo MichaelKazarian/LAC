@@ -11,13 +11,17 @@ type Controller struct {
 	hw    HardwareService
 	state *HardwareState
   operations map[string]OperationFunc
+  lastOutput [32]uint16
+  firstRun   bool
+  opQueue    chan string
 }
 
 func NewController(hw HardwareService, state *HardwareState) *Controller {
     ctrl := &Controller{
-        hw:    hw,
-        state: state,
-        operations: make(map[string]OperationFunc),
+      hw:    hw,
+      state: state,
+      operations: make(map[string]OperationFunc),
+      opQueue:    make(chan string, 10),
     }
 
     // Реєструємо операції під зрозумілими іменами
@@ -30,82 +34,111 @@ func NewController(hw HardwareService, state *HardwareState) *Controller {
 
 // Run — основний цикл контролера
 func (c *Controller) Run() {
-	fmt.Println("🚀 Контролер логіки запущено")
-	var lastOutput [32]uint16
-	firstRun := true
+  c.firstRun = true // Ініціалізуємо перед циклом
+  fmt.Println("🚀 Контролер логіки запущено")
 
-	for {
-		start := time.Now()
+  for {
+    start := time.Now()
 
-		// 1. Читання фізичних входів
-		sensor, inputs, err := c.hw.Read()
-		if err != nil {
-			c.handleError(err)
-			// Робимо невелику паузу при помилці, щоб не зациклити процесор
-			time.Sleep(10 * time.Millisecond)
-			continue
-		}
-
-		// Оновлюємо стан входів у HardwareState
-		c.updateSlave3(sensor, true)
-		c.updateSlave10(&inputs, true)
-
-		// 2. Визначення режиму та виконання логіки
-		c.state.mu.RLock()
-		mode := c.state.Mode
-		c.state.mu.RUnlock()
-
-		switch mode {
-		case ModeAutomatic:
-			c.executeLogic()
-		case ModeSingle:
-			c.executeLogic()
-			c.SetMode(ModeManual) // Після одного проходу повертаємо в ручний
-			fmt.Println("✅ Одиночний цикл завершено. Перехід у ModeManual")
-		case ModeManual:
-			// У ручному режимі нічого не робимо, чекаємо команд через Device20Out
-		}
-
-		// 3. Синхронізація з залізом (Slave 20)
-		c.state.mu.RLock()
-		currentOutput := c.state.Device20Out
-		c.state.mu.RUnlock()
-
-		if currentOutput != lastOutput || firstRun {
-			if errWrite := c.hw.Write(currentOutput); errWrite == nil {
-				lastOutput = currentOutput
-				firstRun = false
+    select {
+		case opName := <-c.opQueue:
+			if op, ok := c.operations[opName]; ok {
+				op() // Виконуємо операцію (вона сама зробить syncHardware всередині)
 			}
+		default:
+			// Якщо черга порожня — виконуємо звичайний цикл
 		}
-		c.updateCycleTime(time.Since(start).Milliseconds())
-	}
+
+    // 1. Читання
+    sensor, inputs, err := c.hw.Read()
+		if err == nil {
+			c.updateSlave3(sensor, true)
+			c.updateSlave10(&inputs, true)
+		} else {
+			c.handleError(err)
+		}
+
+    c.switchMode()
+    c.syncHardware()
+
+    c.updateCycleTime(time.Since(start).Milliseconds())
+  }
+}
+
+// processLogic визначає поведінку контролера залежно від поточного режиму
+func (c *Controller) switchMode() {
+    c.state.mu.RLock()
+    mode := c.state.Mode
+    c.state.mu.RUnlock()
+
+    switch mode {
+    case ModeAutomatic: // просто крутимо логіку в кожному циклі
+        c.executeLogic()
+    case ModeSingle: // виконуємо логіку один раз і перемикаємо режим
+        fmt.Println("🚀 Запуск одиночного циклу...")
+        c.executeLogic()
+        c.SetMode(ModeManual)
+        fmt.Println("✅ Одиночний цикл завершено. Перехід у ручний режим.")
+    case ModeManual:
+        // У ручному режимі контролер не втручається в Device20Out самостійно,
+        // дозволяючи командам з InvokeOperation (Web) проходити без змін.
+    }
+}
+
+// syncHardware перевіряє зміни в стані та записує їх у залізо
+func (c *Controller) syncHardware() {
+  // 1. Копіюємо стан під RLock
+  c.state.mu.RLock()
+  current := c.state.Device20Out
+  c.state.mu.RUnlock()
+
+  // 2. Перевіряємо наявність змін
+  if current == c.lastOutput && !c.firstRun {
+    return // Нічого не змінилося, виходимо
+  }
+
+  // 3. Записуємо в залізо
+  if err := c.hw.Write(current); err != nil {
+    c.handleError(fmt.Errorf("помилка запису Slave 20: %v", err))
+    return
+  }
+
+  // 4. Оновлюємо кеш тільки при успішному записі
+  c.lastOutput = current
+  c.firstRun = false
+  
+  // fmt.Println("📡 [Modbus] Дані Slave 20 оновлено")
 }
 
 func (c *Controller) InvokeOperation(name string) error {
-    op, exists := c.operations[name]
-    if !exists {
-        return fmt.Errorf("операція %s не знайдена", name)
-    }
-
-    // Захоплюємо mutex, бо ручний виклик — це теж втручання в стан
-    c.state.mu.Lock()
-    op()
-    c.state.mu.Unlock()
-
-    fmt.Printf("[%s] Manual Invoke: %s\n", time.Now().Format("15:04:05"), name)
-    return nil
+  if _, exists := c.operations[name]; !exists {
+		return fmt.Errorf("операція %s не знайдена", name)
+	}
+  select {
+	case c.opQueue <- name:
+		fmt.Printf("[%s] 📨 Команда додана в чергу: %s\n", time.Now().Format("15:04:05"), name)
+	default:
+		return fmt.Errorf("черга переповнена, зачекайте")
+	}
+  return nil
 }
 
-// executeLogic викликає послідовність операцій
+// executeLogic послідовно виконує зареєстровані кроки сценарію
 func (c *Controller) executeLogic() {
-    c.state.mu.Lock()
-    defer c.state.mu.Unlock()
+  // Визначаємо чергу операцій (порядок важливий!)
+  steps := []string{
+    "sync_mirror",
+    "op_safety_stop",
+  }
 
-    // В автоматиці ми виконуємо базовий набір (наприклад, тільки sync_mirror)
-    // Або всі зареєстровані операції послідовно
-    // if op, ok := c.operations["sync_mirror"]; ok {
-    //     op()
-    // }
+  for _, opName := range steps {
+    if op, ok := c.operations[opName]; ok {
+      // fmt.Printf("➡️ Виконується крок: %s\n", opName)
+      op()
+    } else {
+      fmt.Printf("⚠️ Операція %s не знайдена в реєстрі\n", opName)
+    }
+  }
 }
 
 // SetMode безпечно оновлює режим роботи контролера
@@ -150,33 +183,43 @@ func (c *Controller) updateCycleTime(ms int64) {
 	c.state.ReadCycleMs = ms
 }
 
-// opSyncMirror - операція дзеркалювання входів на виходи
-func (c *Controller) opSyncMirror() {
-    changed := false
-    for i := 0; i < 32; i++ {
-        if c.state.Device20Out[i] != c.state.Device10In[i] {
-            c.state.Device20Out[i] = c.state.Device10In[i]
-            changed = true
-        }
-    }
-    
-    if changed {
-        fmt.Printf("[%s] Logic: Outputs synchronized with inputs\n", 
-            time.Now().Format("15:04:05"))
-    }
+func (c *Controller) apply(fn func()) {
+    c.state.mu.Lock()
+    fn()
+    c.state.mu.Unlock()
+    c.syncHardware()
 }
 
-func (c *Controller) opSafetyStop() {
-    // Якщо сенсор вище норми — вимикаємо все
-    // if c.state.SensorValue > 1000 {
-    //     c.state.Device20Out[0] = 1 // Наприклад, вимкнути головний двигун
-  // }
+// opSyncMirror - дзеркалювання з паузою
+func (c *Controller) opSyncMirror() {
+  fmt.Println("⏳ Початок синхронізації")
+    // 1. Скидання
+    c.apply(func() {
+        for i := 0; i < 32; i++ { c.state.Device20Out[i] = 0 }
+    })
+    // time.Sleep(100 * time.Millisecond)
 
-  fmt.Printf("[%s] cdas1 ", c.state.Device20Out[0]) 
-  if c.state.Device20Out[0] == 0 {
-    c.state.Device20Out[0] = 1
-  } else {
-    c.state.Device20Out[0] = 0
-  }
-  fmt.Printf("[%s] cdas2 ", c.state.Device20Out[0])
+  // 2. Дзеркало
+  c.apply(func() {
+    for i := 0; i < 32; i++ {
+      if c.state.Device20Out[i] != c.state.Device10In[i] {
+        c.state.Device20Out[i] = c.state.Device10In[i]
+      }
+    }
+  })
+  time.Sleep(2 * time.Second)
+  // 3. Фінальне скидання
+  c.apply(func() {
+    for i := 0; i < 32; i++ { c.state.Device20Out[i] = 0 }
+  })
+  fmt.Println("Кінець синхронізації")
+}
+
+// opSafetyStop - перемикання з паузою
+func (c *Controller) opSafetyStop() {
+	fmt.Println("⏳ Початок операції (3с)...")
+  c.apply(func() { c.state.Device20Out[3] = 1})
+  time.Sleep(2 * time.Second)
+  c.apply(func() { c.state.Device20Out[3] = 0})
+  fmt.Println("✅ Стан змінено")
 }
