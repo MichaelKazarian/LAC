@@ -6,8 +6,8 @@ let manualOperations = [];
 
 let btn9 = document.getElementById("operation9");
 btn9.addEventListener('click', async function () {
-  let response = await fetch('/radio?id=9',
-                            {method: 'GET'});
+  let response = await fetch('/radio?id=sync_mirror',
+                             {method: 'GET'});
 });
 
 let btn10 = document.getElementById("operation10");
