@@ -1,5 +1,6 @@
 let prevControlMode;
 let isPausedGlobal = false;
+let lastPausedState = null;
 let errorMessage = "";
 let infoMessage = "";
 let warningMessage = "";
@@ -156,6 +157,7 @@ function updAvailableManualOperations(json){
 
 function updPauseButton(isPaused) {
   let btnPause = document.getElementById("btnPause");
+  if (isPaused === lastPausedState) return;
   if (isPaused) {
     btnPause.innerHTML = "▶ ПРОДОВЖИТИ";
     btnPause.className = "btn btn-warning btn-lg blink"; // blink можна додати в CSS для уваги
@@ -169,6 +171,7 @@ function updPauseButton(isPaused) {
     btnManual.classList.add("btn-outline-secondary");
     btnManual.classList.remove("btn-secondary", "fw-bold");
   }
+  lastPausedState = isPaused;
 }
 
 function updModeState(modeId) {
@@ -176,6 +179,9 @@ function updModeState(modeId) {
     errorMessage = "";
     infoMessage = "";
     warningMessage = "";
+    // Скидаємо стан відстеження паузи при зміні режиму, 
+    // щоб примусово оновити кнопку при вході в новий режим
+    lastPausedState = null;
 
     const btnPause = document.getElementById("btnPause");
 
