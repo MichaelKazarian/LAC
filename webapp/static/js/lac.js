@@ -180,26 +180,19 @@ function updModeState(modeId) {
     infoMessage = "";
     warningMessage = "";
 
-    const btnPause = document.getElementById("btnPause");
-
     switch (modeId) {
       case "mode-auto":
-        btnModeAuto.checked = true;
-        btnPause.classList.remove("invisible");
-        lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
-        lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
-        lbProductCounter.className = "fs-5 fw-bold mb-0";
-        productCounter.className = "fs-5 fw-bold mb-0";
-        setOperationsActiveState(false);
-        break;
       case "mode-once-cycle":
-        btnModeCycleOnce.checked = true;
+        const isAuto = (modeId === "mode-auto");
+        btnModeAuto.checked = isAuto;
+        btnModeCycleOnce.checked = !isAuto;
         btnPause.classList.remove("invisible");
+        lbModeAuto.classList.add("invisible");
+        lbModeCycleOnce.classList.add("invisible");
+        const counterClass = isAuto ? "fs-5 fw-bold mb-0" : "fs-5 fw-bold mb-0 invisible";
+        lbProductCounter.className = counterClass;
+        productCounter.className = counterClass;
         setOperationsActiveState(false);
-        lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
-        lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
-        lbProductCounter.className = "fs-5 fw-bold mb-0 invisible";
-        productCounter.className = "fs-5 fw-bold mb-0 invisible";
         break;
       default:
         btnManual.checked = true;
