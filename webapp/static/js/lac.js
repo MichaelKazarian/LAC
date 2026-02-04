@@ -27,11 +27,11 @@ btn11.addEventListener('click', async function () {
                              {method: 'GET'});
 });
 
-// let btnModeManual = document.getElementById("mode-manual");
-// btnModeManual.addEventListener('click', async function () {
-//   let response = await fetch('/modeset?id=mode-manual',
-//                              {method: 'GET'});
-// });
+let btnManual = document.getElementById("mode-manual");
+btnManual.addEventListener('click', async function () {
+  let response = await fetch('/modeset?id=mode-manual',
+                             {method: 'GET'});
+});
 
 let lbModeCycleOnce = document.getElementById("lb-mode-once-cycle");
 let btnModeCycleOnce = document.getElementById("mode-once-cycle");
@@ -159,9 +159,15 @@ function updPauseButton(isPaused) {
   if (isPaused) {
     btnPause.innerHTML = "▶ ПРОДОВЖИТИ";
     btnPause.className = "btn btn-warning btn-lg blink"; // blink можна додати в CSS для уваги
+    btnManual.disabled = false;
+    btnManual.classList.remove("btn-outline-secondary");
+    btnManual.classList.add("btn-secondary", "fw-bold");
   } else {
     btnPause.innerHTML = "⏸ ПАУЗА";
     btnPause.className = "btn btn-danger btn-lg";
+    btnManual.disabled = true;
+    btnManual.classList.add("btn-outline-secondary");
+    btnManual.classList.remove("btn-secondary", "fw-bold");
   }
 }
 
@@ -195,9 +201,9 @@ function updModeState(modeId) {
         productCounter.className = "fs-5 fw-bold mb-0 invisible";
         break;
       default:
-        // btnModeManual.checked = true;
+        btnManual.checked = true;
+        btnManual.disabled = false;
         btnPause.classList.add("invisible");
-        btnPause.className = 'btn btn-danger btn-lg invisible';
         lbModeAuto.className = "btn btn-outline-success btn-lg";
         lbModeCycleOnce.className = "btn btn-outline-success btn-lg";
         lbProductCounter.className = "fs-5 fw-bold mb-0 invisible";
