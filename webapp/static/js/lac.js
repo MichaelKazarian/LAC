@@ -51,7 +51,7 @@ btnModeAuto.addEventListener('click', async function () {
 let btnPause = document.getElementById("btnPause");
 btnPause.addEventListener('click', async function () {
   let targetState = !isPausedGlobal; 
-  setInfoMessage(`📡 Sending pause command: ${targetState}`);
+  setInfoMessage(`Sending pause command: ${targetState}`);
   let response = await fetch(`/pause?set=${targetState}`, { method: 'GET' });
   if (!response.ok) {
     onCabinetError("Помилка відправки команди паузи");
@@ -155,9 +155,9 @@ function updAvailableManualOperations(json){
   manualOperations = json["manualOperations"];
 }
 
-function updPauseButton(isPaused) {
+function updPauseButton(isPaused, modeId) {
   let btnPause = document.getElementById("btnPause");
-  if (isPaused === lastPausedState) return;
+  if (isPaused === lastPausedState || modeId === "mode-manual") return;
   if (isPaused) {
     btnPause.innerHTML = "▶ ПРОДОВЖИТИ";
     btnPause.className = "btn btn-warning btn-lg blink"; // blink можна додати в CSS для уваги
@@ -179,9 +179,6 @@ function updModeState(modeId) {
     errorMessage = "";
     infoMessage = "";
     warningMessage = "";
-    // Скидаємо стан відстеження паузи при зміні режиму, 
-    // щоб примусово оновити кнопку при вході в новий режим
-    lastPausedState = null;
 
     const btnPause = document.getElementById("btnPause");
 
@@ -189,7 +186,6 @@ function updModeState(modeId) {
       case "mode-auto":
         btnModeAuto.checked = true;
         btnPause.classList.remove("invisible");
-        btnPause.className = "btn btn-danger btn-lg";
         lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
         lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
         lbProductCounter.className = "fs-5 fw-bold mb-0";
@@ -200,7 +196,6 @@ function updModeState(modeId) {
         btnModeCycleOnce.checked = true;
         btnPause.classList.remove("invisible");
         setOperationsActiveState(false);
-        btnPause.className = "btn btn-danger btn-lg";
         lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
         lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
         lbProductCounter.className = "fs-5 fw-bold mb-0 invisible";
@@ -235,7 +230,7 @@ async function getCabinetState() {
     let modeId = json["modeId"];
     isPausedGlobal = json["isPaused"];
     console.log("modeId "+modeId+" isPausedGlobal "+isPausedGlobal)
-    updPauseButton(isPausedGlobal);
+    updPauseButton(isPausedGlobal, modeId);
     updModeState(modeId);
     setDegree(json);
     if (modeId !== "mode-manual") {
