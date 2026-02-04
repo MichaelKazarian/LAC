@@ -113,4 +113,9 @@ circle-progress::part(base) {
   height: auto;
 }
 
-
+.blink {
+  animation: blinker 1.5s linear infinite;
+}
+@keyframes blinker {
+  50% { opacity: 0.5; }
+}

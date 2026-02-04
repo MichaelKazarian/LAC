@@ -26,6 +26,7 @@ type HardwareState struct {
 	IsOnline10  bool      `json:"is_online_10"`
 	IsOnline20  bool      `json:"is_online_20"`
 	ReadCycleMs int64     `json:"read_cycle_ms"`
+  IsPaused    bool      `json:"is_paused"`
 }
 
 // runModbusPoll запускає контролер із Modbus сервісом

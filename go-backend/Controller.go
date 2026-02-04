@@ -69,6 +69,7 @@ func (c *Controller) Run() {
 func (c *Controller) switchMode() {
     c.state.mu.RLock()
     mode := c.state.Mode
+    c.state.IsPaused = false
     c.state.mu.RUnlock()
 
     switch mode {
@@ -76,9 +77,10 @@ func (c *Controller) switchMode() {
         c.executeLogic()
     case ModeSingle: // виконуємо логіку один раз і перемикаємо режим
         fmt.Println("🚀 Запуск одиночного циклу...")
+        // Перемикаємо в Manual тільки якщо цикл реально ДОЙШОВ ДО КІНЦЯ
         c.executeLogic()
         c.SetMode(ModeManual)
-        fmt.Println("✅ Одиночний цикл завершено. Перехід у ручний режим.")
+        fmt.Println("✅ Одиночний цикл успішно завершено.")
     case ModeManual:
         // У ручному режимі контролер не втручається в Device20Out самостійно,
         // дозволяючи командам з InvokeOperation (Web) проходити без змін.
@@ -125,15 +127,19 @@ func (c *Controller) InvokeOperation(name string) error {
 
 // executeLogic послідовно виконує зареєстровані кроки сценарію
 func (c *Controller) executeLogic() {
-  // Визначаємо чергу операцій (порядок важливий!)
-  steps := []string{
+  steps := []string{ // Визначаємо чергу операцій (порядок важливий)
     "sync_mirror",
     "op_safety_stop",
   }
-
   for _, opName := range steps {
+    c.state.mu.RLock()
+    p :=  c.state.IsPaused
+    c.state.mu.RUnlock()
+    if p {
+      fmt.Printf("⏸ Логіку призупинено перед кроком: %s\n", opName)
+      c.waitIfPaused()
+    }
     if op, ok := c.operations[opName]; ok {
-      // fmt.Printf("➡️ Виконується крок: %s\n", opName)
       op()
     } else {
       fmt.Printf("⚠️ Операція %s не знайдена в реєстрі\n", opName)
@@ -145,12 +151,25 @@ func (c *Controller) executeLogic() {
 func (c *Controller) SetMode(mode ControlMode) {
     c.state.mu.Lock()
     defer c.state.mu.Unlock()
+    c.state.IsPaused = false
     // Якщо ми переходимо в ручний режим, можна відразу скинути певні виходи, якщо треба
     if mode == ModeManual {
         fmt.Println("🎛 Контролер переведено в РУЧНИЙ режим")
     }
     c.state.Mode = mode
     fmt.Printf("⚙️ Режим змінено на: %v\n", mode)
+}
+
+func (c *Controller) SetPause(paused bool) {
+  c.state.mu.Lock()
+  c.state.IsPaused = paused
+  c.state.mu.Unlock()
+  
+  if paused {
+    fmt.Println("⏸ ПАУЗА: Поточна операція допрацює, нові не почнуться.")
+  } else {
+    fmt.Println("▶️ ПРОДОВЖЕНО: Автоматичний цикл відновлено.")
+  }
 }
 
 func (c *Controller) handleError(err error) {
@@ -183,11 +202,24 @@ func (c *Controller) updateCycleTime(ms int64) {
 	c.state.ReadCycleMs = ms
 }
 
+func (c *Controller) waitIfPaused() {
+    for {
+        c.state.mu.RLock()
+        paused := c.state.IsPaused
+        c.state.mu.RUnlock()
+
+        if !paused {
+            break // Виходимо з циклу очікування, якщо паузу знято
+        }
+        time.Sleep(50 * time.Millisecond)
+    }
+}
+
 func (c *Controller) apply(fn func()) {
-    c.state.mu.Lock()
-    fn()
-    c.state.mu.Unlock()
-    c.syncHardware()
+  c.state.mu.Lock()
+  fn()
+  c.state.mu.Unlock()
+  c.syncHardware()
 }
 
 // opSyncMirror - дзеркалювання з паузою

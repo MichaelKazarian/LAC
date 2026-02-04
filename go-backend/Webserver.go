@@ -77,7 +77,7 @@ func (ws *WebServer) setupRoutes() {
 	// Команди
 	ws.mux.HandleFunc("/radio", ws.handleManualOp)
 	ws.mux.HandleFunc("/modeset", ws.handleModeSet)
-	ws.mux.HandleFunc("/stop", ws.handleStop)
+	ws.mux.HandleFunc("/pause", ws.handlePause)
 }
 
 // handleIndex обробляє головну сторінку
@@ -119,6 +119,7 @@ func (ws *WebServer) handleState(w http.ResponseWriter, r *http.Request) {
 	response := map[string]interface{}{
 		"modeId":          modeStr,
 		"modeState":       "ok",
+    "isPaused":        ws.state.IsPaused,
 		"modeDescription": "Система в нормі",
 		"operationState":  "idle",
 		"quantity":        ws.state.SensorValue,
@@ -183,13 +184,27 @@ func (ws *WebServer) handleModeSet(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusOK)
 }
 
-// handleStop обробляє аварійну зупинку
-func (ws *WebServer) handleStop(w http.ResponseWriter, r *http.Request) {
-	log.Println("🛑 [Web Command] EMERGENCY STOP TRIGGERED")
+// handlePause обробляє зупинку/продовження логіки
+func (ws *WebServer) handlePause(w http.ResponseWriter, r *http.Request) {
+	// Отримуємо значення з запиту (наприклад, /pause?set=true)
+	val := r.URL.Query().Get("set")
 	
-	// TODO: Додати логіку аварійної зупинки
+	ws.state.mu.RLock()
+	currentPaused := ws.state.IsPaused
+	ws.state.mu.RUnlock()
+
+	targetPause := !currentPaused // За замовчуванням просто перемикаємо
+	if val == "true" {
+		targetPause = true
+	} else {
+		targetPause = false
+	}
+  fmt.Printf("🌐 %s\n", targetPause)
+	ws.ctrl.SetPause(targetPause)
 	
-	w.WriteHeader(http.StatusOK)
+	// Повертаємо новий стан у JSON, щоб фронтенд міг оновити колір кнопки
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"paused": targetPause})
 }
 
 // Start запускає веб-сервер (блокуючий виклик)

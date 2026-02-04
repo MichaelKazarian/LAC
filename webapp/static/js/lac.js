@@ -1,4 +1,5 @@
 let prevControlMode;
+let isPausedGlobal = false;
 let errorMessage = "";
 let infoMessage = "";
 let warningMessage = "";
@@ -23,7 +24,7 @@ btn10.addEventListener('click', async function () {
 let btn11 = document.getElementById("operation11");
 btn11.addEventListener('click', async function () {
   let response = await fetch('/radio?id=11',
-                            {method: 'GET'});
+                             {method: 'GET'});
 });
 
 // let btnModeManual = document.getElementById("mode-manual");
@@ -46,10 +47,14 @@ btnModeAuto.addEventListener('click', async function () {
                              {method: 'GET'});
 });
 
-let btnStop = document.getElementById("btnStop");
-btnStop.addEventListener('click', async function () {
-  let response = await fetch('/stop',
-                             {method: 'GET'});
+let btnPause = document.getElementById("btnPause");
+btnPause.addEventListener('click', async function () {
+  let targetState = !isPausedGlobal; 
+  setInfoMessage(`📡 Sending pause command: ${targetState}`);
+  let response = await fetch(`/pause?set=${targetState}`, { method: 'GET' });
+  if (!response.ok) {
+    onCabinetError("Помилка відправки команди паузи");
+  }
 });
 
 let circleProgress = document.getElementById("circle-progress");
@@ -60,8 +65,8 @@ let productCounter = document.getElementById("product-counter");
 let lbProductCounter = document.getElementById("lb-product-counter");
 
 function arraysEqual(a1,a2) {
-    /* WARNING: arrays must not contain {objects} or behavior may be undefined */
-    return JSON.stringify(a1)==JSON.stringify(a2);
+  /* WARNING: arrays must not contain {objects} or behavior may be undefined */
+  return JSON.stringify(a1)==JSON.stringify(a2);
 }
 
 function getErrorInfo(json) {
@@ -149,6 +154,16 @@ function updAvailableManualOperations(json){
   manualOperations = json["manualOperations"];
 }
 
+function updPauseButton(isPaused) {
+  let btnPause = document.getElementById("btnPause");
+  if (isPaused) {
+    btnPause.innerHTML = "▶ ПРОДОВЖИТИ";
+    btnPause.className = "btn btn-warning btn-lg blink"; // blink можна додати в CSS для уваги
+  } else {
+    btnPause.innerHTML = "⏸ ПАУЗА";
+    btnPause.className = "btn btn-danger btn-lg";
+  }
+}
 
 function updModeState(modeId) {
   if (modeId !== prevControlMode) {
@@ -156,34 +171,39 @@ function updModeState(modeId) {
     infoMessage = "";
     warningMessage = "";
 
+    const btnPause = document.getElementById("btnPause");
+
     switch (modeId) {
-    case "mode-auto":
-      btnModeAuto.checked = true;
-      btnStop.className = "btn btn-danger btn-lg";
-      lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
-      lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
-      lbProductCounter.className = "fs-5 fw-bold mb-0";
-      productCounter.className = "fs-5 fw-bold mb-0";
-      setOperationsActiveState(false);
-      break;
-    case "mode-once-cycle":
-      btnModeCycleOnce.checked = true;
-      setOperationsActiveState(false);
-      btnStop.className = "btn btn-danger btn-lg";
-      lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
-      lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
-      lbProductCounter.className = "fs-5 fw-bold mb-0 invisible";
-      productCounter.className = "fs-5 fw-bold mb-0 invisible";
-      break;
-    default:
-      // btnModeManual.checked = true;
-      btnStop.className = 'btn btn-danger btn-lg invisible';
-      lbModeAuto.className = "btn btn-outline-success btn-lg";
-      lbModeCycleOnce.className = "btn btn-outline-success btn-lg";
-      lbProductCounter.className = "fs-5 fw-bold mb-0 invisible";
-      productCounter.className = "fs-5 fw-bold mb-0 invisible";
-      setOperationsActiveState(true);
-      clearOperationsActiveState();
+      case "mode-auto":
+        btnModeAuto.checked = true;
+        btnPause.classList.remove("invisible");
+        btnPause.className = "btn btn-danger btn-lg";
+        lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
+        lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
+        lbProductCounter.className = "fs-5 fw-bold mb-0";
+        productCounter.className = "fs-5 fw-bold mb-0";
+        setOperationsActiveState(false);
+        break;
+      case "mode-once-cycle":
+        btnModeCycleOnce.checked = true;
+        btnPause.classList.remove("invisible");
+        setOperationsActiveState(false);
+        btnPause.className = "btn btn-danger btn-lg";
+        lbModeAuto.className = "btn btn-outline-success btn-lg invisible";
+        lbModeCycleOnce.className = "btn btn-outline-success btn-lg invisible";
+        lbProductCounter.className = "fs-5 fw-bold mb-0 invisible";
+        productCounter.className = "fs-5 fw-bold mb-0 invisible";
+        break;
+      default:
+        // btnModeManual.checked = true;
+        btnPause.classList.add("invisible");
+        btnPause.className = 'btn btn-danger btn-lg invisible';
+        lbModeAuto.className = "btn btn-outline-success btn-lg";
+        lbModeCycleOnce.className = "btn btn-outline-success btn-lg";
+        lbProductCounter.className = "fs-5 fw-bold mb-0 invisible";
+        productCounter.className = "fs-5 fw-bold mb-0 invisible";
+        setOperationsActiveState(true);
+        clearOperationsActiveState();
     }
     prevControlMode = modeId;
   }
@@ -197,27 +217,30 @@ function updOperationList(json) {
 
 async function getCabinetState() {
   //try {
-    let response = await fetch("/state");  
-    if (response.ok) {
-      let json = await response.json();
-      let modeId = json["modeId"];
-      updModeState(modeId);
-      setDegree(json);
-      if (modeId !== "mode-manual") {
-        updOperationList(json);
-        setOperationsActiveState(false);
-      }
-      else updAvailableManualOperations(json);
-      let errState = getErrorInfo(json);
-      if (errState !== "") {
-        onCabinetError(errState);
-        updModeState("mode-manual");
-      }
-      else if (json["modeState"].startsWith("warning-")) setWarningMessage(json["modeState"].split("-")[1]);
-      else setInfoMessage(json["modeDescription"]);
-    } else {
-      onCabinetError("Нема зв'язку з контролером!");
+  let response = await fetch("/state");  
+  if (response.ok) {
+    let json = await response.json();
+    let modeId = json["modeId"];
+    isPausedGlobal = json["isPaused"];
+    console.log("modeId "+modeId+" isPausedGlobal "+isPausedGlobal)
+    updPauseButton(isPausedGlobal);
+    updModeState(modeId);
+    setDegree(json);
+    if (modeId !== "mode-manual") {
+      updOperationList(json);
+      setOperationsActiveState(false);
     }
+    else updAvailableManualOperations(json);
+    let errState = getErrorInfo(json);
+    if (errState !== "") {
+      onCabinetError(errState);
+      updModeState("mode-manual");
+    }
+    else if (json["modeState"].startsWith("warning-")) setWarningMessage(json["modeState"].split("-")[1]);
+    else setInfoMessage(json["modeDescription"]);
+  } else {
+    onCabinetError("Нема зв'язку з контролером!");
+  }
   // } catch (TypeError) {
   //   onCabinetError("Нема зв'язку з контролером!");
   // }
@@ -225,10 +248,10 @@ async function getCabinetState() {
 
 function main() {
   function cabinetState() {
-        getCabinetState();
-        setTimeout(cabinetState, 70);
-    }
+    getCabinetState();
     setTimeout(cabinetState, 70);
+  }
+  setTimeout(cabinetState, 70);
 }
 
 if (stateArea !== null) main();
