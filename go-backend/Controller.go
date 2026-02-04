@@ -69,7 +69,6 @@ func (c *Controller) Run() {
 func (c *Controller) switchMode() {
     c.state.mu.RLock()
     mode := c.state.Mode
-    c.state.IsPaused = false
     c.state.mu.RUnlock()
 
     switch mode {
@@ -127,18 +126,25 @@ func (c *Controller) InvokeOperation(name string) error {
 
 // executeLogic послідовно виконує зареєстровані кроки сценарію
 func (c *Controller) executeLogic() {
+  // Якщо пауза натиснута після завершення попереднього повного циклу, 
+  // ми не даємо почати новий цикл steps.
+  //c.waitIfPaused()
   steps := []string{ // Визначаємо чергу операцій (порядок важливий)
     "sync_mirror",
     "op_safety_stop",
   }
   for _, opName := range steps {
-    c.state.mu.RLock()
-    p :=  c.state.IsPaused
-    c.state.mu.RUnlock()
-    if p {
-      fmt.Printf("⏸ Логіку призупинено перед кроком: %s\n", opName)
-      c.waitIfPaused()
-    }
+    c.waitIfPaused()
+    // Після того, як пауза була знята (наприклад, через перехід у ручний режим),
+		// перевіряємо, чи ми все ще маємо право виконувати цей цикл.
+		c.state.mu.RLock()
+		currentMode := c.state.Mode
+		c.state.mu.RUnlock()
+
+		if currentMode == ModeManual {
+			fmt.Printf("🛑 Цикл перервано: режим змінено на ручний перед кроком %s\n", opName)
+			return // Виходимо з функції, решта операцій не виконається
+		}
     if op, ok := c.operations[opName]; ok {
       op()
     } else {
