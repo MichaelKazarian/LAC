@@ -10,7 +10,7 @@ type OperationFunc func()
 type Controller struct {
 	hw    HardwareService
 	state *HardwareState
-  operations map[string]OperationFunc
+  operations map[string]OperationInfo
   lastOutput [32]uint16
   firstRun   bool
   opQueue    chan string
@@ -20,15 +20,9 @@ func NewController(hw HardwareService, state *HardwareState) *Controller {
     ctrl := &Controller{
       hw:    hw,
       state: state,
-      operations: make(map[string]OperationFunc),
+      operations: GetOperationsRegistry(),
       opQueue:    make(chan string, 10),
     }
-
-    // Реєструємо операції під зрозумілими іменами
-    ctrl.operations["sync_mirror"] = ctrl.opSyncMirror
-    ctrl.operations["op_safety_stop"]   = ctrl.opSafetyStop
-    // Сюди додаватимете нові "ручні" дії
-    
     return ctrl
 }
 
@@ -63,22 +57,19 @@ func (c *Controller) Run() {
   }
 }
 
-func (c *Controller) exec(name string) {
-  if op, ok := c.operations[name]; ok {
-    // ПІДСВІТКА УВІМК.
+func (c *Controller) exec(opId string) {
+  if op, ok := c.operations[opId]; ok {
     c.state.mu.Lock()
-    c.state.ActiveOperation = name
+    c.state.ActiveOperation = opId
     c.state.mu.Unlock()
 
-    op() // Виконання (тут горутина чекає завершення)
+    op.Action(c) // Виконання (тут горутина чекає завершення)
     // Виконуємо операцію (вона сама зробить syncHardware всередині)
-
-    // ПІДСВІТКА ВИМК.
     c.state.mu.Lock()
     c.state.ActiveOperation = ""
     c.state.mu.Unlock()
   } else {
-    fmt.Printf("⚠️ Операція %s не знайдена\n", name)
+    fmt.Printf("⚠️ Операція %s не знайдена\n", opId)
   }
 }
 
@@ -239,38 +230,4 @@ func (c *Controller) apply(fn func()) {
   fn()
   c.state.mu.Unlock()
   c.syncHardware()
-}
-
-// opSyncMirror - дзеркалювання з паузою
-func (c *Controller) opSyncMirror() {
-  fmt.Println("⏳ Початок синхронізації")
-    // 1. Скидання
-    c.apply(func() {
-        for i := 0; i < 32; i++ { c.state.Device20Out[i] = 0 }
-    })
-    // time.Sleep(100 * time.Millisecond)
-
-  // 2. Дзеркало
-  c.apply(func() {
-    for i := 0; i < 32; i++ {
-      if c.state.Device20Out[i] != c.state.Device10In[i] {
-        c.state.Device20Out[i] = c.state.Device10In[i]
-      }
-    }
-  })
-  time.Sleep(2 * time.Second)
-  // 3. Фінальне скидання
-  c.apply(func() {
-    for i := 0; i < 32; i++ { c.state.Device20Out[i] = 0 }
-  })
-  fmt.Println("Кінець синхронізації")
-}
-
-// opSafetyStop - перемикання з паузою
-func (c *Controller) opSafetyStop() {
-	fmt.Println("⏳ Початок операції (3с)...")
-  c.apply(func() { c.state.Device20Out[3] = 1})
-  time.Sleep(2 * time.Second)
-  c.apply(func() { c.state.Device20Out[3] = 0})
-  fmt.Println("✅ Стан змінено")
 }
