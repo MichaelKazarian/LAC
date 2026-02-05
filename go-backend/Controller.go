@@ -42,9 +42,7 @@ func (c *Controller) Run() {
 
     select {
 		case opName := <-c.opQueue:
-			if op, ok := c.operations[opName]; ok {
-				op() // Виконуємо операцію (вона сама зробить syncHardware всередині)
-			}
+			c.exec(opName)
 		default:
 			// Якщо черга порожня — виконуємо звичайний цикл
 		}
@@ -62,6 +60,25 @@ func (c *Controller) Run() {
     c.syncHardware()
 
     c.updateCycleTime(time.Since(start).Milliseconds())
+  }
+}
+
+func (c *Controller) exec(name string) {
+  if op, ok := c.operations[name]; ok {
+    // ПІДСВІТКА УВІМК.
+    c.state.mu.Lock()
+    c.state.ActiveOperation = name
+    c.state.mu.Unlock()
+
+    op() // Виконання (тут горутина чекає завершення)
+    // Виконуємо операцію (вона сама зробить syncHardware всередині)
+
+    // ПІДСВІТКА ВИМК.
+    c.state.mu.Lock()
+    c.state.ActiveOperation = ""
+    c.state.mu.Unlock()
+  } else {
+    fmt.Printf("⚠️ Операція %s не знайдена\n", name)
   }
 }
 
@@ -138,18 +155,14 @@ func (c *Controller) executeLogic() {
     // Після того, як пауза була знята (наприклад, через перехід у ручний режим),
 		// перевіряємо, чи ми все ще маємо право виконувати цей цикл.
 		c.state.mu.RLock()
-		currentMode := c.state.Mode
+		mode := c.state.Mode
 		c.state.mu.RUnlock()
 
-		if currentMode == ModeManual {
+		if mode == ModeManual {
 			fmt.Printf("🛑 Цикл перервано: режим змінено на ручний перед кроком %s\n", opName)
 			return // Виходимо з функції, решта операцій не виконається
 		}
-    if op, ok := c.operations[opName]; ok {
-      op()
-    } else {
-      fmt.Printf("⚠️ Операція %s не знайдена в реєстрі\n", opName)
-    }
+    c.exec(opName)
   }
 }
 

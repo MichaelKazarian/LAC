@@ -103,6 +103,7 @@ function setWarningMessage(msg) {
 
 function setOperationState(elementId, value) {
   var element = document.getElementById(elementId);
+  if (!element) return;
   var currentClass = element.className;
   if (value === 0) {
     element.className = "btn btn-primary btn-lg";
@@ -222,7 +223,8 @@ async function getCabinetState() {
     let json = await response.json();
     let modeId = json["modeId"];
     isPausedGlobal = json["isPaused"];
-    console.log("modeId "+modeId+" isPausedGlobal "+isPausedGlobal)
+    /* console.log("modeId "+modeId+" isPausedGlobal "+isPausedGlobal) */
+    console.log(json["ActiveOperation"]);
     updPauseButton(isPausedGlobal, modeId);
     updModeState(modeId);
     setDegree(json);

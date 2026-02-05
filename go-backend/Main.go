@@ -27,20 +27,15 @@ type HardwareState struct {
 	IsOnline20  bool      `json:"is_online_20"`
 	ReadCycleMs int64     `json:"read_cycle_ms"`
   IsPaused    bool      `json:"is_paused"`
+  ActiveOperation string      `json:"active_operation"`
 }
 
 // runModbusPoll запускає контролер із Modbus сервісом
 func runModbusPoll(state *HardwareState) {
-	// Створюємо низькорівневий Modbus сервіс
 	var hwService HardwareService = NewModbusService("/dev/ttyUSB0", 38400)
-
-	// Гарантуємо закриття порту
 	defer hwService.Close()
-
-	// Створюємо контролер, який керує логікою
 	controller := NewController(hwService, state)
-
-	// Запускаємо цикл (тут ми не використовуємо go, щоб defer hwService.Close() спрацював коректно)
+	// тут ми не використовуємо go, щоб defer hwService.Close() спрацював коректно
 	controller.Run()
 }
 
