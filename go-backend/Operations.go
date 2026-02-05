@@ -7,6 +7,7 @@ import (
 
 // OperationInfo описує метадані операції для UI та логіки
 type OperationInfo struct {
+  ID string
 	UserName string
 	Action   func(c *Controller)
 }
@@ -92,8 +93,6 @@ func GetOperationsRegistry() map[string]OperationInfo {
 		},
 	}
 }
-
-// --- Самі функції операцій (тепер не методи, а окремі функції) ---
 
 func opSyncMirror(c *Controller) {
 	fmt.Println("⏳ Початок синхронізації")
