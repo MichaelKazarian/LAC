@@ -28,6 +28,7 @@ type HardwareState struct {
 	ReadCycleMs int64     `json:"read_cycle_ms"`
   IsPaused    bool      `json:"is_paused"`
   ActiveOperation string      `json:"active_operation"`
+  OpsList     [][]string      `json:"operations_list"`
 }
 
 // runModbusPoll запускає контролер із Modbus сервісом

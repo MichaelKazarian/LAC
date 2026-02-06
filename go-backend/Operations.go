@@ -12,86 +12,95 @@ type OperationInfo struct {
 	Action   func(c *Controller)
 }
 
-// GetOperationsRegistry повертає карту всіх доступних операцій
-func GetOperationsRegistry() map[string]OperationInfo {
-	return map[string]OperationInfo{
-    "operation1": {
-			UserName: "Операція 1",
-			Action:   opItWorks,
-		},
-    "operation2": {
-			UserName: "Операція 3",
-			Action:   opItWorks,
-		},
-    "operation4": {
-			UserName: "Операція 4",
-			Action:   opItWorks,
-		},
-    "operation5": {
-			UserName: "Операція 5",
-			Action:   opItWorks,
-		},
-    "operation6": {
-			UserName: "Операція 6",
-			Action:   opItWorks,
-		},
-    "operation7": {
-			UserName: "Операція 7",
-			Action:   opItWorks,
-		},
-    "operation8": {
-			UserName: "Операція 8",
-			Action:   opItWorks,
-		},
-		"sync_mirror": {
-			UserName: "Дзеркалювання",
-			Action:   opSyncMirror,
-		},
-		"op_safety_stop": {
-			UserName: "Безпечна зупинка",
-			Action:   opSafetyStop,
-		},
-    "operation11": {
-			UserName: "Операція 11",
-			Action:   opItWorks,
-		},
-    "operation12": {
-			UserName: "Операція 12",
-			Action:   opItWorks,
-		},
-    "operation13": {
-			UserName: "Операція 13",
-			Action:   opItWorks,
-		},
-    "operation14": {
-			UserName: "Операція 14",
-			Action:   opItWorks,
-		},
-    "operation15": {
-			UserName: "Операція 15",
-			Action:   opItWorks,
-		},
-    "operation16": {
-			UserName: "Операція 16",
-			Action:   opItWorks,
-		},
-    "operation17": {
-			UserName: "Операція 17",
-			Action:   opItWorks,
-		},
-    "operation18": {
-			UserName: "Операція 18",
-			Action:   opItWorks,
-		},
-    "operation19": {
-			UserName: "Операція 19",
-			Action:   opItWorks,
-		},
-    "operation20": {
-			UserName: "Операція 20",
-			Action:   opItWorks,
-		},
+func GetOperationsList() [][]string {
+  opsList := GetOperationsRegistry()
+	list := make([][]string, 0, len(opsList))
+	for _, op := range opsList {
+		list = append(list, []string{op.ID, op.UserName})
 	}
+	return list
+}
+
+// GetOperationsRegistry повертає карту всіх доступних операцій
+func GetOperationsRegistry() []OperationInfo {
+	return []OperationInfo {
+    { ID:       "operation1",
+      UserName: "Операція 1",
+      Action:   opItWorks,
+    },
+      { ID:       "operation3",
+        UserName: "Операція 3",
+        Action:   opItWorks,
+      },
+      { ID:       "operation4",
+        UserName: "Операція 4",
+        Action:   opItWorks,
+      },
+      { ID:       "operation5",
+        UserName: "Операція 5",
+        Action:   opItWorks,
+      },
+      { ID:       "operation6",
+        UserName: "Операція 6",
+        Action:   opItWorks,
+      },
+      { ID:       "operation7",
+        UserName: "Операція 7",
+        Action:   opItWorks,
+      },
+      { ID:       "operation8",
+        UserName: "Операція 8",
+        Action:   opItWorks,
+      },
+      { ID:       "sync_mirror",
+        UserName: "Дзеркалювання",
+        Action:   opSyncMirror,
+      },
+      { ID:       "op_safety_stop",
+        UserName: "Безпечна зупинка",
+        Action:   opSafetyStop,
+      },
+      { ID:       "operation11",
+        UserName: "Операція 11",
+        Action:   opItWorks,
+      },
+      { ID:       "operation12",
+        UserName: "Операція 12",
+        Action:   opItWorks,
+      },
+      { ID:       "operation13",
+        UserName: "Операція 13",
+        Action:   opItWorks,
+      },
+      { ID:       "operation14",
+        UserName: "Операція 14",
+        Action:   opItWorks,
+      },
+      { ID:       "operation15",
+        UserName: "Операція 15",
+        Action:   opItWorks,
+      },
+      { ID:       "operation16",
+        UserName: "Операція 16",
+        Action:   opItWorks,
+      },
+      { ID:       "operation17",
+        UserName: "Операція 17",
+        Action:   opItWorks,
+      },
+      { ID:       "operation18",
+        UserName: "Операція 18",
+        Action:   opItWorks,
+      },
+      { ID:       "operation19",
+        UserName: "Операція 19",
+        Action:   opItWorks,
+      },
+      { ID:       "operation20",
+        UserName: "Операція 20",
+        Action:   opItWorks,
+      },
+    }
 }
 
 func opSyncMirror(c *Controller) {

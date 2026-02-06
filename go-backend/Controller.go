@@ -10,20 +10,28 @@ type OperationFunc func()
 type Controller struct {
 	hw    HardwareService
 	state *HardwareState
-  operations map[string]OperationInfo
+	opsMap      map[string]OperationInfo
   lastOutput [32]uint16
   firstRun   bool
   opQueue    chan string
 }
 
 func NewController(hw HardwareService, state *HardwareState) *Controller {
-    ctrl := &Controller{
-      hw:    hw,
-      state: state,
-      operations: GetOperationsRegistry(),
-      opQueue:    make(chan string, 10),
-    }
-    return ctrl
+	registry := GetOperationsRegistry()
+
+	// Швидкий доступ по ID
+	opMap := make(map[string]OperationInfo)
+	for _, op := range registry {
+		opMap[op.ID] = op
+	}
+  state.OpsList=GetOperationsList()
+
+	return &Controller{
+		hw:       hw,
+		state:    state,
+		opsMap:   opMap,
+		opQueue:  make(chan string, 10),
+	}
 }
 
 // Run — основний цикл контролера
@@ -58,19 +66,21 @@ func (c *Controller) Run() {
 }
 
 func (c *Controller) exec(opId string) {
-  if op, ok := c.operations[opId]; ok {
-    c.state.mu.Lock()
-    c.state.ActiveOperation = opId
-    c.state.mu.Unlock()
+	op, ok := c.opsMap[opId]
+	if !ok {
+		fmt.Printf("⚠️ Операція %s не знайдена\n", opId)
+		return
+	}
 
-    op.Action(c) // Виконання (тут горутина чекає завершення)
-    // Виконуємо операцію (вона сама зробить syncHardware всередині)
-    c.state.mu.Lock()
-    c.state.ActiveOperation = ""
-    c.state.mu.Unlock()
-  } else {
-    fmt.Printf("⚠️ Операція %s не знайдена\n", opId)
-  }
+	c.state.mu.Lock()
+	c.state.ActiveOperation = opId
+	c.state.mu.Unlock()
+
+	op.Action(c)
+
+	c.state.mu.Lock()
+	c.state.ActiveOperation = ""
+	c.state.mu.Unlock()
 }
 
 // processLogic визначає поведінку контролера залежно від поточного режиму
@@ -120,7 +130,7 @@ func (c *Controller) syncHardware() {
 }
 
 func (c *Controller) InvokeOperation(name string) error {
-  if _, exists := c.operations[name]; !exists {
+  if _, exists := c.opsMap[name]; !exists {
 		return fmt.Errorf("операція %s не знайдена", name)
 	}
   select {
@@ -137,11 +147,8 @@ func (c *Controller) executeLogic() {
   // Якщо пауза натиснута після завершення попереднього повного циклу, 
   // ми не даємо почати новий цикл steps.
   //c.waitIfPaused()
-  steps := []string{ // Визначаємо чергу операцій (порядок важливий)
-    "sync_mirror",
-    "op_safety_stop",
-  }
-  for _, opName := range steps {
+
+  for _, op := range c.state.OpsList {
     c.waitIfPaused()
     // Після того, як пауза була знята (наприклад, через перехід у ручний режим),
 		// перевіряємо, чи ми все ще маємо право виконувати цей цикл.
@@ -150,10 +157,10 @@ func (c *Controller) executeLogic() {
 		c.state.mu.RUnlock()
 
 		if mode == ModeManual {
-			fmt.Printf("🛑 Цикл перервано: режим змінено на ручний перед кроком %s\n", opName)
+			fmt.Printf("🛑 Цикл перервано: режим змінено на ручний перед кроком %s\n", op[0])
 			return // Виходимо з функції, решта операцій не виконається
 		}
-    c.exec(opName)
+    c.exec(op[0])
   }
 }
 
