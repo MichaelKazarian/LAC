@@ -53,24 +53,9 @@
         </div>
       </div>
 
-      <div class="row">
-        <div class="col-sm-6">
-          {{ range $i := (seq 1 8) }}
-          <div class="row mx-1 my-1">
-            <input type="radio" class="btn-check" name="radio-operation" id="operation{{ $i }}" autocomplete="off">
-            <label class="btn btn-outline-primary btn-lg" for="operation{{ $i }}" id="lRadio{{ $i }}">Операція {{ $i }}</label>
-          </div>
-          {{ end }}
-        </div>
-
-        <div class="col-sm-6">
-          {{ range $i := (seq 9 18) }}
-          <div class="row mx-1 my-1">
-            <input type="radio" class="btn-check" name="radio-operation" id="operation{{ $i }}" autocomplete="off">
-            <label class="btn btn-outline-primary btn-lg" for="operation{{ $i }}" id="lRadio{{ $i }}">Операція {{ $i }}</label>
-          </div>
-          {{ end }}
-        </div>
+      <div class="row" id="operations-container">
+        <div class="col-sm-6" id="ops-col-left"></div>
+        <div class="col-sm-6" id="ops-col-right"></div>
       </div>
 
       <div id="state-area" class="alert alert-light text-center" role="alert">

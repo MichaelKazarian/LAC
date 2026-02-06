@@ -1,32 +1,12 @@
 let prevControlMode;
+let isOperationsRendered = false;
 let isPausedGlobal = false;
 let lastPausedState = null;
 let errorMessage = "";
 let infoMessage = "";
 let warningMessage = "";
 let manualOperations = [];
-
-let btn9 = document.getElementById("operation9");
-btn9.addEventListener('click', async function () {
-  let response = await fetch('/radio?id=sync_mirror',
-                             {method: 'GET'});
-});
-
-let btn10 = document.getElementById("operation10");
-btn10.addEventListener('click', async function () {
-  // Відправляємо назву операції, яку ми зареєстрували в Controller
-  let response = await fetch('/radio?id=op_safety_stop', {method: 'GET'});
-  
-  if (!response.ok) {
-    console.error("Помилка виконання op_safety_stop");
-  }
-});
-
-let btn11 = document.getElementById("operation11");
-btn11.addEventListener('click', async function () {
-  let response = await fetch('/radio?id=11',
-                             {method: 'GET'});
-});
+let lastActiveId = null;
 
 let btnManual = document.getElementById("mode-manual");
 btnManual.addEventListener('click', async function () {
@@ -101,6 +81,59 @@ function setWarningMessage(msg) {
   }
 }
 
+function renderOperations(operations) {
+  const leftCol = document.getElementById("ops-col-left");
+  const rightCol = document.getElementById("ops-col-right");
+  
+  if (!leftCol || !rightCol || !operations) return;
+
+  // Розраховуємо точку поділу (якщо 19, то limit = 10)
+  const limit = Math.ceil(operations.length / 2);
+  
+  let leftHtml = "";
+  let rightHtml = "";
+
+  operations.forEach((op, index) => {
+    const id = op[0];   // Ключ/ID операції
+    const name = op[1]; // Те, що в Go ми прописали як UserName
+    
+    const html = `
+      <div class="row mx-1 my-1">
+                <input type="radio" class="btn-check" name="radio-operation" id="${id}" autocomplete="off">
+                <label class="btn btn-outline-primary btn-lg" for="${id}" id="lRadio_${id}">
+                  ${name}
+                </label>
+      </div>`;
+
+    if (index < limit) {
+      leftHtml += html;
+    } else {
+      rightHtml += html;
+    }
+  });
+
+  // Оновлюємо DOM
+  leftCol.innerHTML = leftHtml;
+  rightCol.innerHTML = rightHtml;
+
+  // Прив'язка кліків
+  operations.forEach((op) => {
+    const id = op[0];
+    const el = document.getElementById(id);
+    if (el) {
+      el.onclick = () => invokeOperation(id);
+    }
+  });
+}
+
+async function invokeOperation(id) {
+  console.log(`Sending operation: ${id}`);
+  let response = await fetch(`/radio?id=${id}`, { method: 'GET' });
+  if (!response.ok) {
+    onCabinetError(`Помилка виконання: ${id}`);
+  }
+}
+
 function setOperationState(elementId, value) {
   var element = document.getElementById(elementId);
   if (!element) return;
@@ -127,33 +160,39 @@ function setOperationsActiveState(state) {
     let r = operations[i];
     r.disabled = !state;
   }
-  if (!state) {
-    clearOperationsActiveState();
-  }
+  /* if (!state) {
+   *   clearOperationsActiveState();
+   * } */
 }
 
 function clearOperationsActiveState() {
   let operations = document.getElementsByName("radio-operation");
-  for (let i=0; i<operations.length; i++) {
-    let r = operations[i];
+  operations.forEach(r => {
     r.checked = false;
-    let n = `lRadio${i+1}`;
-    let l = document.getElementById(n);
-    l.className = "btn btn-outline-secondary btn-lg";
-  }
+    /* r.disabled = false; // або true, залежно від потреби скидання
+     *  */
+    let l = document.querySelector(`label[for="${r.id}"]`);
+    if (l) {
+      l.className = "btn btn-outline-secondary btn-lg";
+    }
+  });
 }
 
-function updAvailableManualOperations(json){
-  if (arraysEqual(manualOperations, json["manualOperations"])) return;
+function updAvailableManualOperations(json) {
+  const newOps = json["manualOperations"];
+  if (arraysEqual(manualOperations, newOps)) return;
   setOperationsActiveState(false);
-  for (let operation in json["manualOperations"]) {
-    let e = json["manualOperations"][operation].replace("operation", "lRadio");
-    let element = document.getElementById(e);
-    element.className = "btn btn-outline-primary btn-lg fw-bold";
-    element = document.getElementById(json["manualOperations"][operation]);
-    element.disabled = false;
-  }
-  manualOperations = json["manualOperations"];
+  newOps.forEach(opId => { // 2. Вмикаємо лише ті, що дозволені зараз
+    const radio = document.getElementById(opId);
+    const label = document.querySelector(`label[for="${opId}"]`);
+    if (radio && label) {
+      radio.disabled = false;
+      label.className = "btn btn-outline-primary btn-lg fw-bold";
+    } else {
+      console.warn(`⚠️ Не вдалося знайти елементи для операції: ${opId}`);
+    }
+  });
+  manualOperations = newOps;
 }
 
 function updPauseButton(isPaused, modeId) {
@@ -210,29 +249,29 @@ function updModeState(modeId) {
   }
 }
 
-function updOperationList(json) {
-  setOperationState("lRadio1", json["operation1"]);
-  setOperationState("lRadio2", json["operation2"]);
-  setOperationState("lRadio3", json["operation3"]);
-}
-
 async function getCabinetState() {
   //try {
   let response = await fetch("/state");  
   if (response.ok) {
     let json = await response.json();
+    // ПЕРЕВІРКА ТА РЕНДЕР ОПЕРАЦІЙ (Тільки один раз!)
+    if (!isOperationsRendered && json["OperationsList"]) {
+      renderOperations(json["OperationsList"]);
+      isOperationsRendered = true;
+    }
     let modeId = json["modeId"];
     isPausedGlobal = json["isPaused"];
     /* console.log("modeId "+modeId+" isPausedGlobal "+isPausedGlobal) */
-    console.log(json["ActiveOperation"]);
     updPauseButton(isPausedGlobal, modeId);
     updModeState(modeId);
     setDegree(json);
-    if (modeId !== "mode-manual") {
-      updOperationList(json);
+    if (modeId === "mode-manual") {
+      updAvailableManualOperations(json);
+    } else {
       setOperationsActiveState(false);
+      manualOperations = []; 
     }
-    else updAvailableManualOperations(json);
+    updActiveOperation(json["ActiveOperation"]);
     let errState = getErrorInfo(json);
     if (errState !== "") {
       onCabinetError(errState);
@@ -246,6 +285,39 @@ async function getCabinetState() {
   // } catch (TypeError) {
   //   onCabinetError("Нема зв'язку з контролером!");
   // }
+}
+
+function updActiveOperation(activeId) {
+  // Якщо ID не змінився, нічого не робимо — виходимо миттєво
+  if (activeId === lastActiveId) return;
+
+  console.log(`🔄 Зміна активної операції: ${lastActiveId} -> ${activeId}`);
+
+  // 1. Скидаємо попередню активну кнопку (якщо вона була)
+  if (lastActiveId) {
+    let lastRadio = document.getElementById(lastActiveId);
+    let lastLabel = document.querySelector(`label[for="${lastActiveId}"]`);
+    if (lastLabel) {
+      lastLabel.classList.remove("btn-warning", "blink");
+      // Повертаємо початковий стан залежно від того, чи дозволена вона
+      const isManual = manualOperations.includes(lastActiveId);
+      lastLabel.className = isManual ? "btn btn-outline-primary btn-lg fw-bold" : "btn btn-outline-secondary btn-lg";
+    }
+  }
+
+  // 2. Підсвічуємо нову активну кнопку
+  if (activeId && activeId !== "") {
+    let currentRadio = document.getElementById(activeId);
+    let currentLabel = document.querySelector(`label[for="${activeId}"]`);
+    if (currentLabel) {
+      currentLabel.classList.remove("btn-outline-primary", "btn-outline-secondary");
+      currentLabel.classList.add("btn-warning", "fw-bold", "blink");
+      if (currentRadio) currentRadio.checked = true;
+    }
+  }
+
+  // Запам'ятовуємо новий стан
+  lastActiveId = activeId;
 }
 
 function main() {
