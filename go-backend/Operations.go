@@ -103,6 +103,30 @@ func GetOperationsRegistry() []OperationInfo {
     }
 }
 
+// GetAllowedManualOps визначає, які операції доступні для натискання в ручному режимі
+func GetAllowedManualOps(state *HardwareState) []string {
+  if state.ActiveOperation != "" {
+        return []string{"op_safety_stop"}
+  }
+
+	allowed := make([]string, 0)
+	val := state.SensorValue
+
+	// Логіка зон (можна винести в константи)
+	if val > 100 && val < 500 {
+		allowed = append(allowed, "sync_mirror")
+	}
+	// Ці операції доступні завжди
+	allowed = append(allowed, "op_safety_stop")
+
+	// Можна додати ще умови
+	if state.IsOnline20 {
+		// allowed = append(allowed, "some_network_op")
+	}
+
+	return allowed
+}
+
 func opSyncMirror(c *Controller) {
 	fmt.Println("⏳ Початок синхронізації")
 	c.apply(func() {

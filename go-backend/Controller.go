@@ -238,3 +238,13 @@ func (c *Controller) apply(fn func()) {
   c.state.mu.Unlock()
   c.syncHardware()
 }
+
+func (c *Controller) GetAllowedManualOps() []string {
+  allowed := []string{}
+  if c.state.SensorValue > 100 && c.state.SensorValue < 500 {
+    allowed = append(allowed, c.opsMap["sync_mirror"].ID)
+  }
+  // Зупинка зазвичай дозволена завжди
+  allowed = append(allowed, c.opsMap["op_safety_stop"].ID)
+  return allowed
+}

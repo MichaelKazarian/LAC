@@ -160,9 +160,6 @@ function setOperationsActiveState(state) {
     let r = operations[i];
     r.disabled = !state;
   }
-  /* if (!state) {
-   *   clearOperationsActiveState();
-   * } */
 }
 
 function clearOperationsActiveState() {
@@ -180,18 +177,31 @@ function clearOperationsActiveState() {
 
 function updAvailableManualOperations(json) {
   const newOps = json["manualOperations"];
+  // Якщо список дозволених операцій не змінився — виходимо
   if (arraysEqual(manualOperations, newOps)) return;
-  setOperationsActiveState(false);
-  newOps.forEach(opId => { // 2. Вмикаємо лише ті, що дозволені зараз
+
+  // 1. Скидаємо всі кнопки операцій до "вимкненого" стану (сірі)
+  let allRadios = document.getElementsByName("radio-operation");
+  allRadios.forEach(r => {
+    r.disabled = true;
+    let l = document.querySelector(`label[for="${r.id}"]`);
+    if (l) {
+      // Робимо кнопку сірою
+      l.className = "btn btn-outline-secondary btn-lg";
+    }
+  });
+
+  // 2. Вмикаємо лише ті, що дозволені бекендом за кутом/станом
+  newOps.forEach(opId => {
     const radio = document.getElementById(opId);
     const label = document.querySelector(`label[for="${opId}"]`);
     if (radio && label) {
       radio.disabled = false;
+      // Робимо кнопку синьою та жирною
       label.className = "btn btn-outline-primary btn-lg fw-bold";
-    } else {
-      console.warn(`⚠️ Не вдалося знайти елементи для операції: ${opId}`);
     }
   });
+
   manualOperations = newOps;
 }
 
@@ -290,19 +300,15 @@ async function getCabinetState() {
 function updActiveOperation(activeId) {
   // Якщо ID не змінився, нічого не робимо — виходимо миттєво
   if (activeId === lastActiveId) return;
-
   console.log(`🔄 Зміна активної операції: ${lastActiveId} -> ${activeId}`);
-
   // 1. Скидаємо попередню активну кнопку (якщо вона була)
   if (lastActiveId) {
-    let lastRadio = document.getElementById(lastActiveId);
     let lastLabel = document.querySelector(`label[for="${lastActiveId}"]`);
     if (lastLabel) {
       lastLabel.classList.remove("btn-warning", "blink");
-      // Повертаємо початковий стан залежно від того, чи дозволена вона
-      const isManual = manualOperations.includes(lastActiveId);
-      lastLabel.className = isManual ? "btn btn-outline-primary btn-lg fw-bold" : "btn btn-outline-secondary btn-lg";
+      lastLabel.classList.add("btn-outline-primary");
     }
+    // Тут не було скидання r.checked = false, тому кнопка залишалася "вибраною"
   }
 
   // 2. Підсвічуємо нову активну кнопку
@@ -315,10 +321,47 @@ function updActiveOperation(activeId) {
       if (currentRadio) currentRadio.checked = true;
     }
   }
-
   // Запам'ятовуємо новий стан
   lastActiveId = activeId;
 }
+
+// ВАРІАНТ з "відтисканям" кнопки
+/* function updActiveOperation(activeId) {
+ *   if (activeId === lastActiveId) return;
+ * 
+ *   console.log(`🔄 Стан операцій змінено: ${lastActiveId} -> ${activeId}`);
+ * 
+ *   // 1. Скидаємо попередню активну кнопку
+ *   if (lastActiveId) {
+ *     let lastRadio = document.getElementById(lastActiveId);
+ *     let lastLabel = document.querySelector(`label[for="${lastActiveId}"]`);
+ *     
+ *     if (lastLabel) {
+ *       lastLabel.classList.remove("btn-warning", "blink");
+ *       // ПЕРЕКОНУЄМОСЯ, що вона повертається до правильного кольору
+ *       if (manualOperations.includes(lastActiveId)) {
+ *         lastLabel.className = "btn btn-outline-primary btn-lg fw-bold";
+ *       } else {
+ *         lastLabel.className = "btn btn-outline-secondary btn-lg";
+ *       }
+ *     }
+ *     // ВАЖЛИВО: "відтискаємо" кнопку
+ *     if (lastRadio) lastRadio.checked = false;
+ *   }
+ * 
+ *   // 2. Підсвічуємо нову активну кнопку (якщо вона є)
+ *   if (activeId && activeId !== "") {
+ *     let currentRadio = document.getElementById(activeId);
+ *     let currentLabel = document.querySelector(`label[for="${activeId}"]`);
+ *     if (currentLabel) {
+ *       currentLabel.classList.remove("btn-outline-primary", "btn-outline-secondary", "btn-outline-secondary");
+ *       currentLabel.classList.add("btn-warning", "fw-bold", "blink");
+ *       if (currentRadio) currentRadio.checked = true;
+ *     }
+ *   }
+ * 
+ *   lastActiveId = activeId;
+ * } */
 
 function main() {
   function cabinetState() {
