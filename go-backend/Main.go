@@ -16,19 +16,20 @@ const (
 
 // HardwareState - спільне сховище даних
 type HardwareState struct {
-	mu          sync.RWMutex
-	SensorValue uint16    `json:"sensor_value"`
-	Device10In  [32]uint16 `json:"device10_in"`
-  Device20Out [32]uint16 `json:"device20_out"`
-  Mode        ControlMode `json:"mode"`
-	LastUpdate  time.Time `json:"last_update"`
-	IsOnline3   bool      `json:"is_online_3"`
-	IsOnline10  bool      `json:"is_online_10"`
-	IsOnline20  bool      `json:"is_online_20"`
-	ReadCycleMs int64     `json:"read_cycle_ms"`
-  IsPaused    bool      `json:"is_paused"`
-  ActiveOperation string      `json:"active_operation"`
-  OpsList     [][]string      `json:"operations_list"`
+	mu               sync.RWMutex
+	SensorValue      uint16        `json:"sensor_value"`
+	Device10In       [32]uint16    `json:"device10_in"`
+  Device20Out      [32]uint16    `json:"device20_out"`
+  Mode             ControlMode   `json:"mode"`
+	LastUpdate       time.Time     `json:"last_update"`
+	IsOnline3        bool          `json:"is_online_3"`
+	IsOnline10       bool          `json:"is_online_10"`
+	IsOnline20       bool          `json:"is_online_20"`
+	ReadCycleMs      int64         `json:"read_cycle_ms"`
+  IsPaused         bool          `json:"is_paused"`
+  ActiveOperation  string        `json:"active_operation"`
+  OpsList          [][]string    `json:"operations_list"`
+  Counter          int           `json:"counter"`
 }
 
 // runModbusPoll запускає контролер із Modbus сервісом

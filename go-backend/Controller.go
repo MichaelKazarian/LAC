@@ -14,6 +14,7 @@ type Controller struct {
   lastOutput [32]uint16
   firstRun   bool
   opQueue    chan string
+  needsCounterReset bool
 }
 
 func NewController(hw HardwareService, state *HardwareState) *Controller {
@@ -147,6 +148,12 @@ func (c *Controller) executeLogic() {
   // Якщо пауза натиснута після завершення попереднього повного циклу, 
   // ми не даємо почати новий цикл steps.
   //c.waitIfPaused()
+  if c.needsCounterReset { //Перевірка на необхідність скидання лічильника
+    c.state.mu.Lock()
+    c.state.Counter = 0
+    c.state.mu.Unlock()
+    c.needsCounterReset = false
+  }
 
   for _, op := range c.state.OpsList {
     c.waitIfPaused()
@@ -162,18 +169,25 @@ func (c *Controller) executeLogic() {
 		}
     c.exec(op[0])
   }
+  c.state.mu.Lock()
+  c.state.Counter++
+  c.state.mu.Unlock()
 }
 
 // SetMode безпечно оновлює режим роботи контролера
 func (c *Controller) SetMode(mode ControlMode) {
     c.state.mu.Lock()
-    defer c.state.mu.Unlock()
+    // Якщо поточний режим був ручний, а новий - автоматичний/одиночний
+    if c.state.Mode == ModeManual && mode != ModeManual {
+        c.needsCounterReset = true
+    }
     c.state.IsPaused = false
+    c.state.Mode = mode
+    c.state.mu.Unlock()
     // Якщо ми переходимо в ручний режим, можна відразу скинути певні виходи, якщо треба
     if mode == ModeManual {
         fmt.Println("🎛 Контролер переведено в РУЧНИЙ режим")
     }
-    c.state.Mode = mode
     fmt.Printf("⚙️ Режим змінено на: %v\n", mode)
 }
 

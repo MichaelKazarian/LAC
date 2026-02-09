@@ -122,7 +122,7 @@ func (ws *WebServer) handleState(w http.ResponseWriter, r *http.Request) {
     "isPaused":        ws.state.IsPaused,
 		"modeDescription": "Система в нормі",
 		"operationState":  "idle",
-		"quantity":        0,
+		"counter":         ws.state.Counter,
     "OperationsList":  ws.state.OpsList,
     "ActiveOperation":  ws.state.ActiveOperation,
 		"degree":          int(ws.state.SensorValue) % 720,

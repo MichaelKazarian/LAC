@@ -151,7 +151,9 @@ function setOperationState(elementId, value) {
 
 function setDegree(json) {
   circleProgress.value = parseInt(json["degree"]/2);
-  productCounter.innerHTML = json["quantity"];
+  if (productCounter) {
+    productCounter.innerHTML = json["counter"] || 0;
+  }
 }
 
 function setOperationsActiveState(state) {
