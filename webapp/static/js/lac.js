@@ -1,3 +1,4 @@
+let isConnected = true;
 let prevControlMode;
 let isOperationsRendered = false;
 let isPausedGlobal = false;
@@ -262,10 +263,18 @@ function updModeState(modeId) {
 }
 
 async function getCabinetState() {
-  //try {
+  try {
   let response = await fetch("/state");  
   if (response.ok) {
     let json = await response.json();
+    if (!isConnected) {
+      // TODO в окрему функцію
+      isConnected = true;
+      errorMessage = ""; // Скидаємо стару помилку зв'язку
+      infoMessage = "";
+      warningMessage = "";
+      console.log("Зв'язок відновлено");
+    }
     // ПЕРЕВІРКА ТА РЕНДЕР ОПЕРАЦІЙ (Тільки один раз!)
     if (!isOperationsRendered && json["OperationsList"]) {
       renderOperations(json["OperationsList"]);
@@ -292,11 +301,16 @@ async function getCabinetState() {
     else if (json["modeState"].startsWith("warning-")) setWarningMessage(json["modeState"].split("-")[1]);
     else setInfoMessage(json["modeDescription"]);
   } else {
-    onCabinetError("Нема зв'язку з контролером!");
+    isConnected = false;
+    onCabinetError(`Помилка сервера: ${response.status}`);
   }
-  // } catch (TypeError) {
-  //   onCabinetError("Нема зв'язку з контролером!");
-  // }
+  } catch (TypeError) {
+    if (isConnected) { // Фізична відсутність зв'язку (Network Error)
+      isConnected = false;
+      onCabinetError("Зв'язок з контролером відсутній!");
+      setOperationsActiveState(false); // Блокуємо все від гріха подалі
+    }
+  }
 }
 
 function updActiveOperation(activeId) {
@@ -323,8 +337,7 @@ function updActiveOperation(activeId) {
       if (currentRadio) currentRadio.checked = true;
     }
   }
-  // Запам'ятовуємо новий стан
-  lastActiveId = activeId;
+  lastActiveId = activeId; // Запам'ятовуємо новий стан
 }
 
 // ВАРІАНТ з "відтисканям" кнопки
