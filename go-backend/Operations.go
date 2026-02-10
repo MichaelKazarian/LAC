@@ -155,6 +155,7 @@ func EmergencyStop(c *Controller) {
 func opSafetyStart(c *Controller) {
   c.state.mu.Lock()
   c.state.IsSafetyLocked = false
+  c.state.ActiveOperation = ""
   c.state.mu.Unlock()
   fmt.Println("✅ Блокування знято. Система готова до роботи.")
 }

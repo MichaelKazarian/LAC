@@ -189,21 +189,17 @@ func (ws *WebServer) handleModeSet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ws *WebServer) handleEmergencyStop(w http.ResponseWriter, r *http.Request) {
-  ws.state.mu.Lock() // Використовуємо Lock, бо будемо змінювати дані
-  isLocked := ws.state.IsSafetyLocked
-  if isLocked {
-    // --- ЛОГІКА СТАРТУ (Розблокування) ---
-    ws.state.IsSafetyLocked = false // 1. Знімаємо блок!
-    ws.state.ActiveOperation = ""   // 2. Про всяк випадок чистимо статус
-    ws.state.Mode = ModeManual      // 3. Переводимо в ручний
-    fmt.Println("🔓 [Web] Система розблокована користувачем")
-    ws.state.mu.Unlock()
-  } else {
-    // --- ЛОГІКА СТОПУ ---
-    ws.state.mu.Unlock() // Звільняємо перед викликом функції, бо там свій Lock
-    EmergencyStop(ws.ctrl)
-  }
-  w.WriteHeader(http.StatusOK)
+    ws.state.mu.RLock()
+    isLocked := ws.state.IsSafetyLocked
+    ws.state.mu.RUnlock()
+    if isLocked {
+         log.Println("[Web] Запит на розблокування (Safety Start)")
+        opSafetyStart(ws.ctrl) 
+    } else {
+        log.Println("[Web] EMERGENCY STOP!")
+        EmergencyStop(ws.ctrl) 
+    }    
+    w.WriteHeader(http.StatusOK)
 }
 
 // handlePause обробляє зупинку/продовження логіки
