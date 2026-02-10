@@ -78,6 +78,7 @@ func (ws *WebServer) setupRoutes() {
 	ws.mux.HandleFunc("/radio", ws.handleManualOp)
 	ws.mux.HandleFunc("/modeset", ws.handleModeSet)
 	ws.mux.HandleFunc("/pause", ws.handlePause)
+  ws.mux.HandleFunc("/safety", ws.handleEmergencyStop)
 }
 
 // handleIndex обробляє головну сторінку
@@ -120,6 +121,7 @@ func (ws *WebServer) handleState(w http.ResponseWriter, r *http.Request) {
 		"modeId":          modeStr,
 		"modeState":       "ok",
     "isPaused":        ws.state.IsPaused,
+    "isLocked":         ws.state.IsSafetyLocked,
 		"modeDescription": "Система в нормі",
 		"operationState":  "idle",
 		"counter":         ws.state.Counter,
@@ -184,6 +186,24 @@ func (ws *WebServer) handleModeSet(w http.ResponseWriter, r *http.Request) {
     // Викликаємо метод контролера для безпечної зміни режиму
     ws.ctrl.SetMode(targetMode)
     w.WriteHeader(http.StatusOK)
+}
+
+func (ws *WebServer) handleEmergencyStop(w http.ResponseWriter, r *http.Request) {
+  ws.state.mu.Lock() // Використовуємо Lock, бо будемо змінювати дані
+  isLocked := ws.state.IsSafetyLocked
+  if isLocked {
+    // --- ЛОГІКА СТАРТУ (Розблокування) ---
+    ws.state.IsSafetyLocked = false // 1. Знімаємо блок!
+    ws.state.ActiveOperation = ""   // 2. Про всяк випадок чистимо статус
+    ws.state.Mode = ModeManual      // 3. Переводимо в ручний
+    fmt.Println("🔓 [Web] Система розблокована користувачем")
+    ws.state.mu.Unlock()
+  } else {
+    // --- ЛОГІКА СТОПУ ---
+    ws.state.mu.Unlock() // Звільняємо перед викликом функції, бо там свій Lock
+    EmergencyStop(ws.ctrl)
+  }
+  w.WriteHeader(http.StatusOK)
 }
 
 // handlePause обробляє зупинку/продовження логіки

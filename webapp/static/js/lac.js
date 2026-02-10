@@ -39,6 +39,11 @@ btnPause.addEventListener('click', async function () {
   }
 });
 
+let btnSafety = document.getElementById("btnSafety");
+btnSafety.addEventListener('click', async function () {
+  await fetch('/safety', { method: 'GET' });
+});
+
 let circleProgress = document.getElementById("circle-progress");
 circleProgress.textFormat = "value";
 
@@ -283,6 +288,7 @@ async function getCabinetState() {
     let modeId = json["modeId"];
     isPausedGlobal = json["isPaused"];
     /* console.log("modeId "+modeId+" isPausedGlobal "+isPausedGlobal) */
+    updSafetyButton(json);
     updPauseButton(isPausedGlobal, modeId);
     updModeState(modeId);
     setDegree(json);
@@ -377,6 +383,30 @@ function updActiveOperation(activeId) {
  * 
  *   lastActiveId = activeId;
  * } */
+
+function updSafetyButton(json) {
+  const btn = document.getElementById("btnSafety");
+  const isLocked = json["isLocked"];
+  const activeOp = json["ActiveOperation"];
+  const mode = json["modeId"];
+
+  if (isLocked) {
+    btn.innerHTML = "СТАРТ";
+    btn.className = "btn btn-success btn-lg w-100 shadow-sm";
+  } else {
+    btn.innerHTML = "СТОП";
+    btn.className = "btn btn-danger btn-lg w-100 shadow-sm";
+  }
+  // Показуємо кнопку лише якщо:
+  // 1. Система заблокована СТОПом
+  // 2. Йде будь-яка операція (ActiveOperation не пуста)
+  // 3. Ми НЕ в ручному режимі (тобто в Авто або Одиночному)
+  if (isLocked || activeOp !== "" || mode !== "mode-manual") {
+    btn.classList.remove("invisible");
+  } else {
+    btn.classList.add("invisible");
+  }
+}
 
 function main() {
   function cabinetState() {

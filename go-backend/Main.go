@@ -25,6 +25,7 @@ type HardwareState struct {
 	IsOnline3        bool          `json:"is_online_3"`
 	IsOnline10       bool          `json:"is_online_10"`
 	IsOnline20       bool          `json:"is_online_20"`
+  IsSafetyLocked   bool          `json:"is_safety_locked"`
 	ReadCycleMs      int64         `json:"read_cycle_ms"`
   IsPaused         bool          `json:"is_paused"`
   ActiveOperation  string        `json:"active_operation"`

@@ -105,13 +105,20 @@ func (c *Controller) switchMode() {
     }
 }
 
-// syncHardware перевіряє зміни в стані та записує їх у залізо
+// Перевіряє зміни в стані та записує їх у залізо
 func (c *Controller) syncHardware() {
   // 1. Копіюємо стан під RLock
   c.state.mu.RLock()
   current := c.state.Device20Out
+  locked := c.state.IsSafetyLocked
   c.state.mu.RUnlock()
 
+  // Якщо система заблокована, ми ігноруємо будь-які спроби
+  // автоматичних або "доживаючих" операцій щось записати.
+  if locked {
+    // fmt.Println("🚫 Запис заблоковано: активний Safety Lock")
+    return
+  }
   // 2. Перевіряємо наявність змін
   if current == c.lastOutput && !c.firstRun {
     return // Нічого не змінилося, виходимо
@@ -248,6 +255,10 @@ func (c *Controller) waitIfPaused() {
 
 func (c *Controller) apply(fn func()) {
   c.state.mu.Lock()
+  if c.state.IsSafetyLocked { // Якщо вже заблоковано, навіть не виконуємо логіку функції
+        c.state.mu.Unlock()
+        return
+    }
   fn()
   c.state.mu.Unlock()
   c.syncHardware()
