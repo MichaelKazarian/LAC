@@ -12,6 +12,35 @@ let manualOperations = [];
 let lastActiveId = null;
 let lastError = "";
 
+let systemMessage = {
+  type: null, // "error", "warning", "info"
+  text: ""
+};
+
+function setMessage(type, text) {
+  if (systemMessage.type === type && systemMessage.text === text) return;
+
+  systemMessage.type = type;
+  systemMessage.text = text;
+
+  if (!stateArea) return;
+  stateArea.innerHTML = text;
+  switch (type) {
+    case "error":
+      stateArea.className = "alert alert-danger";
+      break;
+    case "warning":
+      stateArea.className = "alert alert-warning";
+      break;
+    case "info":
+      stateArea.className = "alert alert-info";
+      break;
+    default:
+      stateArea.className = "";
+      stateArea.innerHTML = "";
+  }
+}
+
 let btnManual = document.getElementById("mode-manual");
 btnManual.addEventListener('click', async function () {
   let response = await fetch('/modeset?id=mode-manual',
@@ -35,10 +64,9 @@ btnModeAuto.addEventListener('click', async function () {
 let btnPause = document.getElementById("btnPause");
 btnPause.addEventListener('click', async function () {
   let targetState = !isPausedGlobal; 
-  setInfoMessage(`Sending pause command: ${targetState}`);
   let response = await fetch(`/pause?set=${targetState}`, { method: 'GET' });
   if (!response.ok) {
-    onCabinetError("Помилка відправки команди паузи");
+    setMessage("error", "Помилка відправки команди паузи");
   }
 });
 
@@ -63,31 +91,8 @@ function arraysEqual(a1,a2) {
 function getErrorInfo(json) {
   if (json["operationState"].startsWith("error")) return json["operationState"];
   if (json["modeState"].startsWith("error")) return json["modeState"];
+  if (json["isLocked"]) return json["stopReason"];
   return "";
-}
-
-function onCabinetError(error) {
-  if (errorMessage !== error) {
-    stateArea.className = "alert alert-danger";
-    stateArea.innerHTML = error;
-    errorMessage = error;
-  }
-};
-
-function setInfoMessage(msg) {
-  if (infoMessage !== msg) {
-    stateArea.className = "alert alert-info";
-    stateArea.innerHTML = msg;
-    infoMessage = msg;
-  }
-}
-
-function setWarningMessage(msg) {
-  if (warningMessage !== msg) {
-    stateArea.className = "alert alert-warning";
-    stateArea.innerHTML = `${infoMessage}, ${msg}`;
-    warningMessage = msg;
-  }
 }
 
 function renderOperations(operations) {
@@ -139,7 +144,7 @@ async function invokeOperation(id) {
   console.log(`Sending operation: ${id}`);
   let response = await fetch(`/radio?id=${id}`, { method: 'GET' });
   if (!response.ok) {
-    onCabinetError(`Помилка виконання: ${id}`);
+    setMessage("error", `Помилка виконання: ${id}`);
   }
 }
 
@@ -277,9 +282,6 @@ async function getCabinetState() {
       if (!isConnected) {
         // TODO в окрему функцію
         isConnected = true;
-        errorMessage = ""; // Скидаємо стару помилку зв'язку
-        infoMessage = "";
-        warningMessage = "";
         console.log("Зв'язок відновлено");
       }
       // ПЕРЕВІРКА ТА РЕНДЕР ОПЕРАЦІЙ (Тільки один раз!)
@@ -289,7 +291,6 @@ async function getCabinetState() {
       }
       let modeId = json["modeId"];
       isPausedGlobal = json["isPaused"];
-      /* console.log("modeId "+modeId+" isPausedGlobal "+isPausedGlobal) */
       updateSafetyIfNeeded(json);
       updPauseButton(isPausedGlobal, modeId);
       updModeState(modeId);
@@ -301,22 +302,25 @@ async function getCabinetState() {
         manualOperations = []; 
       }
       updActiveOperation(json["ActiveOperation"]);
-      /* console.log("json[isLocked]" + json["isLocked"]); */
       let errState = getErrorInfo(json);
       if (errState !== "") {
-        onCabinetError(errState);
+        setMessage("error", errState);
         updModeState("mode-manual");
       }
-      else if (json["modeState"].startsWith("warning-")) setWarningMessage(json["modeState"].split("-")[1]);
-      else setInfoMessage(json["modeDescription"]);
+      else if (json["modeState"].startsWith("warning-")) {
+        setMessage("warning", json["modeState"].split("-")[1]);
+      }
+      else {
+        setMessage("info", json["modeDescription"]);
+      }
     } else {
       isConnected = false;
-      onCabinetError(`Помилка сервера: ${response.status}`);
+      setMessage("error", `Помилка сервера: ${response.status}`);
     }
   } catch (TypeError) {
     if (isConnected) { // Фізична відсутність зв'язку (Network Error)
       isConnected = false;
-      onCabinetError("Зв'язок з контролером відсутній!");
+      setMessage("error", "Зв'язок з контролером відсутній!");
       setOperationsActiveState(false); // Блокуємо все від гріха подалі
     }
   }
