@@ -218,14 +218,14 @@ function updPauseButton(isPaused, modeId) {
   let btnPause = document.getElementById("btnPause");
   if (isPaused === lastPausedState || modeId === "mode-manual") return;
   if (isPaused) {
-    btnPause.innerHTML = "▶ ПРОДОВЖИТИ";
-    btnPause.className = "btn btn-warning btn-lg blink"; // blink можна додати в CSS для уваги
+    btnPause.innerHTML = "ПРОДОВЖИТИ";
+    btnPause.className = "btn btn-success btn-lg blink"; // blink можна додати в CSS для уваги
     btnManual.disabled = false;
     btnManual.classList.remove("btn-outline-secondary");
     btnManual.classList.add("btn-secondary", "fw-bold");
   } else {
-    btnPause.innerHTML = "⏸ ПАУЗА";
-    btnPause.className = "btn btn-danger btn-lg";
+    btnPause.innerHTML = "ПАУЗА";
+    btnPause.className = "btn btn-warning btn-lg";
     btnManual.disabled = true;
     btnManual.classList.add("btn-outline-secondary");
     btnManual.classList.remove("btn-secondary", "fw-bold");
@@ -406,11 +406,13 @@ function updSafetyButton(json) {
   }
 
   if (isLocked) {
-    btn.innerHTML = "СТАРТ";
+    btn.innerHTML = "РОЗБЛОКУВАТИ";
     btn.className = "btn btn-success btn-lg w-100 shadow-sm";
+    hideRightPanel()
   } else {
     btn.innerHTML = "СТОП";
     btn.className = "btn btn-danger btn-lg w-100 shadow-sm";
+    showRightPanel()
   }
   // Показуємо кнопку лише якщо:
   // 1. Система заблокована СТОПом
@@ -421,6 +423,14 @@ function updSafetyButton(json) {
   } else {
     btn.classList.add("invisible");
   }
+}
+
+function hideRightPanel() {
+  document.getElementById("rightPanel").classList.add("d-none");
+}
+
+function showRightPanel() {
+  document.getElementById("rightPanel").classList.remove("d-none");
 }
 
 function main() {
