@@ -3,6 +3,8 @@ let prevControlMode;
 let isOperationsRendered = false;
 let isPausedGlobal = false;
 let lastPausedState = null;
+let lastSafetyVisibility = null;
+let lastSafetyLocked = null;
 let errorMessage = "";
 let infoMessage = "";
 let warningMessage = "";
@@ -65,7 +67,6 @@ function getErrorInfo(json) {
 }
 
 function onCabinetError(error) {
-  console.log("** An error occurred during the connection");
   if (errorMessage !== error) {
     stateArea.className = "alert alert-danger";
     stateArea.innerHTML = error;
@@ -289,7 +290,7 @@ async function getCabinetState() {
       let modeId = json["modeId"];
       isPausedGlobal = json["isPaused"];
       /* console.log("modeId "+modeId+" isPausedGlobal "+isPausedGlobal) */
-      updSafetyButton(json);
+      updateSafetyIfNeeded(json);
       updPauseButton(isPausedGlobal, modeId);
       updModeState(modeId);
       setDegree(json);
@@ -300,6 +301,7 @@ async function getCabinetState() {
         manualOperations = []; 
       }
       updActiveOperation(json["ActiveOperation"]);
+      /* console.log("json[isLocked]" + json["isLocked"]); */
       let errState = getErrorInfo(json);
       if (errState !== "") {
         onCabinetError(errState);
@@ -385,44 +387,47 @@ function updActiveOperation(activeId) {
  *   lastActiveId = activeId;
  * } */
 
-function updSafetyButton(json) {
-  const btn = document.getElementById("btnSafety");
+function updateSafetyIfNeeded(json) {
   const isLocked = json["isLocked"];
   const activeOp = json["ActiveOperation"];
-  const currentError = json["stopReason"];
   const mode = json["modeId"];
 
-  // Якщо система заблокована і з'явилося повідомлення, яке ми ще не показували
-  if (isLocked && currentError && currentError !== lastError) {
-    lastError = currentError; 
-    // Викликаємо вашу функцію обробки помилки
-    if (typeof onCabinetError === "function") {
-      onCabinetError(currentError);
-    }
-  }
-  // Скидаємо збережену помилку, коли систему розблоковано
-  if (!isLocked) {
-    lastError = "";
+  // Обчислюємо похідний стан (чи кнопка ВЗАГАЛІ має бути видимою)
+  const shouldBeVisible = (isLocked || activeOp !== "" || mode !== "mode-manual");
+
+  // Якщо нічого суттєвого не змінилось — виходимо
+  if (lastSafetyVisibility === shouldBeVisible &&
+      lastSafetyLocked === isLocked) {
+    return;
   }
 
+  console.log("Safety UI changed");
+
+  lastSafetyVisibility = shouldBeVisible;
+  lastSafetyLocked = isLocked;
+  updSafetyButton(json);
+}
+
+function updSafetyButton(json) {
+  const isLocked  = json["isLocked"];
+  const activeOp  = json["ActiveOperation"];
+  const mode      = json["modeId"];
+  const errorText = json["stopReason"];
+
+  // --- Обробка помилки
   if (isLocked) {
-    btn.innerHTML = "РОЗБЛОКУВАТИ";
-    btn.className = "btn btn-success btn-lg w-100 shadow-sm";
-    hideRightPanel()
+    btnSafety.innerHTML = "РОЗБЛОКУВАТИ";
+    btnSafety.className = "btn btn-success btn-lg w-100 shadow-sm";
+    hideRightPanel();
   } else {
-    btn.innerHTML = "СТОП";
-    btn.className = "btn btn-danger btn-lg w-100 shadow-sm";
-    showRightPanel()
+    lastError = "";
+    btnSafety.innerHTML = "СТОП";
+    btnSafety.className = "btn btn-danger btn-lg w-100 shadow-sm";
+    showRightPanel();
   }
-  // Показуємо кнопку лише якщо:
-  // 1. Система заблокована СТОПом
-  // 2. Йде будь-яка операція (ActiveOperation не пуста)
-  // 3. Ми НЕ в ручному режимі (тобто в Авто або Одиночному)
-  if (isLocked || activeOp !== "" || mode !== "mode-manual") {
-    btn.classList.remove("invisible");
-  } else {
-    btn.classList.add("invisible");
-  }
+
+  const shouldBeVisible = (isLocked || activeOp !== "" || mode !== "mode-manual");
+  btnSafety.classList.toggle("invisible", !shouldBeVisible);
 }
 
 function hideRightPanel() {
