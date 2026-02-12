@@ -160,7 +160,7 @@ func EmergencyStop(c *Controller, reason string) {
 func SafetyStart(c *Controller) {
   c.state.mu.Lock()
   c.state.IsSafetyLocked = false
-  c.state.StopReason = "" // Очищуємо текст при старті
+  c.state.StopReason = ""
   c.state.ActiveOperation = ""
   c.state.mu.Unlock()
 }

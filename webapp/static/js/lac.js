@@ -49,6 +49,7 @@ let circleProgress = document.getElementById("circle-progress");
 circleProgress.textFormat = "value";
 
 let stateArea = document.getElementById("state-area");
+let counterContainer = document.getElementById("container-counter");
 let productCounter = document.getElementById("product-counter");
 let lbProductCounter = document.getElementById("lb-product-counter");
 
@@ -175,8 +176,6 @@ function clearOperationsActiveState() {
   let operations = document.getElementsByName("radio-operation");
   operations.forEach(r => {
     r.checked = false;
-    /* r.disabled = false; // або true, залежно від потреби скидання
-     *  */
     let l = document.querySelector(`label[for="${r.id}"]`);
     if (l) {
       l.className = "btn btn-outline-secondary btn-lg";
@@ -248,9 +247,11 @@ function updModeState(modeId) {
         btnPause.classList.remove("invisible");
         lbModeAuto.classList.add("invisible");
         lbModeCycleOnce.classList.add("invisible");
-        const counterClass = isAuto ? "fs-5 fw-bold mb-0" : "fs-5 fw-bold mb-0 invisible";
-        lbProductCounter.className = counterClass;
-        productCounter.className = counterClass;
+        if (isAuto) {
+          counterContainer.classList.remove("invisible");
+        } else {
+          counterContainer.classList.add("invisible");
+        }
         setOperationsActiveState(false);
         break;
       default:
@@ -259,8 +260,7 @@ function updModeState(modeId) {
         btnPause.classList.add("invisible");
         lbModeAuto.className = "btn btn-outline-success btn-lg";
         lbModeCycleOnce.className = "btn btn-outline-success btn-lg";
-        lbProductCounter.className = "fs-5 fw-bold mb-0 invisible";
-        productCounter.className = "fs-5 fw-bold mb-0 invisible";
+        counterContainer.classList.add("invisible");
         setOperationsActiveState(true);
         clearOperationsActiveState();
     }
