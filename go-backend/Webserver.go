@@ -118,17 +118,18 @@ func (ws *WebServer) handleState(w http.ResponseWriter, r *http.Request) {
   }
 
 	response := map[string]interface{}{
-		"modeId":          modeStr,
-		"modeState":       "ok",
-    "isPaused":        ws.state.IsPaused,
+		"modeId":           modeStr,
+		"modeState":        "ok",
+    "isPaused":         ws.state.IsPaused,
     "isLocked":         ws.state.IsSafetyLocked,
-		"modeDescription": "Система в нормі",
-		"operationState":  "idle",
-		"counter":         ws.state.Counter,
-    "OperationsList":  ws.state.OpsList,
+    "stopReason":       ws.state.StopReason,
+		"modeDescription":  "Система в нормі",
+		"operationState":   "idle",
+		"counter":          ws.state.Counter,
+    "OperationsList":   ws.state.OpsList,
     "ActiveOperation":  ws.state.ActiveOperation,
-		"degree":          int(ws.state.SensorValue) % 720,
-    "manualOperations": GetAllowedManualOps(ws.state),
+		"degree":           int(ws.state.SensorValue) % 720,
+    "manualOperations": ws.ctrl.GetAllowedManualOps(),
 	}
 	
 	for i := 0; i < 18; i++ {
@@ -165,41 +166,41 @@ func (ws *WebServer) handleRadio(w http.ResponseWriter, r *http.Request) {
 
 // handleModeSet обробляє зміну режиму через API
 func (ws *WebServer) handleModeSet(w http.ResponseWriter, r *http.Request) {
-    modeID := r.URL.Query().Get("id")
-    log.Printf("🔄 [Web Command] Запит на зміну режиму: %s", modeID)
+  modeID := r.URL.Query().Get("id")
+  log.Printf("🔄 [Web Command] Запит на зміну режиму: %s", modeID)
 
-    var targetMode ControlMode
+  var targetMode ControlMode
 
-    switch modeID {
-    case "mode-auto":
-        targetMode = ModeAutomatic
-    case "mode-once-cycle":
-        targetMode = ModeSingle
-    case "mode-manual":
-        targetMode = ModeManual
-    default:
-        log.Printf("⚠️ Невідомий режим: %s", modeID)
-        http.Error(w, "Invalid mode", http.StatusBadRequest)
-        return
-    }
+  switch modeID {
+  case "mode-auto":
+    targetMode = ModeAutomatic
+  case "mode-once-cycle":
+    targetMode = ModeSingle
+  case "mode-manual":
+    targetMode = ModeManual
+  default:
+    log.Printf("⚠️ Невідомий режим: %s", modeID)
+    http.Error(w, "Invalid mode", http.StatusBadRequest)
+    return
+  }
 
-    // Викликаємо метод контролера для безпечної зміни режиму
-    ws.ctrl.SetMode(targetMode)
-    w.WriteHeader(http.StatusOK)
+  // Викликаємо метод контролера для безпечної зміни режиму
+  ws.ctrl.SetMode(targetMode)
+  w.WriteHeader(http.StatusOK)
 }
 
 func (ws *WebServer) handleEmergencyStop(w http.ResponseWriter, r *http.Request) {
-    ws.state.mu.RLock()
-    isLocked := ws.state.IsSafetyLocked
-    ws.state.mu.RUnlock()
-    if isLocked {
-         log.Println("[Web] Запит на розблокування (Safety Start)")
-        opSafetyStart(ws.ctrl) 
-    } else {
-        log.Println("[Web] EMERGENCY STOP!")
-        EmergencyStop(ws.ctrl) 
-    }    
-    w.WriteHeader(http.StatusOK)
+  ws.state.mu.RLock()
+  isLocked := ws.state.IsSafetyLocked
+  ws.state.mu.RUnlock()
+  if isLocked {
+    log.Println("[Web] Запит на розблокування (Safety Start)")
+    SafetyStart(ws.ctrl)
+  } else {
+    log.Println("[Web] EMERGENCY STOP!")
+    EmergencyStop(ws.ctrl, "Зупинка оператором") 
+  }    
+  w.WriteHeader(http.StatusOK)
 }
 
 // handlePause обробляє зупинку/продовження логіки

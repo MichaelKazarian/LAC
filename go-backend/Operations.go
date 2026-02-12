@@ -133,61 +133,105 @@ func GetAllowedManualOps(state *HardwareState) []string {
 
 // Заморожуємо стан, вимикаючи тільки головний двигун.
 // Очищаємо черги операцй, щоб команди не виконались потім
-func EmergencyStop(c *Controller) {
-  fmt.Printf("🚨 EMERGENCY STOP: Операція [%s] перервана. Вимкнення головного двигуна.\n", c.state.ActiveOperation)
-
+func EmergencyStop(c *Controller, reason string) {
   c.state.mu.Lock()
+  
+  // Записуємо причину для фронтенду
+  c.state.StopReason = reason
+  fmt.Printf("🚨 EMERGENCY STOP: %s (Операція: %s)\n", reason, c.state.ActiveOperation)
+
   c.state.Device20Out[31] = 0
-  c.state.ActiveOperation = ""
+  c.state.StopReason = reason
   c.state.IsSafetyLocked = true
   c.state.IsPaused = false
+  c.state.ActiveOperation = "" 
   c.state.Mode = ModeManual
   c.state.mu.Unlock()
-  for len(c.opQueue) > 0 {
-    <-c.opQueue
+
+  for len(c.opQueue) > 0 { 
+    select {
+    case <-c.opQueue:
+    default:
+    }
   }
-  // Негайний запис у залізо
-  c.hw.Write(c.state.Device20Out)
-  // Синхронізуємо кеш контролера
-  c.lastOutput = c.state.Device20Out
 }
 
-func opSafetyStart(c *Controller) {
+// Оновлюємо opSafetyStart, щоб очищати причину
+func SafetyStart(c *Controller) {
   c.state.mu.Lock()
   c.state.IsSafetyLocked = false
+  c.state.StopReason = "" // Очищуємо текст при старті
   c.state.ActiveOperation = ""
   c.state.mu.Unlock()
-  fmt.Println("✅ Блокування знято. Система готова до роботи.")
 }
 
 func opSyncMirror(c *Controller) {
-	fmt.Println("⏳ Початок синхронізації")
-	c.apply(func() {
+  fmt.Println("⏳ Початок синхронізації")
+  // Крок 1: Вмикаємо двигун (тільки в пам'яті)
+  c.apply(func() {
     c.state.Device20Out[31] = 1
-		for i := 0; i < 31; i++ { c.state.Device20Out[i] = 0 }
-	})
+  })
+  // Даємо IO-циклу час (наприклад, 100мс), щоб він побачив зміни і відправив їх
+  if !interruptibleSleep(c, 2*time.Millisecond) { return }
+  // Крок 2: Синхронізація (читаємо з Device10In, який Run() постійно оновлює)
+  c.apply(func() {
+    for i := 0; i < 31; i++ {
+      c.state.Device20Out[i] = c.state.Device10In[i]
+    }
+  })
+  // Чекаємо завершення фізичного процесу
+  if !interruptibleSleep(c, 2*time.Second) { return }
+  // Крок 3: Скидання (тільки в пам'яті)
+  c.apply(func() {
+    for i := 0; i < 31; i++ { c.state.Device20Out[i] = 0 }
+  })
+  fmt.Println("✅ Кінець синхронізації")
+}
 
-	c.apply(func() {
-		for i := 0; i < 31; i++ {
-			if c.state.Device20Out[i] != c.state.Device10In[i] {
-				c.state.Device20Out[i] = c.state.Device10In[i]
-			}
-		}
-	})
-	time.Sleep(2 * time.Second)
+// Допоміжна функція для контролю безпеки всередині операцій
+func checkEmergency(c *Controller) bool {
+  c.state.mu.RLock()
+  val := c.state.SensorValue
+  isLocked := c.state.IsSafetyLocked
+  c.state.mu.RUnlock()
 
-	c.apply(func() {
-		for i := 0; i < 31; i++ { c.state.Device20Out[i] = 0 }
-	})
-	fmt.Println("Кінець синхронізації")
+  // 1. Якщо сенсор вийшов за межі 500-600 — викликаємо стоп
+  if val > 500 && val < 600 {
+    fmt.Printf("⚠️ АВТОМАТИЧНА ЗУПИНКА: Сенсор = %d\n", val)
+    EmergencyStop(c, fmt.Sprintf("Перевищено поріг сенсора: %d", val))
+    return true
+  }
+  // 2. Якщо хтось натиснув кнопку СТОП під час виконання (IsSafetyLocked став true)
+  // ми повинні негайно вийти з горутини
+  if isLocked {
+    return true
+  }
+  return false
 }
 
 func opSafetyStop(c *Controller) {
-	fmt.Println("⏳ Початок операції (2с)...")
+	fmt.Println("Початок Зупинки (2с)...")
 	c.apply(func() { c.state.Device20Out[3] = 1 })
-	time.Sleep(2 * time.Second)
-	c.apply(func() { c.state.Device20Out[31] = 0; c.state.Device20Out[3] = 0 })
-	fmt.Println("✅ Стан змінено")
+	if !interruptibleSleep(c, 2*time.Second) { return }
+  c.apply(func() {
+    for i := 0; i < 32; i++ { c.state.Device20Out[i] = 0 }
+  })
+	fmt.Println("зупинено")
+}
+
+func interruptibleSleep(c *Controller, d time.Duration) bool {
+  start := time.Now()
+  for time.Since(start) < d {
+    c.state.mu.RLock()
+    locked := c.state.IsSafetyLocked
+    c.state.mu.RUnlock()
+
+    if locked {
+      return false // Зупиняємо операцію негайно
+    }
+    time.Sleep(10 * time.Millisecond) // Маленькі кроки перевірки
+  }
+  return true
 }
 
 func opItWorks(c *Controller) {

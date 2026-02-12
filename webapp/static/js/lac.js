@@ -8,6 +8,7 @@ let infoMessage = "";
 let warningMessage = "";
 let manualOperations = [];
 let lastActiveId = null;
+let lastError = "";
 
 let btnManual = document.getElementById("mode-manual");
 btnManual.addEventListener('click', async function () {
@@ -269,47 +270,47 @@ function updModeState(modeId) {
 
 async function getCabinetState() {
   try {
-  let response = await fetch("/state");  
-  if (response.ok) {
-    let json = await response.json();
-    if (!isConnected) {
-      // TODO в окрему функцію
-      isConnected = true;
-      errorMessage = ""; // Скидаємо стару помилку зв'язку
-      infoMessage = "";
-      warningMessage = "";
-      console.log("Зв'язок відновлено");
-    }
-    // ПЕРЕВІРКА ТА РЕНДЕР ОПЕРАЦІЙ (Тільки один раз!)
-    if (!isOperationsRendered && json["OperationsList"]) {
-      renderOperations(json["OperationsList"]);
-      isOperationsRendered = true;
-    }
-    let modeId = json["modeId"];
-    isPausedGlobal = json["isPaused"];
-    /* console.log("modeId "+modeId+" isPausedGlobal "+isPausedGlobal) */
-    updSafetyButton(json);
-    updPauseButton(isPausedGlobal, modeId);
-    updModeState(modeId);
-    setDegree(json);
-    if (modeId === "mode-manual") {
-      updAvailableManualOperations(json);
+    let response = await fetch("/state");  
+    if (response.ok) {
+      let json = await response.json();
+      if (!isConnected) {
+        // TODO в окрему функцію
+        isConnected = true;
+        errorMessage = ""; // Скидаємо стару помилку зв'язку
+        infoMessage = "";
+        warningMessage = "";
+        console.log("Зв'язок відновлено");
+      }
+      // ПЕРЕВІРКА ТА РЕНДЕР ОПЕРАЦІЙ (Тільки один раз!)
+      if (!isOperationsRendered && json["OperationsList"]) {
+        renderOperations(json["OperationsList"]);
+        isOperationsRendered = true;
+      }
+      let modeId = json["modeId"];
+      isPausedGlobal = json["isPaused"];
+      /* console.log("modeId "+modeId+" isPausedGlobal "+isPausedGlobal) */
+      updSafetyButton(json);
+      updPauseButton(isPausedGlobal, modeId);
+      updModeState(modeId);
+      setDegree(json);
+      if (modeId === "mode-manual") {
+        updAvailableManualOperations(json);
+      } else {
+        setOperationsActiveState(false);
+        manualOperations = []; 
+      }
+      updActiveOperation(json["ActiveOperation"]);
+      let errState = getErrorInfo(json);
+      if (errState !== "") {
+        onCabinetError(errState);
+        updModeState("mode-manual");
+      }
+      else if (json["modeState"].startsWith("warning-")) setWarningMessage(json["modeState"].split("-")[1]);
+      else setInfoMessage(json["modeDescription"]);
     } else {
-      setOperationsActiveState(false);
-      manualOperations = []; 
+      isConnected = false;
+      onCabinetError(`Помилка сервера: ${response.status}`);
     }
-    updActiveOperation(json["ActiveOperation"]);
-    let errState = getErrorInfo(json);
-    if (errState !== "") {
-      onCabinetError(errState);
-      updModeState("mode-manual");
-    }
-    else if (json["modeState"].startsWith("warning-")) setWarningMessage(json["modeState"].split("-")[1]);
-    else setInfoMessage(json["modeDescription"]);
-  } else {
-    isConnected = false;
-    onCabinetError(`Помилка сервера: ${response.status}`);
-  }
   } catch (TypeError) {
     if (isConnected) { // Фізична відсутність зв'язку (Network Error)
       isConnected = false;
@@ -388,7 +389,21 @@ function updSafetyButton(json) {
   const btn = document.getElementById("btnSafety");
   const isLocked = json["isLocked"];
   const activeOp = json["ActiveOperation"];
+  const currentError = json["stopReason"];
   const mode = json["modeId"];
+
+  // Якщо система заблокована і з'явилося повідомлення, яке ми ще не показували
+  if (isLocked && currentError && currentError !== lastError) {
+    lastError = currentError; 
+    // Викликаємо вашу функцію обробки помилки
+    if (typeof onCabinetError === "function") {
+      onCabinetError(currentError);
+    }
+  }
+  // Скидаємо збережену помилку, коли систему розблоковано
+  if (!isLocked) {
+    lastError = "";
+  }
 
   if (isLocked) {
     btn.innerHTML = "СТАРТ";

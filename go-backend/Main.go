@@ -28,18 +28,10 @@ type HardwareState struct {
   IsSafetyLocked   bool          `json:"is_safety_locked"`
 	ReadCycleMs      int64         `json:"read_cycle_ms"`
   IsPaused         bool          `json:"is_paused"`
+  StopReason      string `json:"stop_reason"`
   ActiveOperation  string        `json:"active_operation"`
   OpsList          [][]string    `json:"operations_list"`
   Counter          int           `json:"counter"`
-}
-
-// runModbusPoll запускає контролер із Modbus сервісом
-func runModbusPoll(state *HardwareState) {
-	var hwService HardwareService = NewModbusService("/dev/ttyUSB0", 38400)
-	defer hwService.Close()
-	controller := NewController(hwService, state)
-	// тут ми не використовуємо go, щоб defer hwService.Close() спрацював коректно
-	controller.Run()
 }
 
 func runWebServer(state *HardwareState, controller *Controller) {
@@ -69,8 +61,9 @@ func main() {
 
     // 4. Запускаємо опитування Modbus у фоні
     go func() {
-        defer hwService.Close()
-        controller.Run()
+      defer hwService.Close()
+      go controller.logicWorker()
+      controller.Run()
     }()
 
     // 5. Створюємо Веб-сервер, передаючи йому і стан, і контролер

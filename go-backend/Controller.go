@@ -42,14 +42,6 @@ func (c *Controller) Run() {
 
   for {
     start := time.Now()
-
-    select {
-		case opName := <-c.opQueue:
-			c.exec(opName)
-		default:
-			// Якщо черга порожня — виконуємо звичайний цикл
-		}
-
     // 1. Читання
     sensor, inputs, err := c.hw.Read()
 		if err == nil {
@@ -59,11 +51,86 @@ func (c *Controller) Run() {
 			c.handleError(err)
 		}
 
-    c.switchMode()
     c.syncHardware()
 
     c.updateCycleTime(time.Since(start).Milliseconds())
   }
+}
+
+func (c *Controller) logicWorker() {
+  fmt.Println("🤖 Logic Worker запущено")
+  
+  for {
+    // Перевіряємо режим та стан паузи
+    c.state.mu.RLock()
+    mode := c.state.Mode
+    paused := c.state.IsPaused
+    locked := c.state.IsSafetyLocked
+    c.state.mu.RUnlock()
+
+    // 1. Якщо система заблокована (Emergency Stop) — нічого не робимо, чекаємо розблокування
+    if locked {
+      time.Sleep(100 * time.Millisecond)
+      continue
+    }
+
+    // 2. Пріоритетна черга ручних команд (Web/API)
+    // Використовуємо select з default, щоб не блокуватися, якщо черга порожня
+    select {
+    case opID := <-c.opQueue:
+      fmt.Printf("🎯 Виконання ручної команди: %s\n", opID)
+      c.exec(opID)
+      continue // Після ручної команди повертаємось на початок циклу перевірки
+    default:
+      // Якщо в черзі нічого немає, йдемо далі до автоматики
+    }
+
+    // 3. Автоматика та Одиночний цикл
+    if (mode == ModeAutomatic || mode == ModeSingle) && !paused {
+      c.runAutomaticCycle()
+      
+      // Якщо це був одиночний цикл, після завершення всіх кроків перемикаємо в Manual
+      if mode == ModeSingle {
+        c.SetMode(ModeManual)
+        fmt.Println("✅ Одиночний цикл завершено")
+      }
+    } else {
+      // 4. Режим Manual або Pause — просто чекаємо
+      time.Sleep(50 * time.Millisecond)
+    }
+  }
+}
+
+func (c *Controller) runAutomaticCycle() {
+  // Скидання лічильника, якщо потрібно (ваша логіка needsCounterReset)
+  if c.needsCounterReset {
+    c.state.mu.Lock()
+    c.state.Counter = 0
+    c.state.mu.Unlock()
+    c.needsCounterReset = false
+  }
+
+  // Прохід по кроках сценарію
+  for _, opEntry := range c.state.OpsList {
+    opID := opEntry[0]
+
+    // Важливо: перед кожним кроком перевіряємо, чи не змінився режим/пауза/блок
+    c.state.mu.RLock()
+    shouldContinue := (c.state.Mode == ModeAutomatic || c.state.Mode == ModeSingle) && 
+      !c.state.IsPaused && !c.state.IsSafetyLocked
+    c.state.mu.RUnlock()
+
+    if !shouldContinue {
+      return // Перериваємо цикл кроків
+    }
+
+    c.exec(opID)
+  }
+
+  // Інкремент лічильника після повного циклу
+  c.state.mu.Lock()
+  c.state.Counter++
+  c.state.mu.Unlock()
 }
 
 func (c *Controller) exec(opId string) {
@@ -117,7 +184,7 @@ func (c *Controller) syncHardware() {
   // автоматичних або "доживаючих" операцій щось записати.
   if locked {
     // fmt.Println("🚫 Запис заблоковано: активний Safety Lock")
-    return
+    current[31] = 0
   }
   // 2. Перевіряємо наявність змін
   if current == c.lastOutput && !c.firstRun {
@@ -245,7 +312,6 @@ func (c *Controller) waitIfPaused() {
         c.state.mu.RLock()
         paused := c.state.IsPaused
         c.state.mu.RUnlock()
-
         if !paused {
             break // Виходимо з циклу очікування, якщо паузу знято
         }
@@ -256,12 +322,11 @@ func (c *Controller) waitIfPaused() {
 func (c *Controller) apply(fn func()) {
   c.state.mu.Lock()
   if c.state.IsSafetyLocked { // Якщо вже заблоковано, навіть не виконуємо логіку функції
-        c.state.mu.Unlock()
-        return
-    }
+    c.state.mu.Unlock()
+    return
+  }
   fn()
   c.state.mu.Unlock()
-  c.syncHardware()
 }
 
 func (c *Controller) GetAllowedManualOps() []string {
