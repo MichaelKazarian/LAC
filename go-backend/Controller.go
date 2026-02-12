@@ -102,32 +102,31 @@ func (c *Controller) logicWorker() {
 }
 
 func (c *Controller) runAutomaticCycle() {
-  // Скидання лічильника, якщо потрібно (ваша логіка needsCounterReset)
-  if c.needsCounterReset {
+  if c.needsCounterReset { // Скидання лічильника
     c.state.mu.Lock()
     c.state.Counter = 0
     c.state.mu.Unlock()
     c.needsCounterReset = false
   }
 
-  // Прохід по кроках сценарію
+  // Прохід по списку операцій
   for _, opEntry := range c.state.OpsList {
     opID := opEntry[0]
 
+    c.waitIfPaused() // Чекаємо тут, якщо IsPaused == true
     // Важливо: перед кожним кроком перевіряємо, чи не змінився режим/пауза/блок
     c.state.mu.RLock()
     shouldContinue := (c.state.Mode == ModeAutomatic || c.state.Mode == ModeSingle) && 
-      !c.state.IsPaused && !c.state.IsSafetyLocked
+      !c.state.IsSafetyLocked
     c.state.mu.RUnlock()
 
     if !shouldContinue {
-      return // Перериваємо цикл кроків
+      return
     }
 
     c.exec(opID)
   }
 
-  // Інкремент лічильника після повного циклу
   c.state.mu.Lock()
   c.state.Counter++
   c.state.mu.Unlock()
@@ -260,9 +259,9 @@ func (c *Controller) SetMode(mode ControlMode) {
     c.state.mu.Unlock()
     // Якщо ми переходимо в ручний режим, можна відразу скинути певні виходи, якщо треба
     if mode == ModeManual {
-        fmt.Println("🎛 Контролер переведено в РУЧНИЙ режим")
+        fmt.Println("Контролер переведено в РУЧНИЙ режим")
     }
-    fmt.Printf("⚙️ Режим змінено на: %v\n", mode)
+    fmt.Printf("Режим змінено на: %v\n", mode)
 }
 
 func (c *Controller) SetPause(paused bool) {
