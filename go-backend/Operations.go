@@ -89,6 +89,9 @@ type Step struct {
 //   бачити поточний Step у UI
 //   централізовано керувати Abort / Pause / Mode
 //   уникнути дублювання interruptibleSleep у кожній операції
+//   вклинюватись між кроками (логування, валідація, interlock-и,
+//   сервісні дії) без зміни коду самих операцій — достатньо
+//   змінити поведінку контролера або вставити службовий Step.
 //
 type OperationInfo struct {
 	ID       string
@@ -103,14 +106,14 @@ func GetOperationsRegistry() []OperationInfo {
 			ID:       "operation1",
         UserName: "Операція 1",
         Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitStop2s},
         },
       },
       {
 			ID:       "operation2",
         UserName: "Операція 2",
         Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitStop2s},
         },
       },
       {
