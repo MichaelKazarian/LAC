@@ -41,7 +41,7 @@ type StepResult struct {
 //
 // Ідея Step-моделі:
 //
-//   * Технологічна операція розбивається на набор послідовних кроків.
+//   * Технологічна операція розбивається на набір послідовних кроків.
 //   * Контролер виконує цю послідовність.
 //   * Сам Step НЕ керує циклом виконання.
 //
@@ -50,28 +50,29 @@ type StepResult struct {
 // Життєвий цикл Step:
 //
 //   1. Controller викликає Do()
-//      → змінюємо виходи, запускаємо фізичну дію.
-//      → жодних очікувань усередині!
+//      змінюємо виходи, запускаємо фізичну дію.
+//      жодних очікувань усередині!
 //
 //   2. Controller викликає Wait()
-//      → Wait сама визначає, коли процес завершився:
-//          - по сенсору
-//          - по таймауту
-//          - по зовнішній події
-//      → Wait МОЖЕ блокуватися, але це єдине дозволене місце очікування.
+//      Wait сама визначає, коли процес завершився:
+//        - по сенсору
+//        - по таймауту
+//        - по зовнішній події
+//      Wait МОЖЕ блокуватися, але це єдине дозволене місце очікування.
 //
-//   3. Якщо потрібно — викликається Cleanup()
-//      → гарантує приведення системи в безпечний стан.
+//   3. Cleanup() гарантує приведення системи в штатний технологічний стан.
+//      Cleanup **ВИКОНАЄТЬСЯ**, якщо Step завершився керовано:
+//        -• після нормального завершення
+//        -• якщо операцію перервали Mode/Pause (StepOK або StepAbort)
+//      **НЕ виконується**, якщо спрацював EmergencyStop — бо система вже в безпечному стані.
 //
-// Таким чином, Controller є єдиним execution engine,
-// а Step декларативним описом технології
+// Таким чином, Controller є єдиним execution engine, а Step декларативним описом технології
 //
 // Це робить поведінку:
 //   передбачуваною
 //   керованою (Pause / EmergencyStop)
 //   спостережуваною (можна логувати Name)
 //   розширюваною без вкладених state machine.
-//
 type Step struct {
 	Name       string
 	Do         func(c *Controller)
@@ -166,7 +167,7 @@ func GetOperationsRegistry() []OperationInfo {
         },
       },
       {
-			ID:       "sync_mirror",
+      ID:       "sync_mirror",
         UserName: "Дзеркалювання",
         Steps: []Step{
           {
@@ -186,20 +187,18 @@ func GetOperationsRegistry() []OperationInfo {
               })
             },
             Wait: waitSyncMirror,
-          },
-          {
-            Name: "Вимкнення двигуна",
-            Do: func(c *Controller) {
+            Cleanup: func(c *Controller) {
               c.apply(func() {
-                for i := 0; i < 32; i++ {
+                for i := 0; i < 31; i++ {
                   c.state.Device20Out[i] = 0
                 }
+                //c.state.Device20Out[31] = 0 // двигун гарантовано вимкнений
               })
             },
-            Wait: waitAlwaysOK,
           },
         },
       },
+
       {
 			ID:       "op_safety_stop",
         UserName: "Безпечна зупинка",
@@ -219,7 +218,7 @@ func GetOperationsRegistry() []OperationInfo {
             },
           },
         },
-    },
+      },
 
       {
 			ID:       "operation10",
@@ -303,30 +302,30 @@ func GetOperationsRegistry() []OperationInfo {
 
 // GetAllowedManualOps визначає, які операції доступні для натискання в ручному режимі
 func GetAllowedManualOps(state *HardwareState) []string {
-    // 1. ПРІОРИТЕТ №1: Якщо активовано Emergency Stop (Safety Lock)
-    // Система "завмерла", дозволяємо тільки кнопку розблокування (Start)
-    if state.IsSafetyLocked {
-        return []string{"op_safety_start"}
-    }
-    // 2. ПРІОРИТЕТ №2: Якщо виконується будь-яка операція (ручна або авто-крок)
-    // Дозволяємо ТІЛЬКИ зупинку
-    if state.ActiveOperation != "" {
-        return []string{"op_safety_stop"}
-    }
-    // 3. ЗВИЧАЙНИЙ РЕЖИМ: Вираховуємо доступні зони
-    allowed := make([]string, 0)
-    val := state.SensorValue
-    // Логіка зон (наприклад, для синхронізації дзеркал)
-    if val > 100 && val < 500 {
-        allowed = append(allowed, "sync_mirror")
-    }
-    // Операція "Стоп" доступна завжди, коли машина в спокої
-    allowed = append(allowed, "op_safety_stop")
-    // Додаткові умови по мережі/статусу пристроїв
-    if state.IsOnline20 {
-        // allowed = append(allowed, "some_network_op")
-    }
-    return allowed
+  // 1. ПРІОРИТЕТ №1: Якщо активовано Emergency Stop (Safety Lock)
+  // Система "завмерла", дозволяємо тільки кнопку розблокування (Start)
+  if state.IsSafetyLocked {
+    return []string{"op_safety_start"}
+  }
+  // 2. ПРІОРИТЕТ №2: Якщо виконується будь-яка операція (ручна або авто-крок)
+  // Дозволяємо ТІЛЬКИ зупинку
+  if state.ActiveOperation != "" {
+    return []string{"op_safety_stop"}
+  }
+  // 3. ЗВИЧАЙНИЙ РЕЖИМ: Вираховуємо доступні зони
+  allowed := make([]string, 0)
+  val := state.SensorValue
+  // Логіка зон (наприклад, для синхронізації дзеркал)
+  if val > 100 && val < 500 {
+    allowed = append(allowed, "sync_mirror")
+  }
+  // Операція "Стоп" доступна завжди, коли машина в спокої
+  allowed = append(allowed, "op_safety_stop")
+  // Додаткові умови по мережі/статусу пристроїв
+  if state.IsOnline20 {
+    // allowed = append(allowed, "some_network_op")
+  }
+  return allowed
 }
 
 // Заморожуємо стан, вимикаючи тільки головний двигун.
@@ -391,26 +390,36 @@ func waitMotorOn(c *Controller) StepResult {
 	}
 }
 
-// Очікуємо поки сенсор синхронізації не досягне порогу
+// Протягом 5 секунд виконуємо "дзеркалювання" входів.
+// Якщо в цей час сенсор потрапляє в аварійний діапазон — викликаємо EmergencyStop.
 func waitSyncMirror(c *Controller) StepResult {
-	for {
+	deadline := time.Now().Add(5 * time.Second)
+
+	for time.Now().Before(deadline) {
 		c.state.mu.RLock()
 		val := c.state.SensorValue / 2
 		locked := c.state.IsSafetyLocked
+		inputs := c.state.Device10In
 		c.state.mu.RUnlock()
 
+		// Якщо вже є блокування — просто перериваємо крок
 		if locked {
-			return StepResult{Status: StepAbort, Message: "EmergencyStop"}
+			return StepResult{Status: StepAbort, Message: "EmergencyStop already active"}
 		}
+
 		if val > 250 && val < 300 {
 			EmergencyStop(c, fmt.Sprintf("Перевищено поріг сенсора: %d", val))
 			return StepResult{Status: StepAbort, Message: "Sensor threshold exceeded"}
 		}
-		if val > 200 {
-			return StepResult{Status: StepOK}
-		}
-		time.Sleep(5 * time.Millisecond)
+
+		c.apply(func() { // дзеркалювання
+			for i := 0; i < 31; i++ {
+				c.state.Device20Out[i] = inputs[i]
+			}
+		})
+		time.Sleep(2 * time.Millisecond) // дрібний крок, щоб залишитись interruptible
 	}
+	return StepResult{Status: StepOK}
 }
 
 // Стоп 2 секунди
