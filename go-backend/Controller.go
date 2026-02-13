@@ -101,30 +101,27 @@ func (c *Controller) logicWorker() {
   }
 }
 
+// Послідовно виконує зареєстровані кроки сценарію
 func (c *Controller) runAutomaticCycle() {
-  if c.needsCounterReset { // Скидання лічильника
+  if c.needsCounterReset {
     c.state.mu.Lock()
     c.state.Counter = 0
     c.state.mu.Unlock()
     c.needsCounterReset = false
   }
 
-  // Прохід по списку операцій
   for _, opEntry := range c.state.OpsList {
-    opID := opEntry[0]
-
-    c.waitIfPaused() // Чекаємо тут, якщо IsPaused == true
-    // Важливо: перед кожним кроком перевіряємо, чи не змінився режим/пауза/блок
+    c.waitIfPaused()
     c.state.mu.RLock()
-    shouldContinue := (c.state.Mode == ModeAutomatic || c.state.Mode == ModeSingle) && 
-      !c.state.IsSafetyLocked
+    mode := c.state.Mode
+    locked := c.state.IsSafetyLocked
     c.state.mu.RUnlock()
 
-    if !shouldContinue {
+    if mode == ModeManual || locked {
+      fmt.Printf("🛑 Цикл перервано перед кроком %s\n", opEntry[0])
       return
     }
-
-    c.exec(opID)
+    c.exec(opEntry[0])
   }
 
   c.state.mu.Lock()
@@ -148,27 +145,6 @@ func (c *Controller) exec(opId string) {
 	c.state.mu.Lock()
 	c.state.ActiveOperation = ""
 	c.state.mu.Unlock()
-}
-
-// processLogic визначає поведінку контролера залежно від поточного режиму
-func (c *Controller) switchMode() {
-    c.state.mu.RLock()
-    mode := c.state.Mode
-    c.state.mu.RUnlock()
-
-    switch mode {
-    case ModeAutomatic: // просто крутимо логіку в кожному циклі
-        c.executeLogic()
-    case ModeSingle: // виконуємо логіку один раз і перемикаємо режим
-        fmt.Println("🚀 Запуск одиночного циклу...")
-        // Перемикаємо в Manual тільки якщо цикл реально ДОЙШОВ ДО КІНЦЯ
-        c.executeLogic()
-        c.SetMode(ModeManual)
-        fmt.Println("✅ Одиночний цикл успішно завершено.")
-    case ModeManual:
-        // У ручному режимі контролер не втручається в Device20Out самостійно,
-        // дозволяючи командам з InvokeOperation (Web) проходити без змін.
-    }
 }
 
 // Перевіряє зміни в стані та записує їх у залізо
@@ -216,36 +192,6 @@ func (c *Controller) InvokeOperation(name string) error {
   return nil
 }
 
-// executeLogic послідовно виконує зареєстровані кроки сценарію
-func (c *Controller) executeLogic() {
-  // Якщо пауза натиснута після завершення попереднього повного циклу, 
-  // ми не даємо почати новий цикл steps.
-  //c.waitIfPaused()
-  if c.needsCounterReset { //Перевірка на необхідність скидання лічильника
-    c.state.mu.Lock()
-    c.state.Counter = 0
-    c.state.mu.Unlock()
-    c.needsCounterReset = false
-  }
-
-  for _, op := range c.state.OpsList {
-    c.waitIfPaused()
-    // Після того, як пауза була знята (наприклад, через перехід у ручний режим),
-		// перевіряємо, чи ми все ще маємо право виконувати цей цикл.
-		c.state.mu.RLock()
-		mode := c.state.Mode
-		c.state.mu.RUnlock()
-
-		if mode == ModeManual {
-			fmt.Printf("🛑 Цикл перервано: режим змінено на ручний перед кроком %s\n", op[0])
-			return // Виходимо з функції, решта операцій не виконається
-		}
-    c.exec(op[0])
-  }
-  c.state.mu.Lock()
-  c.state.Counter++
-  c.state.mu.Unlock()
-}
 
 // SetMode безпечно оновлює режим роботи контролера
 func (c *Controller) SetMode(mode ControlMode) {
