@@ -154,16 +154,6 @@ func (ws *WebServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(ws.state)
 }
 
-// handleRadio обробляє команди операцій
-func (ws *WebServer) handleRadio(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
-	log.Printf("🕹 [Web Command] Натиснуто операцію: %s", id)
-	
-	// TODO: Додати логіку запису в Modbus Slave 20
-	
-	w.WriteHeader(http.StatusOK)
-}
-
 // handleModeSet обробляє зміну режиму через API
 func (ws *WebServer) handleModeSet(w http.ResponseWriter, r *http.Request) {
   modeID := r.URL.Query().Get("id")
