@@ -105,37 +105,47 @@ func (c *Controller) logicWorker() {
 
 // --- Виконання Steps операції ---
 func (c *Controller) execSteps(opID string) {
-	op, ok := c.opsMap[opID]
-	if !ok {
-		fmt.Printf("⚠️ Операція %s не знайдена\n", opID)
-		return
-	}
+    op, ok := c.opsMap[opID]
+    if !ok {
+        fmt.Printf("⚠️ Операція %s не знайдена\n", opID)
+        return
+    }
 
-	c.state.mu.Lock()
-	c.state.ActiveOperation = opID
-	c.state.mu.Unlock()
+    c.state.mu.Lock()
+    c.state.ActiveOperation = opID
+    c.state.mu.Unlock()
 
-	for _, step := range op.Steps {
-		step.Do(c)
+    for _, step := range op.Steps {
+        if c.isEmergency() { break }
+        step.Do(c)
 
-		result := step.Wait(c)
-		if step.Cleanup != nil {
-			step.Cleanup(c)
-		}
+        if c.isEmergency() { break }
+        result := step.Wait(c)
 
-		if result.Status == StepAbort {
-			fmt.Printf("❌ Step %s aborted: %s\n", step.Name, result.Message)
-			break
-		}
-		if result.Status == StepFail {
-			fmt.Printf("⚠️ Step %s failed: %s\n", step.Name, result.Message)
-			break
-		}
-	}
+        if c.isEmergency() { break }
+        if step.Cleanup != nil {
+            step.Cleanup(c)
+        }
 
-	c.state.mu.Lock()
-	c.state.ActiveOperation = ""
-	c.state.mu.Unlock()
+        if result.Status == StepAbort {
+            fmt.Printf("❌ Step %s aborted: %s\n", step.Name, result.Message)
+            break
+        }
+        if result.Status == StepFail {
+            fmt.Printf("⚠️ Step %s failed: %s\n", step.Name, result.Message)
+            break
+        }
+    }
+
+    c.state.mu.Lock()
+    c.state.ActiveOperation = ""
+    c.state.mu.Unlock()
+}
+
+func (c *Controller) isEmergency() bool {
+    c.state.mu.RLock()
+    defer c.state.mu.RUnlock()
+    return c.state.IsSafetyLocked
 }
 
 // --- Автоматичний цикл через Steps ---
