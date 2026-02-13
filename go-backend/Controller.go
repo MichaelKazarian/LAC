@@ -103,12 +103,12 @@ func (c *Controller) logicWorker() {
 
 // Послідовно виконує зареєстровані кроки сценарію
 func (c *Controller) runAutomaticCycle() {
+  c.state.mu.Lock()
   if c.needsCounterReset {
-    c.state.mu.Lock()
     c.state.Counter = 0
-    c.state.mu.Unlock()
     c.needsCounterReset = false
   }
+  c.state.mu.Unlock()
 
   for _, opEntry := range c.state.OpsList {
     c.waitIfPaused()
