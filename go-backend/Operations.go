@@ -5,100 +5,295 @@ import (
 	"time"
 )
 
-// OperationInfo описує метадані операції для UI та логіки
-type OperationInfo struct {
-  ID string
-	UserName string
-	Action   func(c *Controller)
+// StepStatus описує результат виконання одного кроку (Step).
+//
+// Це стан логічного процесу.
+// Контролер використовує цей статус, щоб вирішити — продовжувати операцію,
+// зупинити її або аварійно перервати.
+//
+//   StepOK    — крок успішно завершений, можна переходити до наступного.
+//   StepFail  — крок завершився штатною помилкою (технологічна невдача).
+//               Операція зупиняється, але без EmergencyStop.
+//   StepAbort — виконання перервано зовнішньою умовою (EmergencyStop,
+//               блокування, зміна режиму тощо).
+//
+type StepStatus int
+
+const (
+	StepOK StepStatus = iota
+	StepFail
+	StepAbort
+)
+
+// StepResult — результат очікування завершення кроку.
+//
+// Використовується функцією Wait для передачі контролеру підсумку,
+// коли фізичний процес завершився або був перерваний.
+//
+// Message — опціональне пояснення (для логів / UI).
+//
+type StepResult struct {
+	Status  StepStatus
+	Message string
 }
 
-func GetOperationsList() [][]string {
-  opsList := GetOperationsRegistry()
-	list := make([][]string, 0, len(opsList))
-	for _, op := range opsList {
-		list = append(list, []string{op.ID, op.UserName})
-	}
-	return list
+// Step описує атомарний крок технологічної операції.
+//
+// Ідея Step-моделі:
+//
+//   * Технологічна операція розбивається на набор послідовних кроків.
+//   * Контролер виконує цю послідовність.
+//   * Сам Step НЕ керує циклом виконання.
+//
+// Це усуває ситуацію, коли кожна операція реалізує власний scheduler
+//
+// Життєвий цикл Step:
+//
+//   1. Controller викликає Do()
+//      → змінюємо виходи, запускаємо фізичну дію.
+//      → жодних очікувань усередині!
+//
+//   2. Controller викликає Wait()
+//      → Wait сама визначає, коли процес завершився:
+//          - по сенсору
+//          - по таймауту
+//          - по зовнішній події
+//      → Wait МОЖЕ блокуватися, але це єдине дозволене місце очікування.
+//
+//   3. Якщо потрібно — викликається Cleanup()
+//      → гарантує приведення системи в безпечний стан.
+//
+// Таким чином, Controller є єдиним execution engine,
+// а Step декларативним описом технології
+//
+// Це робить поведінку:
+//   передбачуваною
+//   керованою (Pause / EmergencyStop)
+//   спостережуваною (можна логувати Name)
+//   розширюваною без вкладених state machine.
+//
+type Step struct {
+	Name       string
+	Do         func(c *Controller)
+	Wait       func(c *Controller) StepResult
+	Cleanup    func(c *Controller)
+}
+
+// OperationInfo описує технологічну операцію як послідовність Step.
+// Тобто:
+//   Операція = сценарій = []Step
+// Контролер інтерпретує список Steps як маленький DSL процесу.
+//
+// Це дозволяє:
+//   легко додавати нові операції без складної логіки
+//   бачити поточний Step у UI
+//   централізовано керувати Abort / Pause / Mode
+//   уникнути дублювання interruptibleSleep у кожній операції
+//
+type OperationInfo struct {
+	ID       string
+	UserName string
+	Steps    []Step
 }
 
 // GetOperationsRegistry повертає карту всіх доступних операцій
 func GetOperationsRegistry() []OperationInfo {
 	return []OperationInfo {
-    { ID:       "operation1",
-      UserName: "Операція 1",
-      Action:   opItWorks,
-    },
-      { ID:       "operation3",
+    {
+			ID:       "operation1",
+        UserName: "Операція 1",
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
+      },
+      {
+			ID:       "operation2",
+        UserName: "Операція 2",
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
+      },
+      {
+			ID:       "operation3",
         UserName: "Операція 3",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation4",
+      {
+			ID:       "operation4",
         UserName: "Операція 4",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation5",
+      {
+			ID:       "operation5",
         UserName: "Операція 5",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation6",
+      {
+			ID:       "operation6",
         UserName: "Операція 6",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation7",
+      {
+			ID:       "operation7",
         UserName: "Операція 7",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation8",
+      {
+			ID:       "operation8",
         UserName: "Операція 8",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "sync_mirror",
+      {
+			ID:       "operation9",
+        UserName: "Операція 9",
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
+      },
+      {
+			ID:       "sync_mirror",
         UserName: "Дзеркалювання",
-        Action:   opSyncMirror,
+        Steps: []Step{
+          {
+            Name: "Включення двигуна",
+            Do: func(c *Controller) {
+              c.apply(func() { c.state.Device20Out[31] = 1 })
+            },
+            Wait: waitMotorOn,
+          },
+          {
+            Name: "Синхронізація",
+            Do: func(c *Controller) {
+              c.apply(func() {
+                for i := 0; i < 31; i++ {
+                  c.state.Device20Out[i] = c.state.Device10In[i]
+                }
+              })
+            },
+            Wait: waitSyncMirror,
+          },
+          {
+            Name: "Вимкнення двигуна",
+            Do: func(c *Controller) {
+              c.apply(func() {
+                for i := 0; i < 32; i++ {
+                  c.state.Device20Out[i] = 0
+                }
+              })
+            },
+            Wait: waitAlwaysOK,
+          },
+        },
       },
-      { ID:       "op_safety_stop",
+      {
+			ID:       "op_safety_stop",
         UserName: "Безпечна зупинка",
-        Action:   opSafetyStop,
+        Steps: []Step{
+          {
+            Name: "Стоп",
+            Do: func(c *Controller) {
+              c.apply(func() { c.state.Device20Out[3] = 1 })
+            },
+            Wait: waitStop2s,
+            Cleanup: func(c *Controller) {
+              c.apply(func() {
+                for i := 0; i < 32; i++ {
+                  c.state.Device20Out[i] = 0
+                }
+              })
+            },
+          },
+        },
+    },
+
+      {
+			ID:       "operation10",
+        UserName: "Операція 10",
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation11",
+      {
+			ID:       "operation11",
         UserName: "Операція 11",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation12",
+      {
+			ID:       "operation12",
         UserName: "Операція 12",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation13",
+      {
+			ID:       "operation13",
         UserName: "Операція 13",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation14",
+      {
+			ID:       "operation14",
         UserName: "Операція 14",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation15",
+      {
+			ID:       "operation15",
         UserName: "Операція 15",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation16",
+      {
+			ID:       "operation16",
         UserName: "Операція 16",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation17",
+      {
+			ID:       "operation17",
         UserName: "Операція 17",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation18",
-        UserName: "Операція 18",
-        Action:   opItWorks,
+      {
+			ID:       "operation18",
+        UserName: "Операція 8",
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation19",
+      {
+			ID:       "operation19",
         UserName: "Операція 19",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
-      { ID:       "operation20",
+      {
+			ID:       "operation20",
         UserName: "Операція 20",
-        Action:   opItWorks,
+        Steps: []Step{
+          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
+        },
       },
     }
 }
@@ -167,77 +362,72 @@ func SafetyStart(c *Controller) {
   c.state.mu.Unlock()
 }
 
-func opSyncMirror(c *Controller) {
-    fmt.Println("⏳ Початок синхронізації")
+// --- Wait-функції ---
 
-    // --- Внутрішня перевірка безпеки ---
-    checkEmergency := func() bool {
-        c.state.mu.RLock()
-        val := c.state.SensorValue/2
-        isLocked := c.state.IsSafetyLocked
-        c.state.mu.RUnlock()
-
-        if val > 250 && val < 300 {
-            fmt.Printf("⚠️ АВТОМАТИЧНА ЗУПИНКА: Сенсор = %d\n", val)
-            EmergencyStop(c, fmt.Sprintf("Перевищено поріг сенсора: %d", val))
-            return true
-        }
-        if isLocked {
-            return true
-        }
-        return false
-    }
-
-    // Крок 1: Вмикаємо двигун (тільки в пам'яті)
-    c.apply(func() { c.state.Device20Out[31] = 1 })
-    if checkEmergency() { return }
-    // Даємо IO-циклу час
-    if !interruptibleSleep(c, 2*time.Millisecond, checkEmergency) { return }
-    // Крок 2: Синхронізація
-    c.apply(func() {
-        for i := 0; i < 31; i++ {
-            c.state.Device20Out[i] = c.state.Device10In[i]
-        }
-    })
-    if checkEmergency() { return }
-    // Чекаємо завершення фізичного процесу
-  if !interruptibleSleep(c, 2*5*time.Second, checkEmergency) { return }
-    // Крок 3: Скидання (тільки в пам'яті)
-    c.apply(func() {
-        for i := 0; i < 31; i++ { c.state.Device20Out[i] = 0 }
-    })
-    if checkEmergency() { return }
-
-    fmt.Println("✅ Кінець синхронізації")
+func waitAlwaysOK(c *Controller) StepResult {
+	return StepResult{Status: StepOK}
 }
 
-func interruptibleSleep(c *Controller, d time.Duration, check func() bool) bool {
-    start := time.Now()
-    for time.Since(start) < d {
-        c.state.mu.RLock()
-        locked := c.state.IsSafetyLocked
-        c.state.mu.RUnlock()
+// Імітуємо очікування мотору включеним
+func waitMotorOn(c *Controller) StepResult {
+	timeout := time.After(100 * time.Millisecond)
+	tick := time.Tick(5 * time.Millisecond)
 
-        if locked || (check != nil && check()) {
-            return false // зупиняємо операцію негайно
-        }
-        time.Sleep(5 * time.Millisecond)
-    }
-    return true
+	for {
+		select {
+		case <-timeout:
+			return StepResult{Status: StepOK} // завершено
+		case <-tick:
+			c.state.mu.RLock()
+			locked := c.state.IsSafetyLocked
+			c.state.mu.RUnlock()
+			if locked {
+				return StepResult{Status: StepAbort, Message: "EmergencyStop"}
+			}
+		}
+	}
 }
 
-func opItWorks(c *Controller) {
+// Очікуємо поки сенсор синхронізації не досягне порогу
+func waitSyncMirror(c *Controller) StepResult {
+	for {
+		c.state.mu.RLock()
+		val := c.state.SensorValue / 2
+		locked := c.state.IsSafetyLocked
+		c.state.mu.RUnlock()
+
+		if locked {
+			return StepResult{Status: StepAbort, Message: "EmergencyStop"}
+		}
+		if val > 250 && val < 300 {
+			EmergencyStop(c, fmt.Sprintf("Перевищено поріг сенсора: %d", val))
+			return StepResult{Status: StepAbort, Message: "Sensor threshold exceeded"}
+		}
+		if val > 200 {
+			return StepResult{Status: StepOK}
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// Стоп 2 секунди
+func waitStop2s(c *Controller) StepResult {
+	start := time.Now()
+	for time.Since(start) < 2*time.Second {
+		c.state.mu.RLock()
+		locked := c.state.IsSafetyLocked
+		c.state.mu.RUnlock()
+		if locked {
+			return StepResult{Status: StepAbort}
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	return StepResult{Status: StepOK}
+}
+
+// --- Do-функції для простих Steps ---
+
+func stepItWorks(c *Controller) {
 	fmt.Println("✅ Це працює")
-  interruptibleSleep(c, 1*time.Second, func() bool {return false})
 }
 
-func opSafetyStop(c *Controller) {
-  checkEmergency := func() bool {return false}
-	fmt.Println("Початок Зупинки (2с)...")
-	c.apply(func() { c.state.Device20Out[3] = 1 })
-	if !interruptibleSleep(c, 2*time.Second, checkEmergency) { return }
-  c.apply(func() {
-    for i := 0; i < 32; i++ { c.state.Device20Out[i] = 0 }
-  })
-	fmt.Println("зупинено")
-}

@@ -17,6 +17,15 @@ type Controller struct {
   needsCounterReset bool
 }
 
+func GetOperationsList() [][]string {
+  opsList := GetOperationsRegistry()
+  list := make([][]string, 0, len(opsList))
+  for _, op := range opsList {
+    list = append(list, []string{op.ID, op.UserName})
+  }
+  return list
+}
+
 func NewController(hw HardwareService, state *HardwareState) *Controller {
 	registry := GetOperationsRegistry()
 
@@ -70,7 +79,7 @@ func (c *Controller) logicWorker() {
 
     // 1. Якщо система заблокована (Emergency Stop) — нічого не робимо, чекаємо розблокування
     if locked {
-      time.Sleep(100 * time.Millisecond)
+      time.Sleep(10 * time.Millisecond)
       continue
     }
 
@@ -78,72 +87,84 @@ func (c *Controller) logicWorker() {
     // Використовуємо select з default, щоб не блокуватися, якщо черга порожня
     select {
     case opID := <-c.opQueue:
-      fmt.Printf("🎯 Виконання ручної команди: %s\n", opID)
-      c.exec(opID)
-      continue // Після ручної команди повертаємось на початок циклу перевірки
+      fmt.Printf("[CTRL] Виконання ручної команди: %s\n", opID)
+      c.execSteps(opID)
     default:
-      // Якщо в черзі нічого немає, йдемо далі до автоматики
-    }
-
-    // 3. Автоматика та Одиночний цикл
-    if (mode == ModeAutomatic || mode == ModeSingle) && !paused {
-      c.runAutomaticCycle()
-      
-      // Якщо це був одиночний цикл, після завершення всіх кроків перемикаємо в Manual
-      if mode == ModeSingle {
-        c.SetMode(ModeManual)
-        fmt.Println("✅ Одиночний цикл завершено")
-      }
-    } else {
-      // 4. Режим Manual або Pause — просто чекаємо
-      time.Sleep(50 * time.Millisecond)
+      if (mode == ModeAutomatic || mode == ModeSingle) && !paused {
+				c.runAutomaticCycleSteps()
+				if mode == ModeSingle {
+					c.SetMode(ModeManual)
+					fmt.Println("✅ Одиночний цикл завершено")
+				}
+			} else {
+				time.Sleep(50 * time.Millisecond)
+			}
     }
   }
 }
 
-// Послідовно виконує зареєстровані кроки сценарію
-func (c *Controller) runAutomaticCycle() {
-  c.state.mu.Lock()
-  if c.needsCounterReset {
-    c.state.Counter = 0
-    c.needsCounterReset = false
-  }
-  c.state.mu.Unlock()
-
-  for _, opEntry := range c.state.OpsList {
-    c.waitIfPaused()
-    c.state.mu.RLock()
-    mode := c.state.Mode
-    locked := c.state.IsSafetyLocked
-    c.state.mu.RUnlock()
-
-    if mode == ModeManual || locked {
-      fmt.Printf("🛑 Цикл перервано перед кроком %s\n", opEntry[0])
-      return
-    }
-    c.exec(opEntry[0])
-  }
-
-  c.state.mu.Lock()
-  c.state.Counter++
-  c.state.mu.Unlock()
-}
-
-func (c *Controller) exec(opId string) {
-	op, ok := c.opsMap[opId]
+// --- Виконання Steps операції ---
+func (c *Controller) execSteps(opID string) {
+	op, ok := c.opsMap[opID]
 	if !ok {
-		fmt.Printf("⚠️ Операція %s не знайдена\n", opId)
+		fmt.Printf("⚠️ Операція %s не знайдена\n", opID)
 		return
 	}
 
 	c.state.mu.Lock()
-	c.state.ActiveOperation = opId
+	c.state.ActiveOperation = opID
 	c.state.mu.Unlock()
 
-	op.Action(c)
+	for _, step := range op.Steps {
+		step.Do(c)
+
+		result := step.Wait(c)
+		if step.Cleanup != nil {
+			step.Cleanup(c)
+		}
+
+		if result.Status == StepAbort {
+			fmt.Printf("❌ Step %s aborted: %s\n", step.Name, result.Message)
+			break
+		}
+		if result.Status == StepFail {
+			fmt.Printf("⚠️ Step %s failed: %s\n", step.Name, result.Message)
+			break
+		}
+	}
 
 	c.state.mu.Lock()
 	c.state.ActiveOperation = ""
+	c.state.mu.Unlock()
+}
+
+// --- Автоматичний цикл через Steps ---
+func (c *Controller) runAutomaticCycleSteps() {
+	c.state.mu.Lock()
+	if c.needsCounterReset {
+		c.state.Counter = 0
+		c.needsCounterReset = false
+	}
+	c.state.mu.Unlock()
+
+	for _, opEntry := range c.state.OpsList {
+		c.waitIfPaused()
+
+		c.state.mu.RLock()
+		mode := c.state.Mode
+		locked := c.state.IsSafetyLocked
+		c.state.mu.RUnlock()
+
+		if mode == ModeManual || locked {
+			fmt.Printf("[CTRL] Цикл перервано перед кроком %s\n", opEntry[0])
+			return
+		}
+
+		c.execSteps(opEntry[0])
+	}
+
+	c.state.mu.Lock()
+	c.state.Counter++
 	c.state.mu.Unlock()
 }
 
