@@ -148,10 +148,12 @@ func EmergencyStop(c *Controller, reason string) {
   c.state.Mode = ModeManual
   c.state.mu.Unlock()
 
-  for len(c.opQueue) > 0 { 
+loop:
+  for {
     select {
     case <-c.opQueue:
     default:
+      break loop
     }
   }
 }
