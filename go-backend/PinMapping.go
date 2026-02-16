@@ -9,6 +9,10 @@
 //   - Slave 20 (Outputs): Дискретні виходи (реле, пускачі, сигналізація)
 package main
 
+import (
+	"fmt"
+)
+
 // --- Inputs Mapping (Slave 10 / Device10In) ---
 const (
 	// PinMotorReady — сигнал готовності частотного перетворювача (Drive Ready).
@@ -28,3 +32,21 @@ const (
 	AddrInputsBlock  = 10 // Адреса блоку дискретних входів
 	AddrOutputsBlock = 20 // Адреса блоку релейних виходів
 )
+
+// PinNames дозволяє отримати текстову назву піна за його індексом.
+// Використовується для логування подій та відображення стану в UI.
+var PinNames = map[int]string{
+	// Входи
+	PinMotorReady:   "Готовність двигуна",
+
+	// Виходи
+	OutMainMotor: "Головний двигун",
+}
+
+// GetPinName повертає назву піна або "Unknown", якщо пін не описаний.
+func GetPinName(pin int) string {
+	if name, ok := PinNames[pin]; ok {
+		return name
+	}
+	return fmt.Sprintf("Pin %d", pin)
+}
