@@ -104,7 +104,20 @@ func (c *Controller) logicWorker() {
   }
 }
 
-// --- Виконання Steps операції ---
+// execSteps виконує послідовність Steps для операції з вказаним ID.
+//
+// ActiveOperation встановлюється на початку і гарантовано скидається
+// через defer — незалежно від того, як завершилось виконання:
+// штатно, через break або EmergencyStop.
+//
+// Порядок виконання кожного кроку:
+//  1. Перевірка EmergencyStop перед Do      — міг прийти зовнішній сигнал
+//  2. Do()                                  — фізична дія (миттєво)
+//  3. Перевірка EmergencyStop перед Wait    — Do міг спровокувати зупинку
+//  4. Wait()                                — очікування завершення процесу
+//  5. Перевірка EmergencyStop перед Cleanup — Wait могла тривати довго
+//  6. Cleanup()                             — аналог defer для Step,
+//                                            не викликається при EmergencyStop
 func (c *Controller) execSteps(opID string) {
   op, ok := c.opsMap[opID]
   if !ok {
