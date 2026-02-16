@@ -21,7 +21,7 @@ func GetOperationsList() [][]string {
   opsList := GetOperationsRegistry()
   list := make([][]string, 0, len(opsList))
   for _, op := range opsList {
-    list = append(list, []string{op.ID, op.UserName})
+    list = append(list, []string{op.ID, op.DisplayName})
   }
   return list
 }
@@ -115,12 +115,14 @@ func (c *Controller) execSteps(opID string) {
   c.state.ActiveOperation = opID
   c.state.mu.Unlock()
 
-  for _, step := range op.Steps {
+  steps := op.Build() 
+  for _, step := range steps {
     if c.isEmergency() { break }
-    step.Do(c)
+    if step.Do != nil { step.Do(c) }
+    if c.isEmergency() { break }
 
-    if c.isEmergency() { break }
-    result := step.Wait(c)
+    var result StepResult = StepResult{Status: StepOK}
+    if step.Wait != nil { result = step.Wait(c) }
 
     // Cleanup — аналог defer, виконується завжди крім EmergencyStop
     if !c.isEmergency() && step.Cleanup != nil {

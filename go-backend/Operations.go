@@ -39,53 +39,73 @@ type StepResult struct {
 
 // Step описує атомарний крок технологічної операції.
 //
-// Ідея Step-моделі:
+// # Ідея Step-моделі
 //
-//   * Технологічна операція розбивається на набір послідовних кроків.
-//   * Контролер виконує цю послідовність.
-//   * Сам Step НЕ керує циклом виконання.
+//   - Технологічна операція розбивається на набір послідовних кроків.
+//   - Контролер виконує цю послідовність як детермінований керуючий автомат.
+//   - Сам Step НЕ керує циклом виконання — він декларативний опис технології.
 //
 // Це усуває ситуацію, коли кожна операція реалізує власний scheduler.
 //
-// Життєвий цикл Step:
+// # Модель виконання
 //
-//   1. Controller викликає Do()
-//      Змінюємо виходи, запускаємо фізичну дію.
-//      Жодних очікувань усередині — Do має завершитись миттєво.
+// Система реалізує детермінований керуючий автомат через closure-factory:
 //
-//   2. Controller викликає Wait()
-//      Wait сама визначає, коли процес завершився:
-//        - по сенсору
-//        - по таймауту
-//        - по зовнішній події
-//      Wait МОЖЕ блокуватися — це єдине дозволене місце очікування.
-//      Wait повертає StepResult, який сигналізує контролеру про результат.
+//   OperationInfo  — шаблон (definition): описує що робити.
+//   Build()        — інстанціювання (runtime instance): створює свіжий контекст.
+//   []Step         — одноразовий execution-plan: виконали → викинули.
 //
-//   3. Cleanup() — аналог defer для Step.
-//      Виконується після Wait за умови що EmergencyStop не спрацював.
-//      Гарантує приведення системи в штатний стан після:
-//        - успішного завершення (StepOK)
-//        - штатного переривання (StepAbort, StepFail)
-//      **НЕ виконується** якщо спрацював EmergencyStop —
-//      система вже переведена в безпечний стан самим EmergencyStop.
+// Натиснули кнопку → Build() → отримали "свіжі" Steps → виконали → забули.
+// Жодного shared state між запусками. Локальні змінні — нові на кожен запуск.
 //
-// Порядок перевірок EmergencyStop в контролері:
-//   - перед Do    — зовнішній сигнал між кроками
-//   - перед Wait  — Do міг спровокувати EmergencyStop
+// Один execution flow, чіткі межі операції, ніяких fan-out / fan-in.
+// Це НЕ ускладнення — це відкладене створення (lazy instantiation).
+//
+// # Життєвий цикл Step
+//
+//  1. Do() — опціональний.
+//     Змінюємо виходи, запускаємо фізичну дію.
+//     Має завершитись миттєво — жодних очікувань усередині.
+//
+//  2. Wait() — опціональний.
+//     Wait сама визначає, коли процес завершився:
+//       - по сенсору
+//       - по таймауту
+//       - по зовнішній події
+//     Wait МОЖЕ блокуватися — це єдине дозволене місце очікування.
+//     Wait повертає StepResult, який сигналізує контролеру про результат.
+//     Якщо Wait == nil, крок вважається успішним (StepOK) миттєво.
+//
+//  3. Cleanup() — опціональний, аналог defer для Step.
+//     Виконується після Wait якщо EmergencyStop не спрацював.
+//     Гарантує приведення системи в штатний стан після:
+//       - успішного завершення (StepOK)
+//       - штатного переривання (StepAbort, StepFail)
+//     **НЕ виконується** якщо спрацював EmergencyStop —
+//     система вже переведена в безпечний стан самим EmergencyStop.
+//
+// # Порядок перевірок EmergencyStop в контролері
+//
+//   - перед Do      — зовнішній сигнал між кроками
+//   - перед Wait    — Do міг спровокувати EmergencyStop
 //   - перед Cleanup — Wait могла тривати довго
 //
-// Таким чином, Controller є єдиним execution engine, а Step — декларативним описом технології.
+// Якщо EmergencyStop виявлено на будь-якому з цих етапів —
+// виконання зупиняється негайно, Cleanup не викликається.
 //
+// # Властивості системи
+//
+// Таким чином, Controller є єдиним execution engine, а Step — декларативним описом технології.
 // Це робить поведінку:
-//   передбачуваною
-//   керованою  (Pause / EmergencyStop)
-//   спостережуваною (можна логувати Name)
-//   розширюваною без вкладених state machine.
+//   - передбачуваною
+//   - керованою  (Pause / EmergencyStop)
+//   - спостережуваною (Name для логів / UI)
+//   - розширюваною без вкладених state machine
 type Step struct {
-	Name       string
-	Do         func(c *Controller)
-	Wait       func(c *Controller) StepResult
-	Cleanup    func(c *Controller)
+	Name    string
+	Do      func(c *Controller)
+	Wait    func(c *Controller) StepResult
+	Cleanup func(c *Controller)
 }
 
 // OperationInfo описує технологічну операцію як послідовність Step.
@@ -104,208 +124,86 @@ type Step struct {
 //
 type OperationInfo struct {
 	ID       string
-	UserName string
-	Steps    []Step
+	DisplayName string
+	Build func() []Step // Створює НОВИЙ сценарій виконання.
+                      // Викликається КОЖЕН раз перед запуском операції.
+}
+
+func StepDoWait(name string, do func(c *Controller), wait func(c *Controller) StepResult) Step {
+    return Step{Name: name, Do: do, Wait: wait}
 }
 
 // GetOperationsRegistry повертає карту всіх доступних операцій
 func GetOperationsRegistry() []OperationInfo {
-	return []OperationInfo {
-    {
-			ID:       "operation1",
-        UserName: "Операція 1",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitStop2s},
-        },
-      },
-      {
-			ID:       "operation2",
-        UserName: "Операція 2",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitStop2s},
-        },
-      },
-      {
-			ID:       "operation3",
-        UserName: "Операція 3",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation4",
-        UserName: "Операція 4",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation5",
-        UserName: "Операція 5",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation6",
-        UserName: "Операція 6",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation7",
-        UserName: "Операція 7",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation8",
-        UserName: "Операція 8",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation9",
-        UserName: "Операція 9",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-      ID:       "sync_mirror",
-        UserName: "Дзеркалювання",
-        Steps: []Step{
-          {
-            Name: "Включення двигуна",
-            Do: func(c *Controller) {
-              c.apply(func() { c.state.Device20Out[31] = 1 })
-            },
-            Wait: waitMotorOn,
-          },
-          {
-            Name: "Синхронізація",
-            Do: func(c *Controller) {
-              c.apply(func() {
-                for i := 0; i < 31; i++ {
-                  c.state.Device20Out[i] = c.state.Device10In[i]
-                }
-              })
-            },
-            Wait: waitSyncMirror,
-            Cleanup: func(c *Controller) {
-              c.apply(func() {
-                for i := 0; i < 31; i++ {
-                  c.state.Device20Out[i] = 0
-                }
-                //c.state.Device20Out[31] = 0 // двигун гарантовано вимкнений
-              })
-            },
-          },
-        },
-      },
-
-      {
+	return []OperationInfo{
+		{ID: "operation1",  DisplayName: "Операція 1",  Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitStop2s)} }},
+		{ID: "operation2",  DisplayName: "Операція 2",  Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitStop2s)} }},
+		{ID: "operation3",  DisplayName: "Операція 3",  Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation4",  DisplayName: "Операція 4",  Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation5",  DisplayName: "Операція 5",  Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation6",  DisplayName: "Операція 6",  Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation7",  DisplayName: "Операція 7",  Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation8",  DisplayName: "Операція 8",  Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation9",  DisplayName: "Операція 9",  Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{
+			ID:       "sync_mirror",
+			DisplayName: "Дзеркалювання",
+			Build: func() []Step {
+				return []Step{
+					{
+						Name: "Включення двигуна",
+						Do:   func(c *Controller) { c.apply(func() { c.state.Device20Out[31] = 1 }) },
+						Wait: waitMotorOn,
+					},
+					{
+						Name: "Синхронізація",
+						Do: func(c *Controller) {
+							c.apply(func() {
+								for i := 0; i < 31; i++ {
+									c.state.Device20Out[i] = c.state.Device10In[i]
+								}
+							})
+						},
+						Wait: waitSyncMirror,
+						Cleanup: func(c *Controller) {
+							c.apply(func() {
+								for i := 0; i < 31; i++ { c.state.Device20Out[i] = 0 }
+							})
+						},
+					},
+				}
+			},
+		},
+		{
 			ID:       "op_safety_stop",
-        UserName: "Безпечна зупинка",
-        Steps: []Step{
-          {
-            Name: "Стоп",
-            Do: func(c *Controller) {
-              c.apply(func() { c.state.Device20Out[3] = 1 })
-            },
-            Wait: waitStop2s,
-            Cleanup: func(c *Controller) {
-              c.apply(func() {
-                for i := 0; i < 32; i++ {
-                  c.state.Device20Out[i] = 0
-                }
-              })
-            },
-          },
-        },
-      },
-
-      {
-			ID:       "operation10",
-        UserName: "Операція 10",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation11",
-        UserName: "Операція 11",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation12",
-        UserName: "Операція 12",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation13",
-        UserName: "Операція 13",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation14",
-        UserName: "Операція 14",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation15",
-        UserName: "Операція 15",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation16",
-        UserName: "Операція 16",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation17",
-        UserName: "Операція 17",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation18",
-        UserName: "Операція 8",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation19",
-        UserName: "Операція 19",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-      {
-			ID:       "operation20",
-        UserName: "Операція 20",
-        Steps: []Step{
-          {Name: "DoSomething", Do: stepItWorks, Wait: waitAlwaysOK},
-        },
-      },
-    }
+			DisplayName: "Безпечна зупинка",
+			Build: func() []Step {
+				return []Step{
+					{
+						Name: "Стоп",
+						Do:   func(c *Controller) { c.apply(func() { c.state.Device20Out[3] = 1 }) },
+						Wait: waitStop2s,
+						Cleanup: func(c *Controller) {
+							c.apply(func() {
+								for i := 0; i < 32; i++ { c.state.Device20Out[i] = 0 }
+							})
+						},
+					},
+				}
+			},
+		},
+		{ID: "operation10", DisplayName: "Операція 10", Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation11", DisplayName: "Операція 11", Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation12", DisplayName: "Операція 12", Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation13", DisplayName: "Операція 13", Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation14", DisplayName: "Операція 14", Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation15", DisplayName: "Операція 15", Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation16", DisplayName: "Операція 16", Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation17", DisplayName: "Операція 17", Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation18", DisplayName: "Операція 18", Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation19", DisplayName: "Операція 19", Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+		{ID: "operation20", DisplayName: "Операція 20", Build: func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} }},
+	}
 }
 
 // GetAllowedManualOps визначає, які операції доступні для натискання в ручному режимі
