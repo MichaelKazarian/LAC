@@ -17,30 +17,31 @@ type Controller struct {
   needsCounterReset bool
 }
 
-func GetOperationsList() [][]string {
-  opsList := GetOperationsRegistry()
-  list := make([][]string, 0, len(opsList))
-  for _, op := range opsList {
-    list = append(list, []string{op.ID, op.DisplayName})
-  }
-  return list
+func GetOperationsList(r *OperationRegistry) [][]string {
+	list := make([][]string, 0, len(r.ops))
+	for _, op := range r.ops {
+		list = append(list, []string{op.ID, op.DisplayName})
+	}
+	return list
 }
 
 func NewController(hw HardwareService, state *HardwareState) *Controller {
-	registry := GetOperationsRegistry()
+	registry := NewOperationRegistry()
+	RegisterOperations(registry)
 
 	// Швидкий доступ по ID
 	opMap := make(map[string]OperationInfo)
-	for _, op := range registry {
+	for _, op := range registry.All() {
 		opMap[op.ID] = op
 	}
-  state.OpsList=GetOperationsList()
+
+	state.OpsList = GetOperationsList(registry)
 
 	return &Controller{
-		hw:       hw,
-		state:    state,
-		opsMap:   opMap,
-		opQueue:  make(chan string, 10),
+		hw:      hw,
+		state:   state,
+		opsMap:  opMap,
+		opQueue: make(chan string, 10),
 	}
 }
 
