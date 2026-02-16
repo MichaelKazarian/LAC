@@ -116,6 +116,12 @@ func (c *Controller) execSteps(opID string) {
   c.state.ActiveOperation = opID
   c.state.mu.Unlock()
 
+  defer func() {
+    c.state.mu.Lock()
+    c.state.ActiveOperation = ""
+    c.state.mu.Unlock()
+  }()
+
   steps := op.Build() 
   for _, step := range steps {
     if c.isEmergency() { break }
@@ -139,10 +145,6 @@ func (c *Controller) execSteps(opID string) {
       break
     }
   }
-
-  c.state.mu.Lock()
-  c.state.ActiveOperation = ""
-  c.state.mu.Unlock()
 }
 
 func (c *Controller) isEmergency() bool {
