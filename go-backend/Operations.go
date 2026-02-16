@@ -1,3 +1,19 @@
+// Цей файл містить реєстрацію та реалізацію технологічних операцій.
+//
+// # Структура файлу
+//
+// Кожна нетривіальна операція організована у власний блок з чіткою структурою:
+//
+//	buildXxx()   — фабрика: повертає []Step, може містити локальні змінні-замикання.
+//	stepXxx()    — конструктор одного Step: збирає Do/Wait/Cleanup в єдину структуру.
+//	doXxx()      — виконує фізичну дію (миттєво, без очікувань).
+//	waitXxx()    — очікує завершення фізичного процесу (може блокуватися).
+//	cleanupXxx() — прибирає після кроку (аналог defer, не викликається при EmergencyStop).
+//
+// Щоб додати нову операцію:
+//  1. Зареєструй її в RegisterOperations() через r.Add(id, displayName, buildXxx).
+//  2. Реалізуй buildXxx() та відповідні step/do/wait/cleanup функції нижче.
+//  3. Прості операції з одним кроком можна реєструвати inline через StepDoWait.
 package main
 
 import (
@@ -16,48 +32,8 @@ func RegisterOperations(r *OperationRegistry) {
 	r.Add("operation7",  "Операція 7",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation8",  "Операція 8",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation9",  "Операція 9",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-
-	r.Add("sync_mirror", "Дзеркалювання", func() []Step {
-		return []Step{
-			{
-				Name: "Включення двигуна",
-				Do:   func(c *Controller) { c.apply(func() { c.state.Device20Out[31] = 1 }) },
-				Wait: waitMotorOn,
-			},
-			{
-				Name: "Синхронізація",
-				Do: func(c *Controller) {
-					c.apply(func() {
-						for i := 0; i < 31; i++ {
-							c.state.Device20Out[i] = c.state.Device10In[i]
-						}
-					})
-				},
-				Wait: waitSyncMirror,
-				Cleanup: func(c *Controller) {
-					c.apply(func() {
-						for i := 0; i < 31; i++ { c.state.Device20Out[i] = 0 }
-					})
-				},
-			},
-		}
-	})
-
-	r.Add("op_safety_stop", "Безпечна зупинка", func() []Step {
-		return []Step{
-			{
-				Name: "Стоп",
-				Do:   func(c *Controller) { c.apply(func() { c.state.Device20Out[3] = 1 }) },
-				Wait: waitStop2s,
-				Cleanup: func(c *Controller) {
-					c.apply(func() {
-						for i := 0; i < 32; i++ { c.state.Device20Out[i] = 0 }
-					})
-				},
-			},
-		}
-	})
-
+	r.Add("sync_mirror",    "Дзеркалювання",   buildSyncMirror)
+	r.Add("op_safety_stop", "Безпечна зупинка", buildSafetyStop)
 	r.Add("operation10", "Операція 10", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation11", "Операція 11", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation12", "Операція 12", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -71,7 +47,84 @@ func RegisterOperations(r *OperationRegistry) {
 	r.Add("operation20", "Операція 20", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 }
 
-// --- Wait-функції специфічні для операцій ---
+// =============================================================================
+// sync_mirror
+// =============================================================================
+
+func buildSyncMirror() []Step {
+	return []Step{
+		stepMotorOn(),
+		stepSyncMirror(),
+	}
+}
+
+func stepMotorOn() Step {
+	return Step{
+		Name: "Включення двигуна",
+		Do:   doMotorOn,
+		Wait: waitMotorOn,
+	}
+}
+
+func stepSyncMirror() Step {
+	return Step{
+		Name:    "Синхронізація",
+		Do:      doSyncMirror,
+		Wait:    waitSyncMirror,
+		Cleanup: cleanupSyncMirror,
+	}
+}
+
+func doMotorOn(c *Controller) {
+	c.apply(func() { c.state.Device20Out[31] = 1 })
+}
+
+func doSyncMirror(c *Controller) {
+	c.apply(func() {
+		for i := 0; i < 31; i++ {
+			c.state.Device20Out[i] = c.state.Device10In[i]
+		}
+	})
+}
+
+func cleanupSyncMirror(c *Controller) {
+	c.apply(func() {
+		for i := 0; i < 31; i++ { c.state.Device20Out[i] = 0 }
+	})
+}
+
+// =============================================================================
+// op_safety_stop
+// =============================================================================
+
+func buildSafetyStop() []Step {
+	return []Step{
+		stepSafetyStop(),
+	}
+}
+
+func stepSafetyStop() Step {
+	return Step{
+		Name:    "Стоп",
+		Do:      doSafetyStop,
+		Wait:    waitStop2s,
+		Cleanup: cleanupSafetyStop,
+	}
+}
+
+func doSafetyStop(c *Controller) {
+	c.apply(func() { c.state.Device20Out[3] = 1 })
+}
+
+func cleanupSafetyStop(c *Controller) {
+	c.apply(func() {
+		for i := 0; i < 32; i++ { c.state.Device20Out[i] = 0 }
+	})
+}
+
+// =============================================================================
+// Wait-функції специфічні для операцій
+// =============================================================================
 
 // waitMotorOn — імітує очікування увімкнення мотору.
 func waitMotorOn(c *Controller) StepResult {
@@ -120,7 +173,9 @@ func waitSyncMirror(c *Controller) StepResult {
 	return StepResult{Status: StepOK}
 }
 
-// --- Do-функції для заглушок ---
+// =============================================================================
+// Do-функції для заглушок
+// =============================================================================
 
 func stepItWorks(c *Controller) {
 	fmt.Println("✅ Це працює")
