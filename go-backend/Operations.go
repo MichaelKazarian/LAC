@@ -76,12 +76,12 @@ func stepSyncMirror() Step {
 }
 
 func doMotorOn(c *Controller) {
-	c.apply(func() { c.state.Device20Out[31] = 1 })
+	c.apply(func() { c.state.Device20Out[OutMainMotor] = 1 })
 }
 
 func doSyncMirror(c *Controller) {
 	c.apply(func() {
-		for i := 0; i < 31; i++ {
+		for i := 0; i < OutMainMotor; i++ {
 			c.state.Device20Out[i] = c.state.Device10In[i]
 		}
 	})
@@ -89,7 +89,7 @@ func doSyncMirror(c *Controller) {
 
 func cleanupSyncMirror(c *Controller) {
 	c.apply(func() {
-		for i := 0; i < 31; i++ { c.state.Device20Out[i] = 0 }
+		for i := 0; i < OutMainMotor; i++ { c.state.Device20Out[i] = 0 }
 	})
 }
 
@@ -128,21 +128,32 @@ func cleanupSafetyStop(c *Controller) {
 
 // waitMotorOn — імітує очікування увімкнення мотору.
 func waitMotorOn(c *Controller) StepResult {
-	timeout := time.After(100 * time.Millisecond)
-	tick := time.Tick(5 * time.Millisecond)
-	for {
-		select {
-		case <-timeout:
-			return StepResult{Status: StepOK}
-		case <-tick:
-			c.state.mu.RLock()
-			locked := c.state.IsSafetyLocked
-			c.state.mu.RUnlock()
-			if locked {
-				return StepResult{Status: StepAbort, Message: "EmergencyStop"}
-			}
-		}
-	}
+  // 1. Тайм-аут: якщо мотор не розкрутився за 3 секунди — це помилка заліза
+  timeout := time.After(3 * time.Second)
+  ticker := time.NewTicker(20 * time.Millisecond)
+  defer ticker.Stop()
+
+  for {
+    select {
+    case <-timeout:
+      return StepResult{Status: StepFail, Message: "Двигун не розкрутився (Timeout)"}
+      
+    case <-ticker.C:
+      c.state.mu.RLock()
+      // Читаємо реальний вхід з Device10In
+      motorReady := c.state.Device10In[PinMotorReady] == 1
+      locked := c.state.IsSafetyLocked
+      c.state.mu.RUnlock()
+
+      if locked {
+        return StepResult{Status: StepAbort, Message: "Зупинено через EmergencyStop"}
+      }
+
+      if motorReady {
+        return StepResult{Status: StepOK} // Мотор готовий, йдемо до наступного кроку
+      }
+    }
+  }
 }
 
 // waitSyncMirror — протягом 5 секунд дзеркалює входи.
@@ -164,7 +175,7 @@ func waitSyncMirror(c *Controller) StepResult {
 			return StepResult{Status: StepAbort, Message: "Sensor threshold exceeded"}
 		}
 		c.apply(func() {
-			for i := 0; i < 31; i++ {
+			for i := 0; i < OutMainMotor; i++ {
 				c.state.Device20Out[i] = inputs[i]
 			}
 		})

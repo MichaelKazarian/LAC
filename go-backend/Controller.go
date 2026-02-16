@@ -208,7 +208,7 @@ func (c *Controller) syncHardware() {
   // автоматичних або "доживаючих" операцій щось записати.
   if locked {
     // fmt.Println("🚫 Запис заблоковано: активний Safety Lock")
-    current[31] = 0
+    current[OutMainMotor] = 0
   }
   // 2. Перевіряємо наявність змін
   if current == c.lastOutput && !c.firstRun {

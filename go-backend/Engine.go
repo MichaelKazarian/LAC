@@ -203,7 +203,7 @@ func EmergencyStop(c *Controller, reason string) {
 	c.state.mu.Lock()
 	c.state.StopReason = reason
 	fmt.Printf("🚨 EMERGENCY STOP: %s (Операція: %s)\n", reason, c.state.ActiveOperation)
-	c.state.Device20Out[31] = 0
+	c.state.Device20Out[OutMainMotor] = 0
 	c.state.IsSafetyLocked = true
 	c.state.IsPaused = false
 	c.state.ActiveOperation = ""
