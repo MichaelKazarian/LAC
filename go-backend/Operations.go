@@ -162,7 +162,7 @@ func waitSyncMirror(c *Controller) StepResult {
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		c.state.mu.RLock()
-		val := c.state.SensorValue / 2
+		val := c.state.EncoderValue / 2
 		locked := c.state.IsSafetyLocked
 		inputs := c.state.Device10In
 		c.state.mu.RUnlock()

@@ -187,7 +187,7 @@ func GetAllowedManualOps(state *HardwareState) []string {
 		return []string{"op_safety_stop"}
 	}
 	allowed := make([]string, 0)
-	val := state.SensorValue
+	val := state.EncoderValue
 	if val > 100 && val < 500 {
 		allowed = append(allowed, "sync_mirror")
 	}

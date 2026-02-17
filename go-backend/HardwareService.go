@@ -5,7 +5,7 @@ type HardwareService interface {
   // GetState() *HardwareState
 
   // Read повертає поточні дані з обладнання
-  // (наприклад, SensorValue та Device10In)
+  // (наприклад, EncoderValue та Device10In)
   Read() (sensor uint16, inputs [32]uint16, err error)
   // Write приймає масив значень для вихідного пристрою
   Write(values [32]uint16) error

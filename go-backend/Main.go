@@ -17,7 +17,7 @@ const (
 // HardwareState - спільне сховище даних
 type HardwareState struct {
 	mu               sync.RWMutex
-	SensorValue      uint16        `json:"sensor_value"`
+	EncoderValue     uint16        `json:"encoder_value"`
 	Device10In       [32]uint16    `json:"device10_in"`
   Device20Out      [32]uint16    `json:"-"` // "-" ігнорувати при маршалінгу
   Mode             ControlMode   `json:"mode"`

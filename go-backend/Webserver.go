@@ -128,7 +128,7 @@ func (ws *WebServer) handleState(w http.ResponseWriter, r *http.Request) {
 		"counter":          ws.state.Counter,
     "OperationsList":   ws.state.OpsList,
     "ActiveOperation":  ws.state.ActiveOperation,
-		"degree":           int(ws.state.SensorValue) % 720,
+		"degree":           int(ws.state.EncoderValue) % 720,
     "manualOperations": GetAllowedManualOps(ws.state),
 	}
 	

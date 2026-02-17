@@ -280,7 +280,7 @@ func (c *Controller) handleError(err error) {
 func (c *Controller) updateSlave3(val uint16, online bool) {
 	c.state.mu.Lock()
 	defer c.state.mu.Unlock()
-	c.state.SensorValue = val
+	c.state.EncoderValue = val
 	c.state.IsOnline3 = online
 	c.state.LastUpdate = time.Now()
 }
