@@ -1,6 +1,7 @@
 package main
 
 import (
+  "errors"
 	"fmt"
 	"time"
 )
@@ -48,11 +49,10 @@ func NewController(hw HardwareService, state *HardwareState) *Controller {
 // Run — основний цикл контролера
 func (c *Controller) Run() {
   c.firstRun = true // Ініціалізуємо перед циклом
-  fmt.Println("🚀 Контролер логіки запущено")
+  fmt.Println("[CTRL] Контролер логіки запущено")
 
   for {
     start := time.Now()
-    // 1. Читання
     sensor, inputs, err := c.hw.Read()
 		if err == nil {
 			c.updateEncoderState(sensor, true)
@@ -62,13 +62,12 @@ func (c *Controller) Run() {
 		}
 
     c.syncHardware()
-
     c.updateCycleTime(time.Since(start).Milliseconds())
   }
 }
 
 func (c *Controller) logicWorker() {
-  fmt.Println("🤖 Logic Worker запущено")
+  fmt.Println("[CTRL] Logic Worker запущено")
   
   for {
     // Перевіряємо режим та стан паузи
@@ -78,13 +77,13 @@ func (c *Controller) logicWorker() {
     locked := c.state.IsSafetyLocked
     c.state.mu.RUnlock()
 
-    // 1. Якщо система заблокована (Emergency Stop) — нічого не робимо, чекаємо розблокування
+    // Якщо система заблокована (Emergency Stop) — чекаємо розблокування
     if locked {
       time.Sleep(10 * time.Millisecond)
       continue
     }
 
-    // 2. Пріоритетна черга ручних команд (Web/API)
+    // Пріоритетна черга ручних команд (Web/API)
     // Використовуємо select з default, щоб не блокуватися, якщо черга порожня
     select {
     case opID := <-c.opQueue:
@@ -95,7 +94,7 @@ func (c *Controller) logicWorker() {
 				c.runAutomaticCycleSteps()
 				if mode == ModeSingle {
 					c.SetMode(ModeManual)
-					fmt.Println("✅ Одиночний цикл завершено")
+					fmt.Println("[CTRL] Одиночний цикл завершено")
 				}
 			} else {
 				time.Sleep(50 * time.Millisecond)
@@ -121,7 +120,7 @@ func (c *Controller) logicWorker() {
 func (c *Controller) execSteps(opID string) {
   op, ok := c.opsMap[opID]
   if !ok {
-    fmt.Printf("⚠️ Операція %s не знайдена\n", opID)
+    fmt.Printf("[CTRL]️ Операція %s не знайдена\n", opID)
     return
   }
 
@@ -150,11 +149,11 @@ func (c *Controller) execSteps(opID string) {
     }
 
     if result.Status == StepAbort {
-      fmt.Printf("❌ Step %s aborted: %s\n", step.Name, result.Message)
+      fmt.Printf("[CTRL] Step %s aborted: %s\n", step.Name, result.Message)
       break
     }
     if result.Status == StepFail {
-      fmt.Printf("⚠️ Step %s failed: %s\n", step.Name, result.Message)
+      fmt.Printf("[CTRL]️ Step %s failed: %s\n", step.Name, result.Message)
       break
     }
   }
@@ -198,7 +197,6 @@ func (c *Controller) runAutomaticCycleSteps() {
 
 // Перевіряє зміни в стані та записує їх у залізо
 func (c *Controller) syncHardware() {
-  // 1. Копіюємо стан під RLock
   c.state.mu.RLock()
   current := c.state.Device20Out
   locked := c.state.IsSafetyLocked
@@ -207,36 +205,33 @@ func (c *Controller) syncHardware() {
   // Якщо система заблокована, ми ігноруємо будь-які спроби
   // автоматичних або "доживаючих" операцій щось записати.
   if locked {
-    // fmt.Println("🚫 Запис заблоковано: активний Safety Lock")
+    // fmt.Println("[CTRL] Запис заблоковано: активний Safety Lock")
     current[OutMainMotor] = 0
   }
   // 2. Перевіряємо наявність змін
   if current == c.lastOutput && !c.firstRun {
-    return // Нічого не змінилося, виходимо
+    return
   }
 
-  // 3. Записуємо в залізо
   if err := c.hw.Write(current); err != nil {
-    c.handleError(fmt.Errorf("помилка запису Slave 20: %v", err))
+    c.handleError(fmt.Errorf("[CTRL] Failed to update Outputs on addr %d: %w", AddrOutputs, err))
     return
   }
 
   // 4. Оновлюємо кеш тільки при успішному записі
   c.lastOutput = current
   c.firstRun = false
-  
-  // fmt.Println("📡 [Modbus] Дані Slave 20 оновлено")
 }
 
 func (c *Controller) InvokeOperation(name string) error {
   if _, exists := c.opsMap[name]; !exists {
-		return fmt.Errorf("операція %s не знайдена", name)
+		return fmt.Errorf("[CTRL] Операція %s не знайдена", name)
 	}
   select {
 	case c.opQueue <- name:
-		fmt.Printf("[%s] 📨 Команда додана в чергу: %s\n", time.Now().Format("15:04:05"), name)
+		fmt.Printf("[CTRL] [%s] Команда додана в чергу: %s\n", time.Now().Format("15:04:05"), name)
 	default:
-		return fmt.Errorf("черга переповнена, зачекайте")
+		return fmt.Errorf("[CTRL] Черга переповнена, зачекайте")
 	}
   return nil
 }
@@ -254,9 +249,9 @@ func (c *Controller) SetMode(mode ControlMode) {
     c.state.mu.Unlock()
     // Якщо ми переходимо в ручний режим, можна відразу скинути певні виходи, якщо треба
     if mode == ModeManual {
-        fmt.Println("Контролер переведено в РУЧНИЙ режим")
+        fmt.Println("[CTRL] Контролер переведено в РУЧНИЙ режим")
     }
-    fmt.Printf("Режим змінено на: %v\n", mode)
+    fmt.Printf("[CTRL] Режим змінено на: %v\n", mode)
 }
 
 func (c *Controller) SetPause(paused bool) {
@@ -265,16 +260,22 @@ func (c *Controller) SetPause(paused bool) {
   c.state.mu.Unlock()
   
   if paused {
-    fmt.Println("⏸ ПАУЗА: Поточна операція допрацює, нові не почнуться.")
+    fmt.Println("[CTRL] ПАУЗА: Поточна операція допрацює, нові не почнуться.")
   } else {
-    fmt.Println("▶️ ПРОДОВЖЕНО: Автоматичний цикл відновлено.")
+    fmt.Println("[CTRL] ПРОДОВЖЕНО: Автоматичний цикл відновлено.")
   }
 }
 
 func (c *Controller) handleError(err error) {
 	c.updateInputsState(nil, false)
 	c.updateEncoderState(0, false)
-	fmt.Printf("[%s] Помилка зв'язку: %v\n", time.Now().Format("15:04:05"), err)
+
+  var critErr *CriticalCommError
+  if errors.As(err, &critErr) {
+    EmergencyStop(c, fmt.Sprintf("Втрата зв'язку: %d помилок підряд", critErr.Streak))
+    return
+  }
+	fmt.Printf("[CTRL] [%s] Помилка зв'язку: %v\n", time.Now().Format("15:04:05"), err)
 }
 
 func (c *Controller) updateEncoderState(val uint16, online bool) {
@@ -315,7 +316,7 @@ func (c *Controller) waitIfPaused() {
 
 func (c *Controller) apply(fn func()) {
   c.state.mu.Lock()
-  if c.state.IsSafetyLocked { // Якщо вже заблоковано, навіть не виконуємо логіку функції
+  if c.state.IsSafetyLocked { // Якщо заблоковано не виконуємо логіку функції
     c.state.mu.Unlock()
     return
   }

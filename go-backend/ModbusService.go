@@ -7,9 +7,23 @@ import (
     "github.com/goburrow/modbus"
 )
 
+const maxErrorStreak = 4
+
+type CriticalCommError struct {
+    Streak int
+    Err    error
+}
+
+func (e *CriticalCommError) Error() string {
+    return fmt.Sprintf("[MODBUS] %d consecutive errors: %v", e.Streak, e.Err)
+}
+
+func (e *CriticalCommError) Unwrap() error { return e.Err }
+
 type ModbusService struct {
   client  modbus.Client
   handler *modbus.RTUClientHandler
+  errorStreak  int // кількість помилок підряд
   //mu      sync.Mutex
 }
 
@@ -22,32 +36,34 @@ func NewModbusService(device string, baud int) *ModbusService {
     handler.Timeout = 200 * time.Millisecond
     
     if err := handler.Connect(); err != nil {
-        panic(fmt.Sprintf("❌ Помилка порту: %v", err))
+        panic(fmt.Sprintf("[MODBUS] Port error: %v", err))
     }
     return &ModbusService{client: modbus.NewClient(handler), handler: handler}
 }
 
 // Read реалізує інтерфейс HardwareService
 func (ms *ModbusService) Read() (uint16, [32]uint16, error) {
-    sensor, err3 := ms.readEncoder()
-    if err3 != nil {
-        return 0, [32]uint16{}, err3
-    }
-    time.Sleep(2 * time.Millisecond)
+  sensor, err := ms.readEncoder()
+  if err != nil {
+    return 0, [32]uint16{}, ms.trackError(err)
+  }
+  time.Sleep(2 * time.Millisecond)
 
-    inputs, err10 := ms.readInputs()
-    if err10 != nil {
-        return sensor, [32]uint16{}, err10
-    }
-    time.Sleep(2 * time.Millisecond)
-    return sensor, inputs, nil
+  inputs, err := ms.readInputs()
+  if err != nil {
+    return sensor, [32]uint16{}, ms.trackError(err)
+  }
+  time.Sleep(2 * time.Millisecond)
+
+  ms.errorStreak = 0
+  return sensor, inputs, nil
 }
 
 func (ms *ModbusService) readEncoder() (uint16, error) {
     ms.handler.SlaveId = AddrEncoder
     res, err := ms.client.ReadHoldingRegisters(0, 1)
     if err != nil {
-        return 0, fmt.Errorf("slave 3 error: %w", err)
+        return 0, ms.logReadError("Encoder", AddrEncoder, err)
     }
     return binary.BigEndian.Uint16(res), nil
 }
@@ -56,11 +72,11 @@ func (ms *ModbusService) readInputs() ([32]uint16, error) {
     ms.handler.SlaveId = AddrInputs
     res, err := ms.client.ReadHoldingRegisters(0, 2)
     if err != nil {
-        return [32]uint16{}, fmt.Errorf("slave 10 error: %w", err)
+        return [32]uint16{}, ms.logReadError("Inputs Block", AddrInputs, err)
     }
     
     if len(res) != 4 {
-        return [32]uint16{}, fmt.Errorf("slave 10: invalid data length")
+        return [32]uint16{}, fmt.Errorf("[MODBUS] Inputs Block (addr %d): invalid data length", AddrInputs)
     }
 
     r0 := binary.BigEndian.Uint16(res[0:2])
@@ -87,11 +103,27 @@ func (ms *ModbusService) Close() error {
     return ms.handler.Close()
 }
 
+// trackError рахує помилки підряд і сигналізує контролеру
+// коли їх кількість перевищує maxErrorStreak.
+func (ms *ModbusService) trackError(err error) error {
+    ms.errorStreak++
+    if ms.errorStreak == maxErrorStreak {
+        return &CriticalCommError{Streak: ms.errorStreak, Err: err}
+    }
+    return err
+}
+
+func (ms *ModbusService) logReadError(name string, addr byte, err error) error {
+    return fmt.Errorf("[MODBUS] %s (addr %d) Read Error: %w", name, addr, err)
+}
+
 func (ms *ModbusService) logWriteStatus(err error, r0, r1 uint16) {
-	timestamp := time.Now().Format("15:04:05")
-	if err == nil {
-		fmt.Printf("[%s] Slave 20 OK: Reg0=%04X, Reg1=%04X\n", timestamp, r0, r1)
-	} else {
-		fmt.Printf("[%s] Slave 20 Error: %v\n", timestamp, err)
-	}
+    timestamp := time.Now().Format("15:04:05")
+    if err == nil {
+        fmt.Printf("[%s] Outputs (addr %d) OK: [0x%04X 0x%04X]\n", 
+            timestamp, AddrOutputs, r0, r1)
+    } else {
+        fmt.Printf("[%s] Outputs (addr %d) Write Error: %v\n", 
+            timestamp, AddrOutputs, err)
+    }
 }
