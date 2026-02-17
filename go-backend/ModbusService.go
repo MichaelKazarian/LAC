@@ -31,7 +31,7 @@ func NewModbusService(device string, baud int) *ModbusService {
 func (ms *ModbusService) Read() (uint16, [32]uint16, error) {
     // ms.mu.Lock() // Беремо замок на ВСЕ читання
     // defer ms.mu.Unlock()
-    sensor, err3 := ms.readSlave3()
+    sensor, err3 := ms.readEncoder()
     if err3 != nil {
         return 0, [32]uint16{}, err3
     }
@@ -45,8 +45,8 @@ func (ms *ModbusService) Read() (uint16, [32]uint16, error) {
     return sensor, inputs, nil
 }
 
-func (ms *ModbusService) readSlave3() (uint16, error) {
-    ms.handler.SlaveId = 3
+func (ms *ModbusService) readEncoder() (uint16, error) {
+    ms.handler.SlaveId = AddrEncoder
     res, err := ms.client.ReadHoldingRegisters(0, 1)
     if err != nil {
         return 0, fmt.Errorf("slave 3 error: %w", err)
