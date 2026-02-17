@@ -19,7 +19,7 @@ type HardwareState struct {
 	mu               sync.RWMutex
 	SensorValue      uint16        `json:"sensor_value"`
 	Device10In       [32]uint16    `json:"device10_in"`
-  Device20Out      [32]uint16    `json:"device20_out"`
+  Device20Out      [32]uint16    `json:"-"` // "-" ігнорувати при маршалінгу
   Mode             ControlMode   `json:"mode"`
 	LastUpdate       time.Time     `json:"last_update"`
 	IsOnline3        bool          `json:"is_online_3"`
@@ -28,9 +28,9 @@ type HardwareState struct {
   IsSafetyLocked   bool          `json:"is_safety_locked"`
 	ReadCycleMs      int64         `json:"read_cycle_ms"`
   IsPaused         bool          `json:"is_paused"`
-  StopReason      string `json:"stop_reason"`
+  StopReason      string         `json:"stop_reason"`
   ActiveOperation  string        `json:"active_operation"`
-  OpsList          [][]string    `json:"operations_list"`
+  OpsList          [][]string    `json:"-"`
   Counter          int           `json:"counter"`
 }
 
