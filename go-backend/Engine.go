@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -196,27 +195,6 @@ func GetAllowedManualOps(state *HardwareState) []string {
 		// allowed = append(allowed, "some_network_op")
 	}
 	return allowed
-}
-
-// EmergencyStop заморожує стан системи та очищає чергу операцій.
-func EmergencyStop(c *Controller, reason string) {
-	c.state.mu.Lock()
-	c.state.StopReason = reason
-	fmt.Printf("🚨 EMERGENCY STOP: %s (Операція: %s)\n", reason, c.state.ActiveOperation)
-	c.state.Device20Out[OutMainMotor] = 0
-	c.state.IsSafetyLocked = true
-	c.state.IsPaused = false
-	c.state.ActiveOperation = ""
-	c.state.Mode = ModeManual
-	c.state.mu.Unlock()
-loop:
-	for {
-		select {
-		case <-c.opQueue:
-		default:
-			break loop
-		}
-	}
 }
 
 // SafetyStart знімає блокування після EmergencyStop.

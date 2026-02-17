@@ -272,7 +272,7 @@ func (c *Controller) handleError(err error) {
 
   var critErr *CriticalCommError
   if errors.As(err, &critErr) {
-    EmergencyStop(c, fmt.Sprintf("Втрата зв'язку: %d помилок підряд", critErr.Streak))
+    c.EmergencyStop(fmt.Sprintf("Втрата зв'язку: %d помилок підряд", critErr.Streak))
     return
   }
 	fmt.Printf("[CTRL] [%s] Помилка зв'язку: %v\n", time.Now().Format("15:04:05"), err)
@@ -322,4 +322,29 @@ func (c *Controller) apply(fn func()) {
   }
   fn()
   c.state.mu.Unlock()
+}
+
+func (c *Controller) EmergencyStop(reason string) {
+	c.state.mu.Lock()
+	c.state.StopReason = reason
+
+	fmt.Printf("[CTRL] EMERGENCY STOP: %s (Операція: %s)\n", reason, c.state.ActiveOperation)
+
+	// Негайно гасимо головний мотор (логічний стан!)
+	c.state.Device20Out[OutMainMotor] = 0
+	c.state.IsSafetyLocked = true // Блокуємо систему безпеки
+	c.state.IsPaused = false      // Emergency не є паузою
+	c.state.ActiveOperation = ""  // Активної операції більше немає
+	c.state.Mode = ModeManual
+	c.state.mu.Unlock()
+
+loop: // ❗ ОЧИЩАЄМО ЧЕРГУ ОПЕРАЦІЙ
+	for {
+		select {
+		case <-c.opQueue:
+			// викидаємо все що було заплановано
+		default:
+			break loop
+		}
+	}
 }

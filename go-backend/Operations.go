@@ -171,7 +171,7 @@ func waitSyncMirror(c *Controller) StepResult {
 			return StepResult{Status: StepAbort, Message: "EmergencyStop already active"}
 		}
 		if val > 250 && val < 300 {
-			EmergencyStop(c, fmt.Sprintf("Перевищено поріг сенсора: %d", val))
+			c.EmergencyStop(fmt.Sprintf("Перевищено поріг сенсора: %d", val))
 			return StepResult{Status: StepAbort, Message: "Sensor threshold exceeded"}
 		}
 		c.apply(func() {
