@@ -157,7 +157,7 @@ func (ws *WebServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 // handleModeSet обробляє зміну режиму через API
 func (ws *WebServer) handleModeSet(w http.ResponseWriter, r *http.Request) {
   modeID := r.URL.Query().Get("id")
-  log.Printf("🔄 [Web Command] Запит на зміну режиму: %s", modeID)
+  log.Printf("[Web] Запит на зміну режиму: %s", modeID)
 
   var targetMode ControlMode
 
@@ -169,7 +169,7 @@ func (ws *WebServer) handleModeSet(w http.ResponseWriter, r *http.Request) {
   case "mode-manual":
     targetMode = ModeManual
   default:
-    log.Printf("⚠️ Невідомий режим: %s", modeID)
+    log.Printf("[Web] Невідомий режим: %s", modeID)
     http.Error(w, "Invalid mode", http.StatusBadRequest)
     return
   }
@@ -208,7 +208,7 @@ func (ws *WebServer) handlePause(w http.ResponseWriter, r *http.Request) {
 	} else {
 		targetPause = false
 	}
-  fmt.Printf("🌐 %s\n", targetPause)
+  fmt.Printf("[Web] %s\n", targetPause)
 	ws.ctrl.SetPause(targetPause)
 	
 	// Повертаємо новий стан у JSON, щоб фронтенд міг оновити колір кнопки
@@ -219,7 +219,7 @@ func (ws *WebServer) handlePause(w http.ResponseWriter, r *http.Request) {
 // Start запускає веб-сервер (блокуючий виклик)
 func (ws *WebServer) Start(addr string) error {
 	ws.setupRoutes()
-	fmt.Printf("🌐 Веб-інтерфейс на http://%s\n", addr)
+	fmt.Printf("[Web] Веб-інтерфейс на http://%s\n", addr)
 	return http.ListenAndServe(addr, ws.mux)
 }
 
@@ -228,16 +228,16 @@ func (ws *WebServer) handleManualOp(w http.ResponseWriter, r *http.Request) {
     // Отримуємо id операції (наприклад, "operation10" або "sync_mirror")
     opID := r.URL.Query().Get("id")
     if opID == "" {
-        http.Error(w, "Missing operation id", http.StatusBadRequest)
+        http.Error(w, "[Web] Missing operation id", http.StatusBadRequest)
         return
     }
 
-    log.Printf("🕹 [Web Command] Виконання операції: %s", opID)
+    log.Printf("[Web] Виконання операції: %s", opID)
 
     // Викликаємо метод контролера
     err := ws.ctrl.InvokeOperation(opID)
     if err != nil {
-        log.Printf("⚠️ Операція %s не вдалася: %v", opID, err)
+        log.Printf("[Web]️ Операція %s не вдалася: %v", opID, err)
         http.Error(w, err.Error(), http.StatusNotFound)
         return
     }
