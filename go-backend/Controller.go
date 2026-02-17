@@ -55,8 +55,8 @@ func (c *Controller) Run() {
     // 1. Читання
     sensor, inputs, err := c.hw.Read()
 		if err == nil {
-			c.updateSlave3(sensor, true)
-			c.updateSlave10(&inputs, true)
+			c.updateEncoderState(sensor, true)
+			c.updateInputsState(&inputs, true)
 		} else {
 			c.handleError(err)
 		}
@@ -272,23 +272,23 @@ func (c *Controller) SetPause(paused bool) {
 }
 
 func (c *Controller) handleError(err error) {
-	c.updateSlave10(nil, false)
-	c.updateSlave3(0, false)
+	c.updateInputsState(nil, false)
+	c.updateEncoderState(0, false)
 	fmt.Printf("[%s] Помилка зв'язку: %v\n", time.Now().Format("15:04:05"), err)
 }
 
-func (c *Controller) updateSlave3(val uint16, online bool) {
+func (c *Controller) updateEncoderState(val uint16, online bool) {
 	c.state.mu.Lock()
 	defer c.state.mu.Unlock()
 	c.state.EncoderValue = val
-	c.state.IsOnline3 = online
+	c.state.isEncoderOnline = online
 	c.state.LastUpdate = time.Now()
 }
 
-func (c *Controller) updateSlave10(data *[32]uint16, online bool) {
+func (c *Controller) updateInputsState(data *[32]uint16, online bool) {
 	c.state.mu.Lock()
 	defer c.state.mu.Unlock()
-	c.state.IsOnline10 = online
+	c.state.isInputsOnline = online
 	if online && data != nil {
 		c.state.Device10In = *data
 	}

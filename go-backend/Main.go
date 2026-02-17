@@ -22,9 +22,9 @@ type HardwareState struct {
   Device20Out      [32]uint16    `json:"-"` // "-" ігнорувати при маршалінгу
   Mode             ControlMode   `json:"mode"`
 	LastUpdate       time.Time     `json:"last_update"`
-	IsOnline3        bool          `json:"is_online_3"`
-	IsOnline10       bool          `json:"is_online_10"`
-	IsOnline20       bool          `json:"is_online_20"`
+	isEncoderOnline  bool          `json:"is_encoder_online"`
+	isInputsOnline   bool          `json:"is_inputs_online"`
+	isOutputsOnline  bool          `json:"is_outputs_online"`
   IsSafetyLocked   bool          `json:"is_safety_locked"`
 	ReadCycleMs      int64         `json:"read_cycle_ms"`
   IsPaused         bool          `json:"is_paused"`
