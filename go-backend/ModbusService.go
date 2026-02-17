@@ -29,8 +29,6 @@ func NewModbusService(device string, baud int) *ModbusService {
 
 // Read реалізує інтерфейс HardwareService
 func (ms *ModbusService) Read() (uint16, [32]uint16, error) {
-    // ms.mu.Lock() // Беремо замок на ВСЕ читання
-    // defer ms.mu.Unlock()
     sensor, err3 := ms.readEncoder()
     if err3 != nil {
         return 0, [32]uint16{}, err3
@@ -79,10 +77,8 @@ func (ms *ModbusService) Write(values [32]uint16) error {
     binary.BigEndian.PutUint16(packedBytes[2:4], r1)
     
     time.Sleep(2 * time.Millisecond)
-    // ms.mu.Lock()
-    ms.handler.SlaveId = 20
+    ms.handler.SlaveId = AddrOutputs
     _, err := ms.client.WriteMultipleRegisters(0, 2, packedBytes)
-    // ms.mu.Unlock()
     ms.logWriteStatus(err, r0, r1)
     return err
 }
