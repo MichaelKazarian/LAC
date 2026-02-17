@@ -28,9 +28,9 @@ const (
 
 // --- Modbus Addresses ---
 const (
-	AddrEncoder      = 3  // Енкодер
-	AddrInputsBlock  = 10 // Дискретні входи
-	AddrOutputsBlock = 20 // Релейні виходи
+	AddrEncoder = 3  // Енкодер
+	AddrInputs  = 10 // Дискретні входи
+	AddrOutputs = 20 // Релейні виходи
 )
 
 // PinNames дозволяє отримати текстову назву піна за його індексом.

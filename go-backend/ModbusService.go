@@ -37,7 +37,7 @@ func (ms *ModbusService) Read() (uint16, [32]uint16, error) {
     }
     time.Sleep(2 * time.Millisecond)
 
-    inputs, err10 := ms.readSlave10()
+    inputs, err10 := ms.readInputs()
     if err10 != nil {
         return sensor, [32]uint16{}, err10
     }
@@ -54,8 +54,8 @@ func (ms *ModbusService) readEncoder() (uint16, error) {
     return binary.BigEndian.Uint16(res), nil
 }
 
-func (ms *ModbusService) readSlave10() ([32]uint16, error) {
-    ms.handler.SlaveId = 10
+func (ms *ModbusService) readInputs() ([32]uint16, error) {
+    ms.handler.SlaveId = AddrInputs
     res, err := ms.client.ReadHoldingRegisters(0, 2)
     if err != nil {
         return [32]uint16{}, fmt.Errorf("slave 10 error: %w", err)
