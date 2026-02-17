@@ -23,7 +23,7 @@ func (e *CriticalCommError) Unwrap() error { return e.Err }
 type ModbusService struct {
   client  modbus.Client
   handler *modbus.RTUClientHandler
-  errorStreak  int // кількість помилок підряд
+  readErrorStreak  int // кількість помилок підряд
   //mu      sync.Mutex
 }
 
@@ -45,17 +45,17 @@ func NewModbusService(device string, baud int) *ModbusService {
 func (ms *ModbusService) Read() (uint16, [32]uint16, error) {
   sensor, err := ms.readEncoder()
   if err != nil {
-    return 0, [32]uint16{}, ms.trackError(err)
+    return 0, [32]uint16{}, ms.trackReadError(err)
   }
   time.Sleep(2 * time.Millisecond)
 
   inputs, err := ms.readInputs()
   if err != nil {
-    return sensor, [32]uint16{}, ms.trackError(err)
+    return sensor, [32]uint16{}, ms.trackReadError(err)
   }
   time.Sleep(2 * time.Millisecond)
 
-  ms.errorStreak = 0
+  ms.readErrorStreak = 0
   return sensor, inputs, nil
 }
 
@@ -103,12 +103,12 @@ func (ms *ModbusService) Close() error {
     return ms.handler.Close()
 }
 
-// trackError рахує помилки підряд і сигналізує контролеру
+// trackReadError рахує помилки підряд і сигналізує контролеру
 // коли їх кількість перевищує maxErrorStreak.
-func (ms *ModbusService) trackError(err error) error {
-    ms.errorStreak++
-    if ms.errorStreak == maxErrorStreak {
-        return &CriticalCommError{Streak: ms.errorStreak, Err: err}
+func (ms *ModbusService) trackReadError(err error) error {
+    ms.readErrorStreak++
+    if ms.readErrorStreak == maxErrorStreak {
+        return &CriticalCommError{Streak: ms.readErrorStreak, Err: err}
     }
     return err
 }
