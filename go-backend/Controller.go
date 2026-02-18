@@ -1,10 +1,11 @@
 package main
 
 import (
-  "errors"
 	"fmt"
 	"time"
 )
+
+const maxCommErrorStreak = 4
 
 type OperationFunc func()
 
@@ -16,6 +17,9 @@ type Controller struct {
   firstRun   bool
   opQueue    chan string
   needsCounterReset bool
+  commErrorStreak int
+  commLost        bool
+  lastCommError   string
 }
 
 func GetOperationsList(r *OperationRegistry) [][]string {
@@ -57,8 +61,10 @@ func (c *Controller) Run() {
 		if err == nil {
 			c.updateEncoderState(sensor, true)
 			c.updateInputsState(&inputs, true)
+      c.resetCommError()        // ← успішний обмін = зв'язок відновився
 		} else {
-			c.handleError(err)
+      c.handleError(err) // ← НІЯКОЇ логіки на битих даних
+      c.trackCommError(err) // ← рахуємо втрату зв'язку
 		}
 
     c.syncHardware()
@@ -266,17 +272,39 @@ func (c *Controller) SetPause(paused bool) {
   }
 }
 
+// Error start
+
 func (c *Controller) handleError(err error) {
 	c.updateInputsState(nil, false)
 	c.updateEncoderState(0, false)
-
-  var critErr *CriticalCommError
-  if errors.As(err, &critErr) {
-    c.EmergencyStop(fmt.Sprintf("Втрата зв'язку: %d помилок підряд", critErr.Streak))
-    return
-  }
-	fmt.Printf("[CTRL] [%s] Помилка зв'язку: %v\n", time.Now().Format("15:04:05"), err)
 }
+
+func (c *Controller) trackCommError(err error) {
+    c.commErrorStreak++
+    c.lastCommError = err.Error()
+
+    switch {
+    case c.commErrorStreak == 1:
+        // Логуємо лише першу помилку в серії
+        fmt.Printf("[COMM] [%s] Помилка зв'язку: %v\n", time.Now().Format("15:04:05"), err)
+    case c.commErrorStreak >= maxCommErrorStreak && !c.commLost:
+        c.commLost = true
+        c.EmergencyStop(fmt.Sprintf("Втрата зв'язку: %d помилок підряд", c.commErrorStreak))
+    }
+}
+
+func (c *Controller) resetCommError() {
+	if c.commLost {
+		fmt.Printf("[COMM] [%s] Communication RESTORED\n",
+			time.Now().Format("15:04:05"))
+	}
+
+	c.commLost = false
+	c.commErrorStreak = 0
+	c.lastCommError = ""
+}
+
+// Error end
 
 func (c *Controller) updateEncoderState(val uint16, online bool) {
 	c.state.mu.Lock()
