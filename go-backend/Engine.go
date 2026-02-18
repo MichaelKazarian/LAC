@@ -197,11 +197,3 @@ func GetAllowedManualOps(state *HardwareState) []string {
 	return allowed
 }
 
-// SafetyStart знімає блокування після EmergencyStop.
-func SafetyStart(c *Controller) {
-	c.state.mu.Lock()
-	c.state.IsSafetyLocked = false
-	c.state.StopReason = ""
-	c.state.ActiveOperation = ""
-	c.state.mu.Unlock()
-}

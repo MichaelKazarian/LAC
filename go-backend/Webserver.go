@@ -185,7 +185,7 @@ func (ws *WebServer) handleEmergencyStop(w http.ResponseWriter, r *http.Request)
   ws.state.mu.RUnlock()
   if isLocked {
     log.Println("[Web] Запит на розблокування (Safety Start)")
-    SafetyStart(ws.ctrl)
+    ws.ctrl.SafetyStart()
   } else {
     log.Println("[Web] EMERGENCY STOP!")
     ws.ctrl.EmergencyStop("Зупинка оператором") 

@@ -294,10 +294,15 @@ func (c *Controller) trackCommError(err error) {
 }
 
 func (c *Controller) resetCommError() {
-	if c.commLost {
-		fmt.Printf("[COMM] [%s] Communication RESTORED\n",
-			time.Now().Format("15:04:05"))
-	}
+  if c.commLost {
+    c.state.mu.Lock()
+    if c.state.IsSafetyLocked {
+      c.state.StopReason = "Зв'язок відновлено. Натисніть РОЗБЛОКУВАТИ"
+      fmt.Printf("[COMM] [%s] Зв'язок відновлено. Система заблокована\n",
+        time.Now().Format("15:04:05"))
+    }
+    c.state.mu.Unlock()
+  }
 
 	c.commLost = false
 	c.commErrorStreak = 0
@@ -375,4 +380,13 @@ loop: // ❗ ОЧИЩАЄМО ЧЕРГУ ОПЕРАЦІЙ
 			break loop
 		}
 	}
+}
+
+func (c *Controller) SafetyStart() {
+  c.state.mu.Lock()
+  c.state.IsSafetyLocked = false
+  c.state.StopReason = ""
+  c.state.ActiveOperation = ""
+  c.state.mu.Unlock()
+  fmt.Println("[CTRL] Safety Start: блокування знято, система готова")
 }
