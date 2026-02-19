@@ -9,6 +9,11 @@ const maxCommErrorStreak = 4
 
 type OperationFunc func()
 
+type OutputPowerControl interface {
+    PowerOff() error
+    PowerOn() error
+}
+
 type Controller struct {
 	hw    HardwareService
 	state *HardwareState
@@ -20,6 +25,8 @@ type Controller struct {
   commErrorStreak int
   commLost        bool
   lastCommError   string
+  power PowerControl
+  outputsLost bool // блокує запис на OUT-плату, поки її не відновлено у SafetyStart
 }
 
 func GetOperationsList(r *OperationRegistry) [][]string {
@@ -41,10 +48,12 @@ func NewController(hw HardwareService, state *HardwareState) *Controller {
 	}
 
 	state.OpsList = GetOperationsList(registry)
+  power := &MockPowerControl{}
 
 	return &Controller{
 		hw:      hw,
 		state:   state,
+    power:   power,
 		opsMap:  opMap,
 		opQueue: make(chan string, 10),
 	}
@@ -201,30 +210,58 @@ func (c *Controller) runAutomaticCycleSteps() {
 	c.state.mu.Unlock()
 }
 
-// Перевіряє зміни в стані та записує їх у залізо
+// syncHardware перевіряє зміни в Device20Out та записує їх у залізо.
+// Логіка роботи:
+// Якщо система заблокована (EmergencyStop або операторська зупинка) — 
+//   гарантуємо, що мотор  вимкнений перед записом (current[OutMainMotor]=0)
+// Порівнюємо з останнім записаним станом, щоб уникнути зайвих записів.
+// При помилці запису Modbus:
+// - встановлюємо outputsLost = true, щоб не писати в плату виходів
+// - скидання outputsLost тільки в SafetyStart()
+// - фізично відключаємо живлення плати виходів через power.DisableOutputsPower()
+// - викликаємо EmergencyStop, щоб очистити черги та гарантувати безпечний стан
+// - Кешуємо новий стан лише при успішному записі.
+//
+// Сценарії:
+// - Штатна зупинка (SAFE_LOCK):
+//      Motor вимкнений, плати IN та OUT доступні, система чекає команди SafetyStart
+// - Аварія IN-плати:
+//      EmergencyStop через Modbus, мотор вимкнений, решта логіки заморожена
+// - Аварія OUT-плати:
+//      Латч outputsLost, живлення плати відключене, EmergencyStop викликається для гарантії безпечного стану
 func (c *Controller) syncHardware() {
   c.state.mu.RLock()
   current := c.state.Device20Out
   locked := c.state.IsSafetyLocked
+  outputsLost := c.outputsLost
   c.state.mu.RUnlock()
 
-  // Якщо система заблокована, ми ігноруємо будь-які спроби
-  // автоматичних або "доживаючих" операцій щось записати.
+  if outputsLost {
+    return
+  }
+
+  // гарантуємо, що двигун вимкнеться, навіть якщо хтось спробує
+  //запустити поза межами SafetyStop
   if locked {
-    // fmt.Println("[CTRL] Запис заблоковано: активний Safety Lock")
     current[OutMainMotor] = 0
   }
-  // 2. Перевіряємо наявність змін
+  // Перевіряємо наявність змін
   if current == c.lastOutput && !c.firstRun {
     return
   }
 
   if err := c.hw.Write(current); err != nil {
-    c.handleError(fmt.Errorf("[CTRL] Failed to update Outputs on addr %d: %w", AddrOutputs, err))
+    if !c.outputsLost { // Латчимо стан тільки ОДИН раз
+      c.outputsLost = true
+      fmt.Println("[CTRL] Outputs communication LOST → entering FAIL-SAFE")
+      _ = c.power.DisableOutputsPower() // Фізично відрубуємо плату
+      // Заморожуємо логіку стандартним шляхом
+      c.EmergencyStop("Втрачено зв'язок з платою виходів")
+    }
     return
   }
 
-  // 4. Оновлюємо кеш тільки при успішному записі
+  // Оновлюємо кеш тільки при успішному записі
   c.lastOutput = current
   c.firstRun = false
 }
@@ -241,7 +278,6 @@ func (c *Controller) InvokeOperation(name string) error {
 	}
   return nil
 }
-
 
 // SetMode безпечно оновлює режим роботи контролера
 func (c *Controller) SetMode(mode ControlMode) {
@@ -357,6 +393,18 @@ func (c *Controller) apply(fn func()) {
   c.state.mu.Unlock()
 }
 
+// EmergencyStop негайно зупиняє систему у безпечний стан.
+// Логіка роботи:
+// 1) Встановлює StopReason для відображення причини зупинки.
+// 2) Вимикає головний мотор (Device20Out[OutMainMotor] = 0), щоб гарантувати стоп рухомого обладнання.
+// 3) Блокує систему безпеки (IsSafetyLocked = true), щоб зупинити подальше виконання Steps і автоматичний цикл.
+// 4) Скидає IsPaused, бо EmergencyStop не є паузою, а аварійною зупинкою.
+// 5) Скидає ActiveOperation та переводить режим у ModeManual — жодна операція більше не активна.
+// 6) Очищує чергу opQueue, щоб усі заплановані команди були видалені.
+// Цей метод гарантує, що після аварійної зупинки:
+///   - двигун вимкнений
+///   - черга операцій пуста
+///   - система заблокована для безпечного стану
 func (c *Controller) EmergencyStop(reason string) {
 	c.state.mu.Lock()
 	c.state.StopReason = reason
@@ -382,7 +430,22 @@ loop: // ❗ ОЧИЩАЄМО ЧЕРГУ ОПЕРАЦІЙ
 	}
 }
 
+// SafetyStart розблоковує систему після EmergencyStop або штатної зупинки.
+// Логіка роботи:
+// 1) Якщо outputsLost = true (плата виходів була відключена через помилку),
+//      - включаємо живлення плати виходів через power.EnableOutputsPower()
+//      - чекаємо 500 мс, щоб залізо прокинулось
+//      - скидаємо outputsLost і встановлюємо firstRun = true для синхронізації виходів
+// 2) Знімаємо блокування безпеки (IsSafetyLocked = false), очищаємо StopReason і ActiveOperation
+// 3) Після виклику система готова для штатної роботи та прийняття команд
 func (c *Controller) SafetyStart() {
+  if c.outputsLost {
+    fmt.Println("[CTRL] Re-arming outputs power...")
+    _ = c.power.EnableOutputsPower()   // Включаємо живлення DO-плати
+    time.Sleep(500 * time.Millisecond) // Даємо залізу прокинутись
+    c.outputsLost = false
+    c.firstRun = true                  // Синхронізуємо виходи
+  }
   c.state.mu.Lock()
   c.state.IsSafetyLocked = false
   c.state.StopReason = ""
