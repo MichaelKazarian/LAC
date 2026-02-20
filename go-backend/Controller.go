@@ -447,15 +447,14 @@ func (c *Controller) emergencyStop(reason string) {
 	c.Stop(reason)
 }
 
-// SafetyStart розблоковує систему після EmergencyStop або штатної зупинки.
-// Логіка роботи:
+// Reset повертає систему до робочого стану після зупинки або аварії.
 // 1) Якщо outputsLost = true (плата виходів була відключена через помилку),
 //      - включаємо живлення плати виходів через power.EnableOutputsPower()
 //      - чекаємо 500 мс, щоб залізо прокинулось
 //      - скидаємо outputsLost і встановлюємо firstRun = true для синхронізації виходів
 // 2) Знімаємо блокування безпеки (IsSafetyLocked = false), очищаємо StopReason і ActiveOperation
 // 3) Після виклику система готова для штатної роботи та прийняття команд
-func (c *Controller) SafetyStart() {
+func (c *Controller) Reset() {
   if c.outputsLost {
     fmt.Println("[CTRL] Re-arming outputs power...")
     _ = c.power.EnableOutputsPower()   // Включаємо живлення DO-плати
