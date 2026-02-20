@@ -70,10 +70,13 @@ func (c *Controller) Run() {
 		if err == nil {
 			c.updateEncoderState(sensor, true)
 			c.updateInputsState(&inputs, true)
-      c.resetCommError()        // ← успішний обмін = зв'язок відновився
+      c.resetCommError()        // успішний обмін = зв'язок відновився
 		} else {
-      c.handleError(err) // ← НІЯКОЇ логіки на битих даних
-      c.trackCommError(err) // ← рахуємо втрату зв'язку
+      c.state.mu.Lock()
+      c.state.isEncoderOnline = false
+      c.state.isInputsOnline = false
+      c.state.mu.Unlock()
+      c.trackCommError(err) //  рахуємо втрату зв'язку
 		}
 
     c.syncHardware()
@@ -307,11 +310,6 @@ func (c *Controller) SetPause(paused bool) {
 }
 
 // Error start
-
-func (c *Controller) handleError(err error) {
-	c.updateInputsState(nil, false)
-	c.updateEncoderState(0, false)
-}
 
 func (c *Controller) trackCommError(err error) {
     c.commErrorStreak++
