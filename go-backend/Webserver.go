@@ -188,7 +188,7 @@ func (ws *WebServer) handleEmergencyStop(w http.ResponseWriter, r *http.Request)
     ws.ctrl.SafetyStart()
   } else {
     log.Println("[Web] EMERGENCY STOP!")
-    ws.ctrl.EmergencyStop("Зупинка оператором") 
+    ws.ctrl.Stop("Зупинка оператором")
   }    
   w.WriteHeader(http.StatusOK)
 }

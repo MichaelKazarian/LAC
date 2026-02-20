@@ -240,9 +240,7 @@ func (c *Controller) syncHardware() {
     return
   }
 
-  // гарантуємо, що двигун вимкнеться, навіть якщо хтось спробує
-  //запустити поза межами SafetyStop
-  if locked {
+  if locked { // не дає випадково включити мотор
     current[OutMainMotor] = 0
   }
   // Перевіряємо наявність змін
@@ -256,7 +254,7 @@ func (c *Controller) syncHardware() {
       fmt.Println("[CTRL] Outputs communication LOST → entering FAIL-SAFE")
       _ = c.power.DisableOutputsPower() // Фізично відрубуємо плату
       // Заморожуємо логіку стандартним шляхом
-      c.EmergencyStop("Втрачено зв'язок з платою виходів")
+      c.emergencyStop("Втрачено зв'язок з платою виходів")
     }
     return
   }
@@ -325,7 +323,7 @@ func (c *Controller) trackCommError(err error) {
         fmt.Printf("[COMM] [%s] Помилка зв'язку: %v\n", time.Now().Format("15:04:05"), err)
     case c.commErrorStreak >= maxCommErrorStreak && !c.commLost:
         c.commLost = true
-        c.EmergencyStop(fmt.Sprintf("Втрата зв'язку: %d помилок підряд", c.commErrorStreak))
+        c.emergencyStop(fmt.Sprintf("Втрата зв'язку: %d помилок підряд", c.commErrorStreak))
     }
 }
 
@@ -393,41 +391,62 @@ func (c *Controller) apply(fn func()) {
   c.state.mu.Unlock()
 }
 
-// EmergencyStop негайно зупиняє систему у безпечний стан.
-// Логіка роботи:
-// 1) Встановлює StopReason для відображення причини зупинки.
-// 2) Вимикає головний мотор (Device20Out[OutMainMotor] = 0), щоб гарантувати стоп рухомого обладнання.
-// 3) Блокує систему безпеки (IsSafetyLocked = true), щоб зупинити подальше виконання Steps і автоматичний цикл.
-// 4) Скидає IsPaused, бо EmergencyStop не є паузою, а аварійною зупинкою.
-// 5) Скидає ActiveOperation та переводить режим у ModeManual — жодна операція більше не активна.
-// 6) Очищує чергу opQueue, щоб усі заплановані команди були видалені.
-// Цей метод гарантує, що після аварійної зупинки:
-///   - двигун вимкнений
-///   - черга операцій пуста
-///   - система заблокована для безпечного стану
-func (c *Controller) EmergencyStop(reason string) {
-	c.state.mu.Lock()
-	c.state.StopReason = reason
-
-	fmt.Printf("[CTRL] EMERGENCY STOP: %s (Операція: %s)\n", reason, c.state.ActiveOperation)
-
-	// Негайно гасимо головний мотор (логічний стан!)
-	c.state.Device20Out[OutMainMotor] = 0
-	c.state.IsSafetyLocked = true // Блокуємо систему безпеки
-	c.state.IsPaused = false      // Emergency не є паузою
-	c.state.ActiveOperation = ""  // Активної операції більше немає
-	c.state.Mode = ModeManual
-	c.state.mu.Unlock()
-
-loop: // ❗ ОЧИЩАЄМО ЧЕРГУ ОПЕРАЦІЙ
+// drainOpQueue очищає всі відкладені команди керування.
+// Викликається при переході в SAFE_LOCK, щоб жодна запланована операція
+// не виконалась після зупинки.
+func (c *Controller) drainOpQueue() {
 	for {
 		select {
 		case <-c.opQueue:
-			// викидаємо все що було заплановано
+			// видаляємо всі накопичені команди
 		default:
-			break loop
+			return // черга порожня
 		}
 	}
+}
+
+// Stop виконує штатну керовану зупинку системи (операторська зупинка).
+// Не є аварією і не змінює fail-safe стан обладнання.
+//
+// Логіка роботи:
+// 1) Встановлює StopReason для відображення причини зупинки.
+// 2) Вимикає головний мотор (Device20Out[OutMainMotor] = 0), щоб гарантувати стоп рухомого обладнання.
+// 3) Блокує систему (IsSafetyLocked = true), щоб зупинити виконання Steps і автоматичний цикл.
+// 4) Скидає IsPaused, бо Stop — це повна зупинка, а не пауза.
+// 5) Скидає ActiveOperation та переводить режим у ModeManual.
+// 6) Очищує чергу opQueue, щоб усі заплановані команди були видалені.
+//
+// Після Stop():
+//   - рух зупинений
+//   - нові операції не запускаються
+//   - система чекає виклику SafetyStart()
+func (c *Controller) Stop(reason string) {
+	c.state.mu.Lock()
+	c.state.StopReason = reason
+
+	fmt.Printf("[CTRL] STOP: %s (Операція: %s)\n", reason, c.state.ActiveOperation)
+
+	c.state.Device20Out[OutMainMotor] = 0 // force motor off
+	c.state.IsSafetyLocked = true
+	c.state.IsPaused = false
+	c.state.ActiveOperation = ""
+	c.state.Mode = ModeManual
+	c.state.mu.Unlock()
+  c.drainOpQueue()
+}
+
+// emergencyStop виконує аварійну зупинку (Fail-Safe).
+// Це внутрішній метод контролера і не повинен викликатися оператором.
+//
+// Додатково до Stop():
+//   - фіксує аварійний контекст у логах
+//   - використовується при втраті зв'язку або апаратній помилці
+//   - може викликатися після відключення живлення IO або інших fail-safe дій
+func (c *Controller) emergencyStop(reason string) {
+	fmt.Printf("[CTRL][FAULT] EMERGENCY STOP: %s\n", reason)
+
+	// Усі механічні та логічні дії зупинки — через єдину точку
+	c.Stop(reason)
 }
 
 // SafetyStart розблоковує систему після EmergencyStop або штатної зупинки.
