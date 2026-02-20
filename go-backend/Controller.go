@@ -73,8 +73,8 @@ func (c *Controller) Run() {
       c.resetCommError()        // успішний обмін = зв'язок відновився
 		} else {
       c.state.mu.Lock()
-      c.state.isEncoderOnline = false
-      c.state.isInputsOnline = false
+      c.state.IsEncoderOnline = false
+      c.state.IsInputsOnline = false
       c.state.mu.Unlock()
       c.trackCommError(err) //  рахуємо втрату зв'язку
 		}
@@ -347,14 +347,14 @@ func (c *Controller) updateEncoderState(val uint16, online bool) {
 	c.state.mu.Lock()
 	defer c.state.mu.Unlock()
 	c.state.EncoderValue = val
-	c.state.isEncoderOnline = online
+	c.state.IsEncoderOnline = online
 	c.state.LastUpdate = time.Now()
 }
 
 func (c *Controller) updateInputsState(data *[32]uint16, online bool) {
 	c.state.mu.Lock()
 	defer c.state.mu.Unlock()
-	c.state.isInputsOnline = online
+	c.state.IsInputsOnline = online
 	if online && data != nil {
 		c.state.Device10In = *data
 	}
@@ -442,9 +442,12 @@ func (c *Controller) Stop(reason string) {
 //   - може викликатися після відключення живлення IO або інших fail-safe дій
 func (c *Controller) emergencyStop(reason string) {
 	fmt.Printf("[CTRL][FAULT] EMERGENCY STOP: %s\n", reason)
-
 	// Усі механічні та логічні дії зупинки — через єдину точку
 	c.Stop(reason)
+
+  c.state.mu.Lock()
+  c.state.IsOutputsOnline = false
+  c.state.mu.Unlock()
 }
 
 // Reset повертає систему до робочого стану після зупинки або аварії.
@@ -464,6 +467,7 @@ func (c *Controller) Reset() {
   }
   c.state.mu.Lock()
   c.state.IsSafetyLocked = false
+  c.state.IsOutputsOnline = true
   c.state.StopReason = ""
   c.state.ActiveOperation = ""
   c.state.mu.Unlock()

@@ -191,7 +191,7 @@ func GetAllowedManualOps(state *HardwareState) []string {
 		allowed = append(allowed, "sync_mirror")
 	}
 	allowed = append(allowed, "op_safety_stop")
-	if state.isOutputsOnline {
+	if state.IsOutputsOnline {
 		// allowed = append(allowed, "some_network_op")
 	}
 	return allowed
