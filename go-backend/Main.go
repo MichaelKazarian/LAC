@@ -24,14 +24,14 @@ type HardwareState struct {
 	LastUpdate       time.Time
 	IsEncoderOnline  bool
 	IsInputsOnline   bool
-	IsOutputsOnline  bool
+	IsOutputsOnline  bool // false = аварія, потрібен Reset
   IsSafetyLocked   bool
-	ReadCycleMs      int64
   IsPaused         bool
   StopReason       string
   ActiveOperation  string
   OpsList          [][]string
   Counter          int
+  ReadCycleMs      int64
 }
 
 func runWebServer(controller *Controller) {

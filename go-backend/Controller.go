@@ -26,7 +26,6 @@ type Controller struct {
   commLost        bool
   lastCommError   string
   power PowerControl
-  outputsLost bool // блокує запис на OUT-плату, поки її не відновлено у SafetyStart
 }
 
 func GetOperationsList(r *OperationRegistry) [][]string {
@@ -236,10 +235,10 @@ func (c *Controller) syncHardware() {
   c.state.mu.RLock()
   current := c.state.Device20Out
   locked := c.state.IsSafetyLocked
-  outputsLost := c.outputsLost
+  outputsOnline := c.state.IsOutputsOnline
   c.state.mu.RUnlock()
 
-  if outputsLost {
+  if !outputsOnline {
     return
   }
 
@@ -252,12 +251,16 @@ func (c *Controller) syncHardware() {
   }
 
   if err := c.hw.Write(current); err != nil {
-    if !c.outputsLost { // Латчимо стан тільки ОДИН раз
-      c.outputsLost = true
+    c.state.mu.Lock()
+    if c.state.IsOutputsOnline { // Латчимо стан тільки ОДИН раз
+      c.state.IsOutputsOnline = false
+      c.state.mu.Unlock()
       fmt.Println("[CTRL] Outputs communication LOST → entering FAIL-SAFE")
       _ = c.power.DisableOutputsPower() // Фізично відрубуємо плату
       // Заморожуємо логіку стандартним шляхом
       c.emergencyStop("Втрачено зв'язок з платою виходів")
+    } else {
+      c.state.mu.Unlock()
     }
     return
   }
@@ -483,11 +486,13 @@ func (c *Controller) emergencyStop(reason string) {
 // 2) Знімаємо блокування безпеки (IsSafetyLocked = false), очищаємо StopReason і ActiveOperation
 // 3) Після виклику система готова для штатної роботи та прийняття команд
 func (c *Controller) Reset() {
-  if c.outputsLost {
+  c.state.mu.RLock()
+  outputsLost := !c.state.IsOutputsOnline
+  c.state.mu.RUnlock()
+  if outputsLost {
     fmt.Println("[CTRL] Re-arming outputs power...")
     _ = c.power.EnableOutputsPower()   // Включаємо живлення DO-плати
     time.Sleep(500 * time.Millisecond) // Даємо залізу прокинутись
-    c.outputsLost = false
     c.firstRun = true                  // Синхронізуємо виходи
   }
   c.state.mu.Lock()
