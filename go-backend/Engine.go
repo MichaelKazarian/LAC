@@ -164,13 +164,10 @@ func waitAlwaysOK(_ *Controller) StepResult {
 func waitStop2s(c *Controller) StepResult {
 	start := time.Now()
 	for time.Since(start) < 2*time.Second {
-		c.state.mu.RLock()
-		locked := c.state.IsSafetyLocked
-		c.state.mu.RUnlock()
-		if locked {
-			return StepResult{Status: StepAbort}
+		if c.isEmergency() {
+			return StepResult{Status: StepAbort, Message: "Зупинено через SafetyLock"}
 		}
-		time.Sleep(5 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 	return StepResult{Status: StepOK}
 }
