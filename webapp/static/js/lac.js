@@ -17,6 +17,14 @@ let systemMessage = {
   text: ""
 };
 
+/**
+ * Відкриває вікно статусу. 
+ * Використання імені "StatusPage" дозволяє перемикатися на вже відкриту вкладку.
+ */
+function openStatusWindow() {
+  window.open('/status', 'StatusPage');
+}
+
 function setMessage(type, text) {
   if (systemMessage.type === type && systemMessage.text === text) return;
 
