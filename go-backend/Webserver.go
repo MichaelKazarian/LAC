@@ -61,46 +61,55 @@ func (ws *WebServer) initTemplates() error {
 func (ws *WebServer) setupRoutes() {
   ws.mux = http.NewServeMux()
 
-	// Статичні файли
-	fs := http.FileServer(http.Dir("../../webapp/static"))
-	ws.mux.Handle("/static/", http.StripPrefix("/static/", fs))
-	
-	// Сторінки
-	ws.mux.HandleFunc("/", ws.handleIndex)
-	
-	// API endpoints
-	ws.mux.HandleFunc("/state", ws.handleState)
-	ws.mux.HandleFunc("/status", ws.handleStatus)
-	
-	// Команди
-	ws.mux.HandleFunc("/radio", ws.handleManualOp)
-	ws.mux.HandleFunc("/modeset", ws.handleModeSet)
-	ws.mux.HandleFunc("/pause", ws.handlePause)
+  // 1. Статичні файли (пріоритет)
+  fs := http.FileServer(http.Dir("../../webapp/static"))
+  ws.mux.Handle("/static/", http.StripPrefix("/static/", fs))
+  
+  // 2. API Endpoints (чіткі шляхи)
+  ws.mux.HandleFunc("/state", ws.handleState)
+  ws.mux.HandleFunc("/api/status", ws.handleStatusAPI) // JSON дані
+  
+  // 3. Команди
+  ws.mux.HandleFunc("/radio", ws.handleManualOp)
+  ws.mux.HandleFunc("/modeset", ws.handleModeSet)
+  ws.mux.HandleFunc("/pause", ws.handlePause)
   ws.mux.HandleFunc("/safety", ws.handleEmergencyStop)
-}
+
+  // 4. Сторінки
+  ws.mux.HandleFunc("/status", ws.handleStatusPage)   // HTML сторінка
+  
+  // 5. Головна сторінка - реєструємо ОСТАННЬОЮ
+  ws.mux.HandleFunc("/", ws.handleIndex)
+  }
 
 // handleIndex обробляє головну сторінку
 func (ws *WebServer) handleIndex(w http.ResponseWriter, r *http.Request) {
-	opNames := map[int]string{
-		1: "Одиничний цикл", 
-		2: "Подача", 
-		3: "Мотор шпінделя",
-	}
-	
-	data := map[string]interface{}{
-		"modes": []map[string]interface{}{
-			{"id": "mode-auto", "name": "АВТОМАТ", "class": "btn-outline-success"},
-			{"id": "mode-once-cycle", "name": "ОДИН ЦИКЛ", "class": "btn-outline-primary"},
-			{"id": "mode-manual", "name": "РУЧНИЙ", "class": "btn-outline-secondary"},
-		},
-		"opNames": opNames,
-	}
-	
-	err := ws.tmpl.Execute(w, data)
-	if err != nil {
-		log.Printf("❌ Помилка виконання шаблону: %v", err)
-		http.Error(w, "Internal Server Error", 500)
-	}
+  // Якщо шлях не рівно "/", то це 404, а не головна сторінка
+  if r.URL.Path != "/" {
+    http.NotFound(w, r)
+    return
+  }
+
+  opNames := map[int]string{
+    1: "Одиничний цикл", 
+    2: "Подача", 
+    3: "Мотор шпінделя",
+  }
+  
+  data := map[string]interface{}{
+    "modes": []map[string]interface{}{
+      {"id": "mode-auto", "name": "АВТОМАТ", "class": "btn-outline-success"},
+      {"id": "mode-once-cycle", "name": "ОДИН ЦИКЛ", "class": "btn-outline-primary"},
+      {"id": "mode-manual", "name": "РУЧНИЙ", "class": "btn-outline-secondary"},
+    },
+    "opNames": opNames,
+  }
+  
+  err := ws.tmpl.ExecuteTemplate(w, "index.html", data) // Явно вказуємо назву шаблону
+  if err != nil {
+    log.Printf("[WEB] Помилка виконання шаблону index: %v", err)
+    http.Error(w, "Internal Server Error", 500)
+  }
 }
 
 // handleState повертає поточний стан системи для UI
@@ -141,8 +150,18 @@ func (ws *WebServer) handleState(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+// Обробник для сторінки
+func (ws *WebServer) handleStatusPage(w http.ResponseWriter, r *http.Request) {
+	// Передаємо порожні дані або загальну інфо, якщо треба
+	err := ws.tmpl.ExecuteTemplate(w, "status.html", nil)
+	if err != nil {
+		log.Printf("❌ Помилка виконання шаблону status.html: %v", err)
+		http.Error(w, "Internal Server Error", 500)
+	}
+}
+
 // handleStatus повертає технічний статус системи
-func (ws *WebServer) handleStatus(w http.ResponseWriter, r *http.Request) {
+func (ws *WebServer) handleStatusAPI(w http.ResponseWriter, r *http.Request) {
 	view := ws.ctrl.GetView() // snapshot від контролера
 
 	w.Header().Set("Content-Type", "application/json")
