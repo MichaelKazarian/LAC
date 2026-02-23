@@ -22,8 +22,11 @@
               </div>
             </div>
 
-            <div class="col-sm-4 d-flex justify-content-center">
+            <div class="col-sm-4 d-flex flex-column align-items-center justify-content-center">
               <circle-progress id="circle-progress" value="0" max="360"></circle-progress>
+              <div id="state-area" class="alert alert-light text-center mt-3 w-100" role="alert">
+                Статус: Очікування даних...
+              </div>
             </div>
 
             <div id="rightPanel" class="col-sm-4 d-flex justify-content-center">
@@ -61,12 +64,6 @@
         <div class="col-sm-6" id="ops-col-left"></div>
         <div class="col-sm-6" id="ops-col-right"></div>
       </div>
-
-      <div id="state-area" class="alert alert-light text-center" role="alert">
-        Статус: Очікування даних...
-      </div>
-    </div>
-
     <footer>
       {{ template "footer" . }}
     </footer>
