@@ -17,25 +17,25 @@ const (
 // HardwareState - спільне сховище даних
 type HardwareState struct {
 	mu               sync.RWMutex
-	EncoderValue     uint16        `json:"encoder_value"`
-	Device10In       [32]uint16    `json:"device10_in"`
-  Device20Out      [32]uint16    `json:"-"` // "-" ігнорувати при маршалінгу
-  Mode             ControlMode   `json:"mode"`
-	LastUpdate       time.Time     `json:"last_update"`
-	IsEncoderOnline  bool          `json:"is_encoder_online"`
-	IsInputsOnline   bool          `json:"is_inputs_online"`
-	IsOutputsOnline  bool          `json:"is_outputs_online"`
-  IsSafetyLocked   bool          `json:"is_safety_locked"`
-	ReadCycleMs      int64         `json:"read_cycle_ms"`
-  IsPaused         bool          `json:"is_paused"`
-  StopReason      string         `json:"stop_reason"`
-  ActiveOperation  string        `json:"active_operation"`
-  OpsList          [][]string    `json:"-"`
-  Counter          int           `json:"counter"`
+	EncoderValue     uint16
+	Device10In       [32]uint16
+  Device20Out      [32]uint16
+  Mode             ControlMode
+	LastUpdate       time.Time
+	IsEncoderOnline  bool
+	IsInputsOnline   bool
+	IsOutputsOnline  bool
+  IsSafetyLocked   bool
+	ReadCycleMs      int64
+  IsPaused         bool
+  StopReason       string
+  ActiveOperation  string
+  OpsList          [][]string
+  Counter          int
 }
 
-func runWebServer(state *HardwareState, controller *Controller) {
-	webServer, err := NewWebServer(state, controller)
+func runWebServer(controller *Controller) {
+	webServer, err := NewWebServer(controller)
 	if err != nil {
 		log.Fatalf("❌ Помилка створення веб-сервера: %v", err)
 	}
@@ -67,5 +67,5 @@ func main() {
     }()
 
     // 5. Створюємо Веб-сервер, передаючи йому і стан, і контролер
-    runWebServer(state, controller)
+    runWebServer(controller)
 }

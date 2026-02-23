@@ -177,23 +177,26 @@ func waitStop2s(c *Controller) StepResult {
 
 // --- Системні функції ---
 
-// GetAllowedManualOps визначає, які операції доступні в ручному режимі.
-func GetAllowedManualOps(state *HardwareState) []string {
-	if state.IsSafetyLocked {
+// GetAllowedManualOpsFromView — UI-safe версія.
+// Працює тільки з immutable snapshot, без доступу до runtime state.
+func GetAllowedManualOpsFromView(v SystemView) []string {
+	if v.IsSafetyLocked {
 		return []string{"op_safety_start"}
 	}
-	if state.ActiveOperation != "" {
+	if v.ActiveOperation != "" {
 		return []string{"op_safety_stop"}
 	}
+
 	allowed := make([]string, 0)
-	val := state.EncoderValue
+
+	val := v.EncoderValue
 	if val > 100 && val < 500 {
 		allowed = append(allowed, "sync_mirror")
 	}
+
 	allowed = append(allowed, "op_safety_stop")
-	if state.IsOutputsOnline {
-		// allowed = append(allowed, "some_network_op")
-	}
+
+	// Тут вже НЕ можна перевіряти щось типу mutex / online flags напряму —
+	// тільки те, що є у snapshot.
 	return allowed
 }
-

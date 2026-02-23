@@ -10,16 +10,14 @@ import (
 
 // WebServer інкапсулює всю логіку веб-сервера
 type WebServer struct {
-	state *HardwareState
 	tmpl  *template.Template
   mux   *http.ServeMux
   ctrl  *Controller
 }
 
 // NewWebServer створює новий екземпляр веб-сервера
-func NewWebServer(state *HardwareState, ctrl *Controller) (*WebServer, error) {
+func NewWebServer(ctrl *Controller) (*WebServer, error) {
 	ws := &WebServer{
-		state: state,
     ctrl:  ctrl,
 	}
 	
@@ -107,51 +105,50 @@ func (ws *WebServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 // handleState повертає поточний стан системи для UI
 func (ws *WebServer) handleState(w http.ResponseWriter, r *http.Request) {
-	ws.state.mu.RLock()
-	defer ws.state.mu.RUnlock()
+	view := ws.ctrl.GetView() // ← тільки snapshot
 
-  // Конвертуємо число режиму назад у рядок для JS
-  modeStr := "mode-manual"
-  switch ws.state.Mode {
-  case ModeAutomatic: modeStr = "mode-auto"
-  case ModeSingle:    modeStr = "mode-once-cycle"
-  }
+	// Конвертуємо режим у рядок для JS
+	modeStr := "mode-manual"
+	switch view.Mode {
+	case ModeAutomatic:
+		modeStr = "mode-auto"
+	case ModeSingle:
+		modeStr = "mode-once-cycle"
+	}
 
 	response := map[string]interface{}{
-		"modeId":           modeStr,
-		"modeState":        "ok",
-    "isPaused":         ws.state.IsPaused,
-    "isLocked":         ws.state.IsSafetyLocked,
-    "stopReason":       ws.state.StopReason,
-		"modeDescription":  "Система в нормі",
-		"operationState":   "idle",
-		"counter":          ws.state.Counter,
-    "OperationsList":   ws.state.OpsList,
-    "ActiveOperation":  ws.state.ActiveOperation,
-		"degree":           int(ws.state.EncoderValue) % 720,
-    "manualOperations": GetAllowedManualOps(ws.state),
+		"modeId":          modeStr,
+		"modeState":       "ok",
+		"isPaused":        view.IsPaused,
+		"isLocked":        view.IsSafetyLocked,
+		"stopReason":      view.StopReason,
+		"modeDescription": "Система в нормі",
+		"operationState":  "idle",
+		"counter":         view.Counter,
+		"OperationsList":  view.OpsList,
+		"ActiveOperation": view.ActiveOperation,
+		"degree":          int(view.EncoderValue) % 720,
+		"manualOperations": GetAllowedManualOpsFromView(view),
 	}
-	
+
 	for i := 0; i < 18; i++ {
 		key := fmt.Sprintf("operation%d", i+1)
-		val := 1
-		if i < len(ws.state.Device10In) {
-			val = int(ws.state.Device10In[i])
-		}
+		val := int(view.Device10In[i])
 		response[key] = val
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
 
 // handleStatus повертає технічний статус системи
 func (ws *WebServer) handleStatus(w http.ResponseWriter, r *http.Request) {
-	ws.state.mu.RLock()
-	defer ws.state.mu.RUnlock()
-	
+	view := ws.ctrl.GetView() // snapshot від контролера
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(ws.state)
+	if err := json.NewEncoder(w).Encode(view); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // handleModeSet обробляє зміну режиму через API
@@ -179,18 +176,23 @@ func (ws *WebServer) handleModeSet(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
 }
 
+// func (ws *WebServer) handleEmergencyStopTMP(w http.ResponseWriter, r *http.Request) {
+//   ws.state.mu.RLock()
+//   isLocked := ws.state.IsSafetyLocked
+//   ws.state.mu.RUnlock()
+//   if isLocked {
+//     log.Println("[Web] Запит на розблокування (Safety Start)")
+//     ws.ctrl.Reset()
+//   } else {
+//     log.Println("[Web] EMERGENCY STOP!")
+//     ws.ctrl.Stop("Зупинка оператором")
+//   }    
+//   w.WriteHeader(http.StatusOK)
+// }
+
 func (ws *WebServer) handleEmergencyStop(w http.ResponseWriter, r *http.Request) {
-  ws.state.mu.RLock()
-  isLocked := ws.state.IsSafetyLocked
-  ws.state.mu.RUnlock()
-  if isLocked {
-    log.Println("[Web] Запит на розблокування (Safety Start)")
-    ws.ctrl.Reset()
-  } else {
-    log.Println("[Web] EMERGENCY STOP!")
-    ws.ctrl.Stop("Зупинка оператором")
-  }    
-  w.WriteHeader(http.StatusOK)
+	ws.ctrl.ToggleSafetyLock()
+	w.WriteHeader(http.StatusOK)
 }
 
 // handlePause обробляє зупинку/продовження логіки
@@ -198,11 +200,9 @@ func (ws *WebServer) handlePause(w http.ResponseWriter, r *http.Request) {
 	// Отримуємо значення з запиту (наприклад, /pause?set=true)
 	val := r.URL.Query().Get("set")
 	
-	ws.state.mu.RLock()
-	currentPaused := ws.state.IsPaused
-	ws.state.mu.RUnlock()
+	view := ws.ctrl.GetView()
+	targetPause := !view.IsPaused // default toggle
 
-	targetPause := !currentPaused // За замовчуванням просто перемикаємо
 	if val == "true" {
 		targetPause = true
 	} else {

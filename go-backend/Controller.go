@@ -367,6 +367,31 @@ func (c *Controller) updateCycleTime(ms int64) {
 	c.state.ReadCycleMs = ms
 }
 
+func (c *Controller) GetView() SystemView {
+	c.state.mu.RLock()
+	defer c.state.mu.RUnlock()
+
+	return SystemView{
+		Mode:            c.state.Mode,
+		IsPaused:        c.state.IsPaused,
+		IsSafetyLocked:  c.state.IsSafetyLocked,
+		StopReason:      c.state.StopReason,
+		ActiveOperation: c.state.ActiveOperation,
+		Counter:         c.state.Counter,
+
+		EncoderValue:    c.state.EncoderValue,
+		Device10In:      c.state.Device10In,
+
+		IsEncoderOnline: c.state.IsEncoderOnline,
+		IsInputsOnline:  c.state.IsInputsOnline,
+		IsOutputsOnline: c.state.IsOutputsOnline,
+
+		ReadCycleMs:     c.state.ReadCycleMs,
+		LastUpdate:      c.state.LastUpdate,
+    OpsList:         c.state.OpsList,
+	}
+}
+
 func (c *Controller) waitIfPaused() {
     for {
         c.state.mu.RLock()
@@ -472,4 +497,26 @@ func (c *Controller) Reset() {
   c.state.ActiveOperation = ""
   c.state.mu.Unlock()
   fmt.Println("[CTRL] Safety Start: блокування знято, система готова")
+}
+
+// ToggleSafetyLock переключає стан блокування безпеки.
+// Повертає новий стан IsSafetyLocked після операції.
+func (c *Controller) ToggleSafetyLock() bool {
+	c.state.mu.RLock()
+	locked := c.state.IsSafetyLocked
+	c.state.mu.RUnlock()
+
+	if locked {
+		// Система заблокована — знімаємо блокування
+		fmt.Println("[CTRL] ToggleSafetyLock: розблокування (Safety Start)")
+		c.Reset()
+	} else {
+		// Система розблокована — виконуємо операторську зупинку
+		fmt.Println("[CTRL] ToggleSafetyLock: блокування (Emergency Stop)")
+		c.Stop("Зупинка оператором")
+	}
+
+	c.state.mu.RLock()
+	defer c.state.mu.RUnlock()
+	return c.state.IsSafetyLocked
 }
