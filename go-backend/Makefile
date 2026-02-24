@@ -1,3 +1,6 @@
+HOST=localhost
+PORT=8080
+
 # Назва бінарного файлу
 BINARY_NAME=modbus-app
 
@@ -24,8 +27,20 @@ build-arm:
 	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) go build -o bin/$(BINARY_NAME)-arm .
 
 # Запуск локально
-run: build
-	./bin/$(BINARY_NAME)
+run: build fw-check
+	cd bin && ./$(BINARY_NAME)
+
+# Перевірка та налаштування iptables на віддаленій машині
+fw-check:
+	@echo "Перевірка прав на фаєрвол..."
+	@if [ "$$(id -u)" = "0" ]; then \
+		iptables -C INPUT -p tcp --dport $(PORT) -j ACCEPT > /dev/null 2>&1 || \
+		iptables -I INPUT 1 -p tcp --dport $(PORT) -j ACCEPT; \
+		echo "Фаєрвол налаштовано."; \
+	else \
+		echo "Запущено без sudo. Пропускаю налаштування фаєрволу."; \
+		echo "Переконайтеся, що порт $(PORT) відкритий вручну."; \
+	fi
 
 # Очищення
 clean:
@@ -37,7 +52,7 @@ fmt:
 	go fmt ./...
 
 # Відправка на Raspberry Pi (замініть pi@raspberrypi.local на ваш хост)
-deploy: build-arm
+deploy: build-arm fw-check
 	scp bin/$(BINARY_NAME)-arm pi@raspberrypi.local:/home/pi/$(BINARY_NAME)
 	ssh pi@raspberrypi.local "chmod +x /home/pi/$(BINARY_NAME)"
 

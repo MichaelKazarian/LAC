@@ -40,7 +40,7 @@ func runWebServer(controller *Controller) {
 		log.Fatalf("❌ Помилка створення веб-сервера: %v", err)
 	}
 
-	if err := webServer.Start("localhost:8080"); err != nil {
+	if err := webServer.Start("0.0.0.0:8080"); err != nil {
 		log.Fatalf("❌ Помилка запуску веб-сервера: %v", err)
 	}
 }
