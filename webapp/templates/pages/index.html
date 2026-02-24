@@ -50,18 +50,6 @@
 
             <div id="rightPanel" class="col-sm-3 d-flex justify-content-center">
               <div style="width: 100%; max-width: 250px;">
-                <div class="row mb-1 mt-1">
-                  <button class="btn btn-warning btn-lg invisible w-100" id="btnPause" type="button">ПАУЗА</button>
-                </div>
-
-                <div id="container-counter" class="row mb-1 mt-1 border-bottom pb-1">
-                  <div class="col">
-                    <label id="lb-product-counter" class="fs-5 fw-bold mb-0">Кіл-ть:</label>
-                  </div>
-                  <div class="col text-end">
-                    <label id="product-counter" class="fs-5 fw-bold mb-0">---</label>
-                  </div>
-                </div>
 
                 <div id="modes-switcher" class="row mt-3">
                   {{ range .modes }}
@@ -73,6 +61,20 @@
                   </div>
                   {{ end }}
                 </div>
+
+                <div class="row mb-1 mt-1">
+                  <button class="btn btn-warning btn-lg invisible w-100" id="btnPause" type="button">ПАУЗА</button>
+                </div>
+
+                <div id="container-counter" class="row mb-1 mt-1 border-bottom pb-1">
+                  <div class="col-8">
+                    <label id="lb-product-counter" class="fs-5 fw-bold mb-0">Кіл-ть:</label>
+                  </div>
+                  <div class="col-4 text-end">
+                    <label id="product-counter" class="fs-5 fw-bold mb-0">---</label>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
