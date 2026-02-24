@@ -60,7 +60,7 @@ func NewController(hw HardwareService, state *HardwareState) *Controller {
 
 // Run — основний цикл контролера
 func (c *Controller) Run() {
-  c.firstRun = true // Ініціалізуємо перед циклом
+  c.Reset() // Ініціалізуємо перед циклом
   fmt.Println("[CTRL] Контролер логіки запущено")
 
   for {
@@ -494,9 +494,9 @@ func (c *Controller) Reset() {
     fmt.Println("[CTRL] Re-arming outputs power...")
     _ = c.power.EnableOutputsPower()   // Включаємо живлення DO-плати
     time.Sleep(500 * time.Millisecond) // Даємо залізу прокинутись
-    c.firstRun = true                  // Синхронізуємо виходи
   }
   c.state.mu.Lock()
+  c.firstRun = true                  // Синхронізуємо виходи
   c.state.IsSafetyLocked = false
   c.state.IsOutputsOnline = true
   c.state.StopReason = ""
