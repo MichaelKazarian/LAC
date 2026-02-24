@@ -14,6 +14,7 @@ type SystemView struct {
 
 	EncoderValue    uint16      `json:"encoder_value"`
 	Device10In      [32]uint16  `json:"device10_in"`
+  Device20Out     [32]uint16  `json:"device20_out"`
 
 	IsEncoderOnline bool        `json:"is_encoder_online"`
 	IsInputsOnline  bool        `json:"is_inputs_online"`

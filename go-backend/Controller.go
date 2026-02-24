@@ -384,6 +384,7 @@ func (c *Controller) GetView() SystemView {
 
 		EncoderValue:    c.state.EncoderValue,
 		Device10In:      c.state.Device10In,
+    Device20Out:      c.state.Device20Out,
 
 		IsEncoderOnline: c.state.IsEncoderOnline,
 		IsInputsOnline:  c.state.IsInputsOnline,

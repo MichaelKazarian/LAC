@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="uk">
+  <head>
+    {{ template "head" . }}
+    <title>Діагностика системи</title>
+    <style>
+     .io-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; }
+     .io-item { border: 1px solid #ddd; padding: 5px; text-align: center; border-radius: 4px; background: #f9f9f9; }
+     .io-dot { width: 18px; height: 18px; border-radius: 50%; margin: 5px auto; background: #bbb; transition: 0.3s; }
+
+     /* Стани індикаторів */
+     .dot-in-on { background: #28a745; box-shadow: 0 0 10px #28a745; }
+     .dot-out-on { background: #ffc107; box-shadow: 0 0 10px #ffc107; }
+     
+     .data-val { font-family: monospace; font-size: 1.3rem; font-weight: bold; color: #0d6efd; }
+     .status-card { min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
+
+     /* Адаптивні класи для заголовків виходів */
+     .header-locked { background-color: #dc3545 !important; color: white !important; }
+     .header-ready { background-color: #198754 !important; color: white !important; }
+     .outputs-locked { opacity: 0.5; filter: grayscale(0.6); pointer-events: none; }
+    </style>
+  </head>
+  <body class="bg-light">
+    <div class="container py-4">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">⚙️ Діагностика</h2>
+        <div id="connection-badge" class="badge bg-success">Зв'язок OK</div>
+        <a href="/" class="btn btn-sm btn-outline-secondary">На головну</a>
+      </div>
+
+      <div class="row mb-4 text-center">
+        <div class="col-md-3">
+          <div class="card shadow-sm status-card p-2 border-primary">
+            <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Режим</small>
+            <div id="val-mode" class="fw-bold fs-5">---</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card shadow-sm status-card p-2 border-primary">
+            <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Активна Операція</small>
+            <div id="val-active-op" class="fw-bold text-primary">---</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card shadow-sm status-card p-2">
+            <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Енкодер & Цикл</small>
+            <div class="d-flex justify-content-around align-items-baseline">
+              <span id="val-encoder" class="data-val">---</span>
+              <span id="val-cycle" class="text-muted small">-- ms</span>
+            </div>
+            <div id="sync-encoder" class="small fw-bold mt-1"></div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card shadow-sm status-card p-2" id="safety-card">
+            <small class="text-muted text-uppercase" style="font-size: 0.7rem;">Hardware Safety</small>
+            <div id="val-safety" class="fw-bold text-success">ОЧІКУВАННЯ...</div>
+            <small id="val-stop-reason" class="text-danger fw-bold" style="font-size: 0.7rem;"></small>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-6 mb-4">
+          <div class="card shadow-sm border-0">
+            <div id="header-in" class="card-header d-flex justify-content-between align-items-center bg-success text-white py-2">
+              <span class="fw-bold">ВХОДИ (Device 10)</span>
+              <span id="sync-inputs" class="badge bg-light text-success">CHECKING</span>
+            </div>
+            <div class="card-body">
+              <div id="inputs-grid" class="io-grid"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+          <div id="outputs-container" class="card shadow-sm border-0">
+            <div id="header-out" class="card-header d-flex justify-content-between align-items-center py-2">
+              <span class="fw-bold">ВИХОДИ (Device 20)</span>
+              <span id="sync-outputs" class="badge bg-light text-success">CHECKING</span>
+            </div>
+            <div class="card-body">
+              <div id="outputs-grid" class="io-grid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+     function updateStatusLabel(id, isOnline) {
+       const el = document.getElementById(id);
+       if (isOnline) {
+         el.innerText = "ONLINE";
+         el.classList.add('bg-light', 'text-success');
+         el.classList.remove('bg-danger', 'text-white');
+       } else {
+         el.innerText = "OFFLINE";
+         el.classList.add('bg-danger', 'text-white');
+         el.classList.remove('bg-light', 'text-success');
+       }
+     }
+
+     function renderGrid(containerId, dataArray, dotClassPrefix, colorClass) {
+       const grid = document.getElementById(containerId);
+       if (grid.children.length === 0) {
+         dataArray.forEach((_, i) => {
+           const div = document.createElement('div');
+           div.className = 'io-item';
+           div.innerHTML = `<small style="font-size:0.6rem; color:#888">#${i}</small><div id="${dotClassPrefix}-${i}" class="io-dot"></div>`;
+           grid.appendChild(div);
+         });
+       }
+       dataArray.forEach((val, i) => {
+         const dot = document.getElementById(`${dotClassPrefix}-${i}`);
+         if (val === 1) dot.classList.add(colorClass);
+         else dot.classList.remove(colorClass);
+       });
+     }
+
+     async function updateStatus() {
+       try {
+         const response = await fetch('/api/status');
+         const data = await response.json();
+
+         // 1. Дані логіки
+         document.getElementById('val-mode').innerText = "MODE " + data.mode;
+         document.getElementById('val-active-op').innerText = data.active_operation || "IDLE";
+         document.getElementById('val-encoder').innerText = data.encoder_value + '°';
+         document.getElementById('val-cycle').innerText = data.read_cycle_ms + ' ms';
+         
+         // 2. Логіка Safety Lock
+         const isLocked = data.is_safety_locked;
+         const sLabel = document.getElementById('val-safety');
+         const sCard = document.getElementById('safety-card');
+         const outContainer = document.getElementById('outputs-container');
+         const hOut = document.getElementById('header-out');
+         const sOut = document.getElementById('sync-outputs');
+
+         if (isLocked) {
+           sLabel.innerText = "ЗАБЛОКОВАНО";
+           sLabel.className = "fw-bold text-danger";
+           sCard.classList.add("border-danger");
+           
+           // Стилі для виходів (LOCKED)
+           hOut.className = "card-header d-flex justify-content-between align-items-center header-locked py-2";
+           sOut.innerText = "HARDWARE LOCK";
+           sOut.className = "badge bg-dark text-white";
+           outContainer.classList.add("outputs-locked");
+           document.getElementById('val-stop-reason').innerText = data.stop_reason;
+         } else {
+           sLabel.innerText = "ГОТОВНІСТЬ";
+           sLabel.className = "fw-bold text-success";
+           sCard.classList.remove("border-danger");
+
+           // Стилі для виходів (READY / ONLINE)
+           hOut.className = "card-header d-flex justify-content-between align-items-center header-ready py-2";
+           updateStatusLabel('sync-outputs', !data.is_safety_locked);
+           outContainer.classList.remove("outputs-locked");
+           document.getElementById('val-stop-reason').innerText = "";
+         }
+
+         // 3. Статуси модулів
+         updateStatusLabel('sync-inputs', data.is_inputs_online);
+         const encLabel = document.getElementById('sync-encoder');
+         encLabel.innerText = data.is_encoder_online ? "ENC OK" : "ENC ERROR";
+         encLabel.className = data.is_encoder_online ? "small fw-bold mt-1 text-success" : "small fw-bold mt-1 text-danger";
+
+         // 4. Сітки
+         renderGrid('inputs-grid', data.device10_in, 'dot-in', 'dot-in-on');
+         renderGrid('outputs-grid', data.device20_out, 'dot-out', 'dot-out-on');
+
+         document.getElementById('connection-badge').className = "badge bg-success";
+         document.getElementById('connection-badge').innerText = "Зв'язок OK";
+
+       } catch (err) {
+         document.getElementById('connection-badge').className = "badge bg-danger";
+         document.getElementById('connection-badge').innerText = "Зв'язок ВТРАЧЕНО";
+       }
+     }
+
+     setInterval(updateStatus, 250);
+     updateStatus();
+    </script>
+  </body>
+</html>
