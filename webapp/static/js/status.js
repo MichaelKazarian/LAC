@@ -1,3 +1,13 @@
+function returnToMain() {
+  if (window.opener && !window.opener.closed) {
+    window.opener.focus();   // переключитися на основну вкладку
+    window.close();          // закрити status
+  } else {
+    // якщо головна вкладка вже закрита
+    window.location.href = "/";
+  }
+}
+
 function updateStatusLabel(id, isOnline) {
   const el = document.getElementById(id);
   if (isOnline) {
