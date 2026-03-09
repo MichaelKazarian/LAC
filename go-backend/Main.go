@@ -52,7 +52,7 @@ func main() {
     }
 
     // 2. Створюємо низькорівневий сервіс (але не запускаємо опитування)
-    hwService := NewModbusService("/dev/ttyUSB0", 38400)
+    hwService := NewModbusService("/dev/ttyS0", 38400)
     // defer тут не спрацює для hwService, якщо ми передаємо його в горутину, 
     // тому краще закривати його всередині runModbusPoll або через сигнал завершення системи.
 
