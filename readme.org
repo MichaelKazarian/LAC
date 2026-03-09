@@ -1,5 +1,30 @@
 * Lathe-automatic complex
 LAC == ТАК (токарно-автоматний комплекс)
+** Real Time Clock
+Для збереження часу використовується модуль RTC DS3231, налаштовано
+відповідно [[https://pimylifeup.com/raspberry-pi-rtc/][цього мануала]].
+*** Синхронізація з системної дати з RTC під час старту системи
+Для синхронізації використовується oneshot-сервіс /etc/systemd/system/hwclock-sync.service.
+#+BEGIN_SRC ini
+[Unit]
+Description=Sync system clock from Hardware Clock (RTC)
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/hwclock -s
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+#+END_SRC
+*** Активація сервісу
+#+BEGIN_SRC sh
+sudo systemctl daemon-reload
+sudo systemctl enable hwclock-sync.service
+sudo systemctl start hwclock-sync.service
+#+END_SRC
+
 ** Directory structure
 *** ENC-EP50S8
 EP50S8 encoder reader.
