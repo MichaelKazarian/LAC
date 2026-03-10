@@ -74,6 +74,7 @@ func (ws *WebServer) setupRoutes() {
   ws.mux.HandleFunc("/modeset", ws.handleModeSet)
   ws.mux.HandleFunc("/pause", ws.handlePause)
   ws.mux.HandleFunc("/safety", ws.handleEmergencyStop)
+  ws.mux.HandleFunc("/api/io-map", ws.handleIOMap)
 
   // 4. Сторінки
   ws.mux.HandleFunc("/status", ws.handleStatusPage)   // HTML сторінка
@@ -233,6 +234,33 @@ func (ws *WebServer) handlePause(w http.ResponseWriter, r *http.Request) {
 	// Повертаємо новий стан у JSON, щоб фронтенд міг оновити колір кнопки
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"paused": targetPause})
+}
+
+// У Webserver.go додайте обробник
+func (ws *WebServer) handleIOMap(w http.ResponseWriter, r *http.Request) {
+    // Структура для відповіді
+    response := struct {
+        In  map[int]string `json:"in"`
+        Out map[int]string `json:"out"`
+    }{
+        In:  make(map[int]string),
+        Out: make(map[int]string),
+    }
+
+    // Наповнюємо даними з PinMapping.go
+    // Оскільки PinNames містить і входи, і виходи, розділяємо їх логічно
+    for pin, name := range PinNames {
+        // Логіка розділення (наприклад, по індексах або константах)
+        if pin == PinMotorReady {
+            response.In[pin] = name
+        } else if pin == OutMainMotor {
+            response.Out[pin] = name
+        }
+        // Якщо у вас з'являться інші піни, додайте їх сюди або змініть мапу PinNames
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
 }
 
 // Start запускає веб-сервер (блокуючий виклик)

@@ -1,3 +1,25 @@
+// status.js
+let ioLabels = { in: {}, out: {} };
+
+async function loadIOMap() {
+  try {
+    const response = await fetch('/api/io-map');
+    const data = await response.json();
+    ioLabels.in = data.in || {};
+    ioLabels.out = data.out || {};
+    console.log("IO Map loaded:", ioLabels);
+  } catch (err) {
+    console.error("Failed to load IO map:", err);
+  }
+}
+
+// Головна функція ініціалізації
+async function init() {
+  await loadIOMap();      // 1. Завантажуємо імена пінів один раз
+  updateStatus();         // 2. Перший рендер даних
+  setInterval(updateStatus, 250); // 3. Запускаємо цикл
+}
+
 function returnToMain() {
   if (window.opener && !window.opener.closed) {
     window.opener.focus();   // переключитися на основну вкладку
@@ -23,18 +45,33 @@ function updateStatusLabel(id, isOnline) {
 
 function renderGrid(containerId, dataArray, dotClassPrefix, colorClass) {
   const grid = document.getElementById(containerId);
+  
+  // Визначаємо, яку мапу імен використовувати (in чи out)
+  const currentLabels = containerId.includes('inputs') ? ioLabels.in : ioLabels.out;
+
   if (grid.children.length === 0) {
     dataArray.forEach((_, i) => {
       const div = document.createElement('div');
       div.className = 'io-item';
-      div.innerHTML = `<small style="font-size:0.6rem; color:#888">#${i}</small><div id="${dotClassPrefix}-${i}" class="io-dot"></div>`;
+      
+      // Беремо назву з глобального об'єкта за індексом
+      const name = currentLabels[i];
+      const displayLabel = name ? `#${i} <div class="pin-name">${name}</div>` : `#${i}`;
+      
+      div.innerHTML = `
+        <small class="io-index">${displayLabel}</small>
+                <div id="${dotClassPrefix}-${i}" class="io-dot"></div>
+      `;
       grid.appendChild(div);
     });
   }
+
   dataArray.forEach((val, i) => {
     const dot = document.getElementById(`${dotClassPrefix}-${i}`);
-    if (val === 1) dot.classList.add(colorClass);
-    else dot.classList.remove(colorClass);
+    if (dot) {
+      if (val === 1) dot.classList.add(colorClass);
+      else dot.classList.remove(colorClass);
+    }
   });
 }
 
@@ -99,5 +136,4 @@ async function updateStatus() {
   }
 }
 
-setInterval(updateStatus, 250);
-updateStatus();
+init();
