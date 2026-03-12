@@ -10,6 +10,7 @@ import (
 type ModbusService struct {
   client  modbus.Client
   handler *modbus.RTUClientHandler
+  interFrameDelay time.Duration
   //mu      sync.Mutex
 }
 
@@ -24,7 +25,11 @@ func NewModbusService(device string, baud int) *ModbusService {
     if err := handler.Connect(); err != nil {
         panic(fmt.Sprintf("[MODBUS] Port error: %v", err))
     }
-    return &ModbusService{client: modbus.NewClient(handler), handler: handler}
+  return &ModbusService{
+    client: modbus.NewClient(handler),
+    handler: handler,
+    interFrameDelay: 2 * time.Millisecond,
+  }
 }
 
 // Read реалізує інтерфейс HardwareService
@@ -33,13 +38,13 @@ func (ms *ModbusService) Read() (uint16, [32]uint16, error) {
   if err != nil {
     return 0, [32]uint16{}, err
   }
-  time.Sleep(2 * time.Millisecond)
+  time.Sleep(ms.interFrameDelay)
 
   inputs, err := ms.readInputs()
   if err != nil {
     return sensor, [32]uint16{}, err
   }
-  time.Sleep(2 * time.Millisecond)
+  time.Sleep(ms.interFrameDelay)
 
   return sensor, inputs, nil
 }
@@ -77,7 +82,7 @@ func (ms *ModbusService) Write(values [32]uint16) error {
     binary.BigEndian.PutUint16(packedBytes[0:2], r0)
     binary.BigEndian.PutUint16(packedBytes[2:4], r1)
     
-    time.Sleep(2 * time.Millisecond)
+    time.Sleep(ms.interFrameDelay)
     ms.handler.SlaveId = AddrOutputs
     _, err := ms.client.WriteMultipleRegisters(0, 2, packedBytes)
     ms.logWriteStatus(err, r0, r1)
