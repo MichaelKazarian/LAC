@@ -1,0 +1,20 @@
+[Unit]
+Description=LAC Web GUI Kiosk Mode
+# Чекаємо, поки підніметься мережа та Go-бекенд
+After=network.target lac-backend.service
+
+[Service]
+User=pi
+Group=pi
+# Вказуємо дисплей, на якому малювати вікно
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/pi/.Xauthority
+
+ExecStartPre=/bin/sleep 20
+ExecStart=/usr/bin/chromium-browser --kiosk --noerrdialogs --disable-infobars --disable-popup-blocking --password-store=basic http://localhost:8080
+
+# "no" для консистентності під час розробки
+Restart=no
+
+[Install]
+WantedBy=graphical.target

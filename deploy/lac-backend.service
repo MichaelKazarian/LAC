@@ -1,0 +1,21 @@
+[Unit]
+Description=LAC Backend Service
+After=network.target
+
+[Service]
+User=pi
+Group=pi
+
+WorkingDirectory=/home/pi/LAC/go-backend/
+
+ExecStart=/usr/bin/make run
+
+#Restart=always
+#RestartSec=5
+
+# Логи виводитимуться в системний журнал
+StandardOutput=inherit
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

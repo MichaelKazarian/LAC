@@ -1,5 +1,12 @@
 HOST=localhost
 PORT=8080
+SERVICE_NAME=lac-backend.service
+SERVICE_SOURCE=../deploy/$(SERVICE_NAME)
+SYSTEMD_PATH=/etc/systemd/system/
+WEB_SERVICE_NAME=lac-web-gui.service
+WEB_SERVICE_SOURCE=../deploy/$(WEB_SERVICE_NAME)
+UDEV_RULE_PATH=/etc/udev/rules.d/99-touchscreen.rules
+TOUCHSCREEN_NAME=WaveShare WS170120
 
 # Назва бінарного файлу
 BINARY_NAME=modbus-app
@@ -8,7 +15,7 @@ BINARY_NAME=modbus-app
 TARGET_OS=linux
 TARGET_ARCH=arm64
 
-.PHONY: all init build build-arm run clean fmt deploy help
+.PHONY: all init build build-arm run clean fmt deploy deploy-service deploy-lac-web-gui deploy-rotate-screen-90-degree deploy-rotate-screen-normal help
 
 # 1. Початкова ініціалізація проекту
 init:
@@ -51,17 +58,61 @@ clean:
 fmt:
 	go fmt ./...
 
-# Відправка на Raspberry Pi (замініть pi@raspberrypi.local на ваш хост)
-deploy: build-arm fw-check
-	scp bin/$(BINARY_NAME)-arm pi@raspberrypi.local:/home/pi/$(BINARY_NAME)
-	ssh pi@raspberrypi.local "chmod +x /home/pi/$(BINARY_NAME)"
+deploy-service:
+	@echo "Встановлення системного сервісу..."
+	@# Копіюємо файл сервісу з каталогу deploy
+	cp $(SERVICE_SOURCE) $(SYSTEMD_PATH)
+	@# Оновлюємо конфігурацію systemd
+	systemctl daemon-reload
+	@# Додаємо в автозавантаження та запускаємо
+	systemctl enable $(SERVICE_NAME)
+	systemctl start $(SERVICE_NAME)
+	@echo "Сервіс $(SERVICE_NAME) успішно встановлено та запущено."
 
-# Допомога
+# deploy робила все разом
+deploy: build fw-check deploy-service
+	@echo "Повне розгортання завершено."
+
+deploy-web-gui:
+	@echo "--- Встановлення сервісу веб-інтерфейсу (Kiosk Mode) ---"
+	@if [ -f $(WEB_SERVICE_SOURCE) ]; then \
+		cp $(WEB_SERVICE_SOURCE) $(SYSTEMD_PATH); \
+		systemctl daemon-reload; \
+		systemctl enable $(WEB_SERVICE_NAME); \
+		systemctl restart $(WEB_SERVICE_NAME); \
+		echo "Сервіс $(WEB_SERVICE_NAME) успішно встановлено та запущено."; \
+	else \
+		echo "Помилка: Файл $(WEB_SERVICE_SOURCE) не знайдено!"; \
+		exit 1; \
+	fi
+
+# Поворот на 90 градусів (Landscape -> Portrait)
+deploy-rotate-touch-90:
+	@echo "--- Налаштування тачскріна: поворот 90 градусів ---"
+	printf 'ACTION=="add", ATTRS{name}=="%s", ENV{LIBINPUT_CALIBRATION_MATRIX}="-0 -1 1 1 0 0 0 0 1"\n' "$(TOUCHSCREEN_NAME)" > $(UDEV_RULE_PATH)
+	udevadm control --reload-rules && udevadm trigger
+	@echo "Правила оновлено. Можливо, знадобиться перезапуск сесії браузера."
+
+# Повернення в нормальний режим (закоментований рядок або пуста матриця)
+deploy-rotate-touch-norm:
+	@echo "--- Налаштування тачскріна: нормальний режим ---"
+	printf '# ACTION=="add", ATTRS{name}=="%s", ENV{LIBINPUT_CALIBRATION_MATRIX}="-0 -1 1 1 0 0 0 0 1"\n' "$(TOUCHSCREEN_NAME)" > $(UDEV_RULE_PATH)
+	udevadm control --reload-rules && udevadm trigger
+	@echo "Правила повернуто до початкового стану."
+
 help:
-	@echo "Команди:"
-	@echo "  make init       - створити go.mod та завантажити бібліотеки"
-	@echo "  make build      - зібрати локально"
-	@echo "  make build-arm  - зібрати для Raspberry Pi 4 (arm64)"
-	@echo "  make run        - зібрати та запустити"
-	@echo "  make deploy     - зібрати для ARM та відправити на RPi"
-	@echo "  make clean      - видалити бінарники"
+	@echo "Команди розробки:"
+	@echo "  make init                - створити go.mod та завантажити бібліотеки"
+	@echo "  make build               - зібрати локально"
+	@echo "  make build-arm           - зібрати для Raspberry Pi 4 (arm64)"
+	@echo "  make run                 - зібрати та запустити (локально)"
+	@echo "  make clean               - видалити бінарники"
+	@echo ""
+	@echo "Команди деплою (потребують sudo):"
+	@echo "  make deploy              - повний цикл: build + fw-check + сервіси"
+	@echo "  make deploy-service      - встановити тільки go-backend сервіс"
+	@echo "  make deploy-web-gui      - встановити Chromium Kiosk сервіс"
+	@echo ""
+	@echo "Налаштування nfxcrhsyf (потребують sudo):"
+	@echo "  make deploy-rotate-touch-90      - повернути тач на 90 градусів"
+	@echo "  make deploy-rotate-touch-norm  - повернути тач у стандартний режим"
