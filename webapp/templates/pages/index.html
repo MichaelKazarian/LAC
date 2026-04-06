@@ -29,8 +29,9 @@
                   </li>
                   <li><a class="dropdown-item" href="/about">Про систему</a></li>
                   <li><a class="dropdown-item" href="/settings">Налаштування</a></li>
-                  <li><hr class="dropdown-divider"></li>
                   <li><a class="dropdown-item text-danger" href="/logout">Вийти</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="confirmShutdown(); return false;"> 🔴 ВИМКНУТИ</a></li>
                 </ul>
               </div>
 
@@ -85,6 +86,26 @@
         <div class="col-sm-6" id="ops-col-left"></div>
         <div class="col-sm-6" id="ops-col-right"></div>
       </div>
+
+      <div class="modal fade" id="shutdownModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+              <h5 class="modal-title">Підтвердження вимкнення</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+              <p class="fs-5">Ви впевнені, що хочете ПОВНІСТЮ ВИМКНУТИ систему?</p>
+              <p class="text-muted small">Для запуску знадобиться фізичне перепідключення живлення.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+              <button type="button" class="btn btn-danger" onclick="doShutdown()">ТАК, ВИМКНУТИ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <footer>
         {{ template "footer" . }}
       </footer>

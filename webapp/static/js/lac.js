@@ -450,6 +450,49 @@ function showRightPanel() {
   document.getElementById("rightPanel").classList.remove("d-none");
 }
 
+// function confirmShutdown() {
+//   if (confirm("Ви впевнені, що хочете ПОВНІСТЮ ВИМКНУТИ Raspberry Pi? Для запуску знадобиться перепідключення живлення.")) {
+//     fetch('/shutdown')
+//       .then(response => {
+//         alert("Команду надіслано. Зв'язок буде розірвано через кілька секунд.");
+//         window.location.href = "/";
+//       })
+//       .catch(err => alert("Помилка: " + err));
+//   }
+// }
+
+function confirmShutdown() {
+    const myModal = new bootstrap.Modal(document.getElementById('shutdownModal'));
+    myModal.show();
+}
+
+// Функція, яка реально надсилає запит на сервер
+function doShutdown() {
+    // Показуємо користувачу, що процес пішов
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Вимикаю...';
+
+    fetch('/shutdown')
+        .then(response => {
+            if (response.ok) {
+                document.body.innerHTML = `
+                    <div class="d-flex justify-content-center align-items-center vh-100 bg-dark text-white text-center">
+                        <div>
+                            <h1>СИСТЕМА ВИМКНЕНА</h1>
+                            <p class="lead">Зв'язок розірвано. Тепер можна знімати живлення.</p>
+                        </div>
+                    </div>`;
+            } else {
+                alert("Помилка сервера при вимкненні.");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            // В кіоску alert теж може не працювати, тому краще вивести в консоль або в текст на екрані
+        });
+}
+
 function main() {
   function cabinetState() {
     getCabinetState();
