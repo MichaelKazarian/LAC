@@ -24,6 +24,7 @@ const (
 	// OutMainMotor — керуючий сигнал на котушку пускача головного двигуна.
 	// Вимикається примусово через IsSafetyLocked.
 	OutMainMotor = 31
+  OutTestPin      = 15
 )
 
 // --- Modbus Addresses ---
@@ -41,6 +42,7 @@ var PinNames = map[int]string{
 
 	// Виходи
 	OutMainMotor: "Головний двигун",
+  OutTestPin:   "Тестовий пін",
 }
 
 // GetPinName повертає назву піна або "Unknown", якщо пін не описаний.

@@ -23,7 +23,7 @@ import (
 
 // RegisterOperations реєструє всі технологічні операції.
 func RegisterOperations(r *OperationRegistry) {
-	r.Add("operation1",  "Операція 1",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitStop2s)} })
+	r.Add("operation1",  "Операція 1",  func() []Step { return []Step{StepDoWait("Тест вих. 1", stepItWorks, waitStop2s)} })
 	r.Add("operation2",  "Операція 2",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitStop2s)} })
 	r.Add("operation3",  "Операція 3",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation4",  "Операція 4",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -51,12 +51,36 @@ func RegisterOperations(r *OperationRegistry) {
 // sync_mirror
 // =============================================================================
 
+func buildTest1() []Step {
+	return []Step{
+		stepTestOutEnable(),
+		stepTestOutDisable(),
+	}
+}
+
+
 func buildSyncMirror() []Step {
 	return []Step{
 		stepMotorOn(),
 		stepSyncMirror(),
 	}
 }
+
+func stepTestOutEnable() Step {
+	return Step{
+		Name: "Вестове вмикання",
+		Do:   doTestOutEnable,
+    Wait: waitTime(4 * time.Second),
+	}
+}
+
+func stepTestOutDisable() Step {
+	return Step{
+		Name: "Вестове вимикання",
+		Do:   doTestOutDisable,
+	}
+}
+
 
 func stepMotorOn() Step {
 	return Step{
@@ -85,6 +109,14 @@ func doSyncMirror(c *Controller) {
 			c.state.Device20Out[i] = c.state.Device10In[i]
 		}
 	})
+}
+
+func doTestOutEnable(c *Controller) {
+  c.apply(func() { c.state.Device20Out[OutTestPin] = 1 })
+}
+
+func doTestOutDisable(c *Controller) {
+  c.apply(func() { c.state.Device20Out[OutTestPin] = 0 })
 }
 
 func cleanupSyncMirror(c *Controller) {
@@ -182,6 +214,34 @@ func waitSyncMirror(c *Controller) StepResult {
 		time.Sleep(2 * time.Millisecond)
 	}
 	return StepResult{Status: StepOK}
+}
+
+// waitTime повертає функцію очікування для заданої тривалості.
+// Використовується як: Wait: waitTime(2 * time.Second)
+func waitTime(duration time.Duration) func(c *Controller) StepResult {
+	return func(c *Controller) StepResult {
+		deadline := time.Now().Add(duration)
+
+		for time.Now().Before(deadline) {
+			// 1. Перевірка Safety Lock (Emergency Stop)
+			c.state.mu.RLock()
+			locked := c.state.IsSafetyLocked
+			c.state.mu.RUnlock()
+
+			if locked {
+				return StepResult{
+					Status:  StepAbort,
+					Message: "Очікування перервано: Safety Lock",
+				}
+			}
+
+			// 2. Коротка пауза, щоб не перевантажувати CPU
+			// 20-50мс достатньо для оперативності в промислових задачах
+			time.Sleep(25 * time.Millisecond)
+		}
+
+		return StepResult{Status: StepOK}
+	}
 }
 
 // =============================================================================
