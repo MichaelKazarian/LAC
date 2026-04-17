@@ -23,7 +23,7 @@ import (
 
 // RegisterOperations реєструє всі технологічні операції.
 func RegisterOperations(r *OperationRegistry) {
-	r.Add("operation1",  "Операція 1",  func() []Step { return []Step{StepDoWait("Тест вих. 1", stepItWorks, waitStop2s)} })
+	r.Add("operation1",  "Тест вих. 1",  func() []Step { return []Step{StepDoWait("Тест вих. 1", stepItWorks, waitStop2s)} })
 	r.Add("operation2",  "Операція 2",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitStop2s)} })
 	r.Add("operation3",  "Операція 3",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation4",  "Операція 4",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -68,7 +68,7 @@ func buildSyncMirror() []Step {
 
 func stepTestOutEnable() Step {
 	return Step{
-		Name: "Вестове вмикання",
+		Name: "Тестове вмикання",
 		Do:   doTestOutEnable,
     Wait: waitTime(4 * time.Second),
 	}
@@ -76,7 +76,7 @@ func stepTestOutEnable() Step {
 
 func stepTestOutDisable() Step {
 	return Step{
-		Name: "Вестове вимикання",
+		Name: "Тестове вимикання",
 		Do:   doTestOutDisable,
 	}
 }
