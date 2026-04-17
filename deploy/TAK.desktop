@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=false
+Name=LAC Kiosk
+Comment=Запуск інтерфейсу в режимі кіоску
+Exec=/usr/bin/chromium-browser --kiosk --noerrdialogs --disable-infobars --disable-popup-blocking --password-store=basic http://localhost:8080
+Icon=chromium-browser
+Categories=Network;WebBrowser;

@@ -3,8 +3,10 @@ PORT=8080
 SERVICE_NAME=lac-backend.service
 SERVICE_SOURCE=../deploy/$(SERVICE_NAME)
 SYSTEMD_PATH=/etc/systemd/system/
-WEB_SERVICE_NAME=lac-web-gui.service
-WEB_SERVICE_SOURCE=../deploy/$(WEB_SERVICE_NAME)
+DESKTOP_SOURCE=../deploy/TAK.desktop
+DESKTOP_TARGET=$(HOME)/Desktop/TAK.desktop
+AUTOSTART_DIR=$(HOME)/.config/autostart/
+AUTOSTART_TARGET=$(AUTOSTART_DIR)TAK.desktop
 UDEV_RULE_PATH=/etc/udev/rules.d/99-touchscreen.rules
 TOUCHSCREEN_NAME=WaveShare WS170120
 
@@ -74,15 +76,18 @@ deploy: build fw-check deploy-service
 	@echo "Повне розгортання завершено."
 
 deploy-web-gui:
-	@echo "--- Встановлення сервісу веб-інтерфейсу (Kiosk Mode) ---"
-	@if [ -f $(WEB_SERVICE_SOURCE) ]; then \
-		cp $(WEB_SERVICE_SOURCE) $(SYSTEMD_PATH); \
-		systemctl daemon-reload; \
-		systemctl enable $(WEB_SERVICE_NAME); \
-		systemctl restart $(WEB_SERVICE_NAME); \
-		echo "Сервіс $(WEB_SERVICE_NAME) успішно встановлено та запущено."; \
+	@echo "--- Розгортання веб-інтерфейсу (Desktop + Autostart) ---"
+	@if [ -f $(DESKTOP_SOURCE) ]; then \
+		# 1. Копіюємо на робочий стіл \
+		cp $(DESKTOP_SOURCE) $(DESKTOP_TARGET); \
+		chmod +x $(DESKTOP_TARGET); \
+		# 2. Створюємо папку автостарту та копіюємо туди \
+		mkdir -p $(AUTOSTART_DIR); \
+		cp $(DESKTOP_SOURCE) $(AUTOSTART_TARGET); \
+		chmod +x $(AUTOSTART_TARGET); \
+		echo "Веб-інтерфейс налаштовано на автозапуск та додано іконку."; \
 	else \
-		echo "Помилка: Файл $(WEB_SERVICE_SOURCE) не знайдено!"; \
+		echo "Помилка: $(DESKTOP_SOURCE) не знайдено!"; \
 		exit 1; \
 	fi
 

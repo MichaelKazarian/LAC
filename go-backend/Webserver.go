@@ -6,6 +6,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os/exec"
+	"time"
 )
 
 // WebServer інкапсулює всю логіку веб-сервера
@@ -75,6 +77,8 @@ func (ws *WebServer) setupRoutes() {
   ws.mux.HandleFunc("/pause", ws.handlePause)
   ws.mux.HandleFunc("/safety", ws.handleEmergencyStop)
   ws.mux.HandleFunc("/api/io-map", ws.handleIOMap)
+  ws.mux.HandleFunc("/logout", ws.handleLogout)
+  ws.mux.HandleFunc("/shutdown", ws.handleShutdown)
 
   // 4. Сторінки
   ws.mux.HandleFunc("/status", ws.handleStatusPage)   // HTML сторінка
@@ -211,8 +215,7 @@ func (ws *WebServer) handleModeSet(w http.ResponseWriter, r *http.Request) {
 // }
 
 func (ws *WebServer) handleEmergencyStop(w http.ResponseWriter, r *http.Request) {
-	ws.ctrl.ToggleSafetyLock()
-	w.WriteHeader(http.StatusOK)
+  ws.execEmergencyStop(w)
 }
 
 // handlePause обробляє зупинку/продовження логіки
@@ -290,4 +293,34 @@ func (ws *WebServer) handleManualOp(w http.ResponseWriter, r *http.Request) {
     }
 
     w.WriteHeader(http.StatusOK)
+}
+
+// execEmergencyStop виконує перемикання блокування та відправляє статус OK
+func (ws *WebServer) execEmergencyStop(w http.ResponseWriter) {
+    ws.ctrl.ToggleSafetyLock()
+    w.WriteHeader(http.StatusOK)
+}
+
+// handleShutdown спочатку зупиняє залізо, потім вимикає Raspberry
+func (ws *WebServer) handleShutdown(w http.ResponseWriter, r *http.Request) {
+    log.Println("[Web] Запит на ВИМКНЕННЯ системи")
+    ws.execEmergencyStop(w)
+
+    cmd := exec.Command("sudo", "shutdown", "-h", "now")
+    if err := cmd.Start(); err != nil {
+        log.Printf("[Web] Помилка виконання shutdown: %v", err)
+        return
+    }
+}
+
+func (ws *WebServer) handleLogout(w http.ResponseWriter, r *http.Request) {
+  log.Println("[Web] Запит на вихід: закриття браузера")
+  // Відправляємо відповідь клієнту, щоб він не "висів" у очікуванні
+  w.WriteHeader(http.StatusOK)
+  // Запускаємо завершення в окремій горутині, щоб встигнути закрити HTTP-з'єднання
+  go func() {
+    // Невелика затримка, щоб браузер отримав статус 200 OK
+    time.Sleep(300 * time.Millisecond)
+    exec.Command("pkill", "chromium").Run()
+  }()
 }
