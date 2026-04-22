@@ -24,7 +24,11 @@ const (
 	// OutMainMotor — керуючий сигнал на котушку пускача головного двигуна.
 	// Вимикається примусово через IsSafetyLocked.
 	OutMainMotor = 31
+<<<<<<< HEAD
   OutTestPin      = 11
+=======
+  OutTestPin      = 16
+>>>>>>> refs/remotes/origin/master
 )
 
 // --- Modbus Addresses ---

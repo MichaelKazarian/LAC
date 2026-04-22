@@ -191,7 +191,7 @@ func GetAllowedManualOpsFromView(v SystemView) []string {
 		allowed = append(allowed, "sync_mirror")
 	}
 
-	allowed = append(allowed, "op_safety_stop")
+	allowed = append(allowed, "operation1", "op_safety_stop")
 
 	// Тут вже НЕ можна перевіряти щось типу mutex / online flags напряму —
 	// тільки те, що є у snapshot.
