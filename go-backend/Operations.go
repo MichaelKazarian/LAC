@@ -23,7 +23,7 @@ import (
 
 // RegisterOperations реєструє всі технологічні операції.
 func RegisterOperations(r *OperationRegistry) {
-	r.Add("operation1",  "Тест вих. 1",  func() []Step { return []Step{StepDoWait("Тест вих. 1", stepItWorks, waitStop2s)} })
+	r.Add("operation1",  "Тест вих. 1",  buildTest1)
 	r.Add("operation2",  "Операція 2",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitStop2s)} })
 	r.Add("operation3",  "Операція 3",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation4",  "Операція 4",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -112,11 +112,11 @@ func doSyncMirror(c *Controller) {
 }
 
 func doTestOutEnable(c *Controller) {
-  c.apply(func() { c.state.Device20Out[OutTestPin] = 1 })
+  c.apply(func() { c.state.Device20Out[OutTestPin11] = 1 })
 }
 
 func doTestOutDisable(c *Controller) {
-  c.apply(func() { c.state.Device20Out[OutTestPin] = 0 })
+  c.apply(func() { c.state.Device20Out[OutTestPin11] = 0 })
 }
 
 func cleanupSyncMirror(c *Controller) {

@@ -16,19 +16,16 @@ import (
 // --- Inputs Mapping (Slave 10 / Device10In) ---
 const (
 	// PinMotorReady — сигнал готовності частотного перетворювача (Drive Ready).
-	PinMotorReady = 5
+	PinMotorReady = 0
 )
 
 // --- Outputs Mapping (Slave 20 / Device20Out) ---
 const (
 	// OutMainMotor — керуючий сигнал на котушку пускача головного двигуна.
 	// Вимикається примусово через IsSafetyLocked.
-	OutMainMotor = 31
-<<<<<<< HEAD
-  OutTestPin      = 11
-=======
-  OutTestPin      = 16
->>>>>>> refs/remotes/origin/master
+	OutMainMotor      = 31
+  OutDrivePower     = 10
+  OutSpindleMotor   = 11
 )
 
 // --- Modbus Addresses ---
@@ -38,21 +35,31 @@ const (
 	AddrOutputs = 20 // Релейні виходи
 )
 
-// PinNames дозволяє отримати текстову назву піна за його індексом.
-// Використовується для логування подій та відображення стану в UI.
-var PinNames = map[int]string{
-	// Входи
-	PinMotorReady:   "Готовність двигуна",
+// PinNamesIn описує назви вхідних сигналів (Device 10)
+var PinNamesIn = map[int]string{
+    PinMotorReady: "Готовність двигуна",
+    // Додайте інші входи тут
+}
 
-	// Виходи
-	OutMainMotor: "Головний двигун",
-  OutTestPin:   "Тестовий пін",
+// PinNamesOut описує назви вихідних сигналів (Device 20)
+var PinNamesOut = map[int]string{
+    OutMainMotor:  "Головний двигун",
+    OutDrivePower:  "Пускач живлення приводів",
+    OutSpindleMotor:  "Включення мотора шпінделя",
 }
 
 // GetPinName повертає назву піна або "Unknown", якщо пін не описаний.
-func GetPinName(pin int) string {
-	if name, ok := PinNames[pin]; ok {
-		return name
-	}
-	return fmt.Sprintf("Pin %d", pin)
+func GetPinName(pin int, isOutput bool) string {
+    mapping := PinNamesIn
+    prefix := "Вхід"
+    if isOutput {
+        mapping = PinNamesOut
+        prefix = "Вихід"
+    }
+
+    if name, ok := mapping[pin]; ok {
+        return name
+    }
+
+    return fmt.Sprintf("%s [%d]", prefix, pin)
 }
