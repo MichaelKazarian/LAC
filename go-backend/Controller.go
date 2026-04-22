@@ -215,7 +215,7 @@ func (c *Controller) runAutomaticCycleSteps() {
 // syncHardware перевіряє зміни в Device20Out та записує їх у залізо.
 // Логіка роботи:
 // Якщо система заблокована (EmergencyStop або операторська зупинка) — 
-//   гарантуємо, що мотор  вимкнений перед записом (current[OutMainMotor]=0)
+//   гарантуємо, що мотор  вимкнений перед записом (current[OutTestPin31]=0)
 // Порівнюємо з останнім записаним станом, щоб уникнути зайвих записів.
 // При помилці запису Modbus:
 // - встановлюємо outputsLost = true, щоб не писати в плату виходів
@@ -243,7 +243,7 @@ func (c *Controller) syncHardware() {
   }
 
   if locked { // не дає випадково включити мотор
-    current[OutMainMotor] = 0
+    current[OutTestPin31] = 0
   }
   // Перевіряємо наявність змін
   if current == c.lastOutput && !c.firstRun {
@@ -437,7 +437,7 @@ func (c *Controller) drainOpQueue() {
 //
 // Логіка роботи:
 // 1) Встановлює StopReason для відображення причини зупинки.
-// 2) Вимикає головний мотор (Device20Out[OutMainMotor] = 0), щоб гарантувати стоп рухомого обладнання.
+// 2) Вимикає головний мотор (Device20Out[OutTestPin31] = 0), щоб гарантувати стоп рухомого обладнання.
 // 3) Блокує систему (IsSafetyLocked = true), щоб зупинити виконання Steps і автоматичний цикл.
 // 4) Скидає IsPaused, бо Stop — це повна зупинка, а не пауза.
 // 5) Скидає ActiveOperation та переводить режим у ModeManual.
@@ -453,7 +453,7 @@ func (c *Controller) Stop(reason string) {
 
 	fmt.Printf("[CTRL] STOP: %s (Операція: %s)\n", reason, c.state.ActiveOperation)
 
-	c.state.Device20Out[OutMainMotor] = 0 // force motor off
+	c.state.Device20Out[OutTestPin31] = 0 // force motor off
 	c.state.IsSafetyLocked = true
 	c.state.IsPaused = false
 	c.state.ActiveOperation = ""
