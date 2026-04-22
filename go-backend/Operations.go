@@ -112,11 +112,17 @@ func doSyncMirror(c *Controller) {
 }
 
 func doTestOutEnable(c *Controller) {
-  c.apply(func() { c.state.Device20Out[OutTestPin11] = 1 })
+  c.apply(func() {
+    c.state.Device20Out[OutDrivePower] = 1
+    c.state.Device20Out[OutSpindleMotor] = 1
+  })
 }
 
 func doTestOutDisable(c *Controller) {
-  c.apply(func() { c.state.Device20Out[OutTestPin11] = 0 })
+  c.apply(func() {
+    c.state.Device20Out[OutDrivePower] = 0
+    c.state.Device20Out[OutSpindleMotor] = 0
+  })
 }
 
 func cleanupSyncMirror(c *Controller) {
