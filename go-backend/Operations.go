@@ -53,8 +53,14 @@ func RegisterOperations(r *OperationRegistry) {
 
 func buildTest1() []Step {
 	return []Step{
-		stepTestOutEnable(),
-		stepTestOutDisable(),
+    stepTestOutEnable(),
+    stepTestOutDisable(),
+		// stepTestOut0Enable(),
+    // stepTestOut1Enable(),
+    // stepTestOut2Enable(),
+    // stepTestOut2Disable(),
+    // stepTestOut1Disable(),
+		// stepTestOut0Disable(),
 	}
 }
 
@@ -70,7 +76,55 @@ func stepTestOutEnable() Step {
 	return Step{
 		Name: "Тестове вмикання",
 		Do:   doTestOutEnable,
-    Wait: waitTime(4 * time.Second),
+    Wait: waitTime(2 * time.Second),
+	}
+}
+
+func stepTestOut0Enable() Step {
+	return Step{
+		Name: "Тестове вмикання",
+		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin23] = 1 }) },
+    Wait: waitTime(2 * time.Second),
+	}
+}
+
+func stepTestOut1Enable() Step {
+	return Step{
+		Name: "Тестове вмикання",
+		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin26] = 1 }) },
+    Wait: waitTime(2 * time.Second),
+	}
+}
+
+func stepTestOut2Enable() Step {
+	return Step{
+		Name: "Тестове вмикання",
+		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin27] = 1 }) },
+    Wait: waitTime(2 * time.Second),
+	}
+}
+
+func stepTestOut2Disable() Step {
+	return Step{
+		Name: "Тестове вмикання",
+		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin27] = 0 }) },
+    Wait: waitTime(2 * time.Second),
+	}
+}
+
+func stepTestOut1Disable() Step {
+	return Step{
+		Name: "Тестове вмикання",
+		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin26] = 0 }) },
+    Wait: waitTime(2 * time.Second),
+	}
+}
+
+func stepTestOut0Disable() Step {
+	return Step{
+		Name: "Тестове вмикання",
+		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin23] = 0 }) },
+    Wait: waitTime(2 * time.Second),
 	}
 }
 
@@ -100,12 +154,12 @@ func stepSyncMirror() Step {
 }
 
 func doMotorOn(c *Controller) {
-	c.apply(func() { c.state.Device20Out[OutMainMotor] = 1 })
+	c.apply(func() { c.state.Device20Out[OutTestPin31] = 1 })
 }
 
 func doSyncMirror(c *Controller) {
 	c.apply(func() {
-		for i := 0; i < OutMainMotor; i++ {
+		for i := 0; i < OutTestPin31; i++ {
 			c.state.Device20Out[i] = c.state.Device10In[i]
 		}
 	})
@@ -113,21 +167,33 @@ func doSyncMirror(c *Controller) {
 
 func doTestOutEnable(c *Controller) {
   c.apply(func() {
-    c.state.Device20Out[OutDrivePower] = 1
-    c.state.Device20Out[OutSpindleMotor] = 1
+    // c.state.Device20Out[OutDrivePower] = 1
+    // c.state.Device20Out[OutSpindleMotor] = 1
+    
+    // c.state.Device20Out[OutTestPin17] = 1
+    // c.state.Device20Out[OutTestPin18] = 1
+    // c.state.Device20Out[OutTestPin20] = 1
+
+    c.state.Device20Out[OutTestPin31] = 1
   })
 }
 
 func doTestOutDisable(c *Controller) {
   c.apply(func() {
-    c.state.Device20Out[OutDrivePower] = 0
-    c.state.Device20Out[OutSpindleMotor] = 0
+    // c.state.Device20Out[OutDrivePower] = 0
+    // c.state.Device20Out[OutSpindleMotor] = 0
+
+    // c.state.Device20Out[OutTestPin17] = 0
+    // c.state.Device20Out[OutTestPin18] = 0
+    // c.state.Device20Out[OutTestPin20] = 0
+
+    c.state.Device20Out[OutTestPin31] = 0
   })
 }
 
 func cleanupSyncMirror(c *Controller) {
 	c.apply(func() {
-		for i := 0; i < OutMainMotor; i++ { c.state.Device20Out[i] = 0 }
+		for i := 0; i < OutTestPin31; i++ { c.state.Device20Out[i] = 0 }
 	})
 }
 
@@ -213,7 +279,7 @@ func waitSyncMirror(c *Controller) StepResult {
 			return StepResult{Status: StepAbort, Message: "Sensor threshold exceeded"}
 		}
 		c.apply(func() {
-			for i := 0; i < OutMainMotor; i++ {
+			for i := 0; i < OutTestPin31; i++ {
 				c.state.Device20Out[i] = inputs[i]
 			}
 		})
