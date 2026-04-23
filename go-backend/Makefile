@@ -93,8 +93,10 @@ deploy-web-gui:
 
 # Поворот на 90 градусів (Landscape -> Portrait)
 deploy-rotate-touch-90:
-	@echo "--- Налаштування тачскріна: поворот 90 градусів ---"
-	printf 'ACTION=="add", ATTRS{name}=="%s", ENV{LIBINPUT_CALIBRATION_MATRIX}="-0 -1 1 1 0 0 0 0 1"\n' "$(TOUCHSCREEN_NAME)" > $(UDEV_RULE_PATH)
+# 	@echo "--- Налаштування тачскріна: поворот 90 градусів ---"
+# 	printf 'ACTION=="add", ATTRS{name}=="%s", ENV{LIBINPUT_CALIBRATION_MATRIX}="-0 -1 1 1 0 0 0 0 1"\n' "$(TOUCHSCREEN_NAME)" > $(UDEV_RULE_PATH)
+	@echo "--- Налаштування тачскріна: поворот 270 градусів ---"
+ACTION=="add", ATTRS{name}=="WaveShare WS170120", ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1 0 0 1"
 	udevadm control --reload-rules && udevadm trigger
 	@echo "Правила оновлено. Можливо, знадобиться перезапуск сесії браузера."
 
