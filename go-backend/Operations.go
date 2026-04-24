@@ -23,7 +23,7 @@ import (
 
 // RegisterOperations реєструє всі технологічні операції.
 func RegisterOperations(r *OperationRegistry) {
-	r.Add("operation1",  "Тест вих. 1",  buildTest1)
+	r.Add("operation test",  "Тест вих. 1",  buildTest1)
 	r.Add("operation2",  "Операція 2",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitStop2s)} })
 	r.Add("operation3",  "Операція 3",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation4",  "Операція 4",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -60,7 +60,7 @@ func buildTest1() []Step {
     // stepTestOut2Enable(),
     // stepTestOut2Disable(),
     // stepTestOut1Disable(),
-		// stepTestOut0Disable(),
+		stepTestOut0Disable(),
 	}
 }
 
@@ -174,7 +174,8 @@ func doTestOutEnable(c *Controller) {
     // c.state.Device20Out[OutTestPin18] = 1
     // c.state.Device20Out[OutTestPin20] = 1
 
-    c.state.Device20Out[OutTestPin31] = 1
+    c.state.Device20Out[OutTestPin28] = 1
+    //c.state.Device20Out[OutTestPin25] = 1
   })
 }
 
@@ -187,7 +188,8 @@ func doTestOutDisable(c *Controller) {
     // c.state.Device20Out[OutTestPin18] = 0
     // c.state.Device20Out[OutTestPin20] = 0
 
-    c.state.Device20Out[OutTestPin31] = 0
+    // c.state.Device20Out[OutTestPin23] = 0
+    c.state.Device20Out[OutTestPin28] = 0
   })
 }
 
@@ -245,7 +247,7 @@ func waitMotorOn(c *Controller) StepResult {
     case <-ticker.C:
       c.state.mu.RLock()
       // Читаємо реальний вхід з Device10In
-      motorReady := c.state.Device10In[PinMotorReady] == 1
+      motorReady := c.state.Device10In[Pin12] == 1
       locked := c.state.IsSafetyLocked
       c.state.mu.RUnlock()
 
