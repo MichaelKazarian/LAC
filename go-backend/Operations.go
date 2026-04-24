@@ -23,8 +23,8 @@ import (
 
 // RegisterOperations реєструє всі технологічні операції.
 func RegisterOperations(r *OperationRegistry) {
-	r.Add("operation test",  "Тест вих. 1",  buildTest1)
-	r.Add("operation2",  "Операція 2",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitStop2s)} })
+	r.Add("operation2",  "Завантаження магазину",  build1)
+	r.Add("operation1",  "Лоток",  build2)
 	r.Add("operation3",  "Операція 3",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation4",  "Операція 4",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation5",  "Операція 5",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -51,34 +51,88 @@ func RegisterOperations(r *OperationRegistry) {
 // sync_mirror
 // =============================================================================
 
-func buildTest1() []Step {
+func build1() []Step {
 	return []Step{
-    stepTestOutEnable(),
-    stepTestOutDisable(),
+    stepBuild1_0(),
 		// stepTestOut0Enable(),
     // stepTestOut1Enable(),
     // stepTestOut2Enable(),
     // stepTestOut2Disable(),
     // stepTestOut1Disable(),
-		stepTestOut0Disable(),
+		// stepTestOut0Disable(),
 	}
 }
 
-
-func buildSyncMirror() []Step {
-	return []Step{
-		stepMotorOn(),
-		stepSyncMirror(),
-	}
-}
-
-func stepTestOutEnable() Step {
+func stepBuild1_0() Step {
 	return Step{
-		Name: "Тестове вмикання",
-		Do:   doTestOutEnable,
-    Wait: waitTime(2 * time.Second),
+		Name: "Магазин 0",
+		Do:   doBuild1_0,
+    // Wait: waitTime(2 * time.Second),
 	}
 }
+
+func build2() []Step {
+	return []Step{
+    stepBuild2_0(),
+    stepBuild2_1(),
+    stepBuild2_1(),
+	}
+}
+
+func stepBuild2_0() Step {
+	return Step{
+		Name: "Лоток 0",
+		Do:   doBuild2_0,
+	}
+}
+
+func stepBuild2_1() Step {
+	return Step{
+		Name: "Лоток 1",
+		Do:   doBuild2_1,
+    Wait: waitTime(1 * time.Second),
+	}
+}
+
+var m uint16 = 1
+
+func doBuild1_0(c *Controller) {
+  c.apply(func() {    
+    // c.state.Device20Out[OutTestPin17] = 1
+    // c.state.Device20Out[OutTestPin18] = 1
+    // c.state.Device20Out[OutTestPin20] = 1
+    m = c.state.Device10In[Pin25]
+  })
+}
+
+var d uint16 = 0
+
+func doBuild2_0(c *Controller) {
+  c.apply(func() {
+    d = c.state.Device10In[Pin27]
+    // c.state.Device20Out[OutTestPin17] = 0
+    // c.state.Device20Out[OutTestPin18] = 0
+    // c.state.Device20Out[OutTestPin20] = 0
+
+    // c.state.Device20Out[OutTestPin23] = 0
+    // c.state.Device20Out[OutTestPin28] = 0
+  })
+}
+
+func doBuild2_1(c *Controller) {
+  c.apply(func() {
+    if c.state.Device10In[Pin24] == 1 {
+      return
+    }
+    if d == 1 {
+      c.state.Device20Out[OutTestPin28] = 0
+    }  else {
+      c.state.Device20Out[OutTestPin28] = 1
+    }
+    d = c.state.Device10In[Pin28]
+  })
+}
+
 
 func stepTestOut0Enable() Step {
 	return Step{
@@ -128,19 +182,20 @@ func stepTestOut0Disable() Step {
 	}
 }
 
-func stepTestOutDisable() Step {
-	return Step{
-		Name: "Тестове вимикання",
-		Do:   doTestOutDisable,
-	}
-}
-
-
 func stepMotorOn() Step {
 	return Step{
 		Name: "Включення двигуна",
 		Do:   doMotorOn,
 		Wait: waitMotorOn,
+	}
+}
+
+//  Mirror
+
+func buildSyncMirror() []Step {
+	return []Step{
+		stepMotorOn(),
+		stepSyncMirror(),
 	}
 }
 
@@ -163,34 +218,6 @@ func doSyncMirror(c *Controller) {
 			c.state.Device20Out[i] = c.state.Device10In[i]
 		}
 	})
-}
-
-func doTestOutEnable(c *Controller) {
-  c.apply(func() {
-    // c.state.Device20Out[OutDrivePower] = 1
-    // c.state.Device20Out[OutSpindleMotor] = 1
-    
-    // c.state.Device20Out[OutTestPin17] = 1
-    // c.state.Device20Out[OutTestPin18] = 1
-    // c.state.Device20Out[OutTestPin20] = 1
-
-    c.state.Device20Out[OutTestPin28] = 1
-    //c.state.Device20Out[OutTestPin25] = 1
-  })
-}
-
-func doTestOutDisable(c *Controller) {
-  c.apply(func() {
-    // c.state.Device20Out[OutDrivePower] = 0
-    // c.state.Device20Out[OutSpindleMotor] = 0
-
-    // c.state.Device20Out[OutTestPin17] = 0
-    // c.state.Device20Out[OutTestPin18] = 0
-    // c.state.Device20Out[OutTestPin20] = 0
-
-    // c.state.Device20Out[OutTestPin23] = 0
-    c.state.Device20Out[OutTestPin28] = 0
-  })
 }
 
 func cleanupSyncMirror(c *Controller) {
