@@ -109,8 +109,6 @@ func buildTrayAutoFill() []Step {
   }
 }
 
-var m uint16 = 1
-
 func doBuild1_0(c *Controller) {
   c.apply(func() {
     // Вмикаємо двіжки
@@ -122,7 +120,12 @@ func doBuild1_0(c *Controller) {
     // c.state.Device20Out[OutTestPin17] = 0
     // c.state.Device20Out[OutTestPin18] = 0
     // c.state.Device20Out[OutTestPin20] = 0
-    m = c.state.Device10In[Pin25]
+    fmt.Printf("30 - %b\n", c.state.Device10In[Pin29])
+    if c.state.Device10In[Pin29] == 1 {
+      c.state.Device20Out[OutTestPin29] = 0
+    } else {
+      c.state.Device20Out[OutTestPin29] = 1
+    }
   })
 }
 
