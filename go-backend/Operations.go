@@ -26,7 +26,7 @@ func RegisterOperations(r *OperationRegistry) {
 	r.Add("operation1",  "Завантаження магазину",  build1)
 	r.Add("op_tray_move",  "Крок лотка",  buildTrayMove)
 	r.Add("op_tray_move_auto", "Переміщення лотка",  buildTrayAutoFill)
-	r.Add("operation4",  "Операція 4",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
+	r.Add("op_loader",  "Підведення завантажувача",  buildLoader })
 	r.Add("operation5",  "Операція 5",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation6",  "Операція 6",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation7",  "Операція 7",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -71,6 +71,27 @@ func stepBuild1_0() Step {
 	}
 }
 
+func doBuild1_0(c *Controller) {
+  c.apply(func() {
+    // Вмикаємо двіжки
+    // c.state.Device20Out[OutTestPin17] = 1
+    // c.state.Device20Out[OutTestPin18] = 1
+    // c.state.Device20Out[OutTestPin20] = 1
+
+    // І вимикаємо
+    // c.state.Device20Out[OutTestPin17] = 0
+    // c.state.Device20Out[OutTestPin18] = 0
+    // c.state.Device20Out[OutTestPin20] = 0
+    fmt.Printf("30 - %b\n", c.state.Device10In[Pin29])
+    if c.state.Device10In[Pin29] == 1 {
+      c.state.Device20Out[OutTestPin29] = 0
+    } else {
+      c.state.Device20Out[OutTestPin29] = 1
+    }
+  })
+}
+
+
 func buildTrayMove() []Step {
 	return []Step{
     {
@@ -107,26 +128,6 @@ func buildTrayAutoFill() []Step {
       },
     },
   }
-}
-
-func doBuild1_0(c *Controller) {
-  c.apply(func() {
-    // Вмикаємо двіжки
-    // c.state.Device20Out[OutTestPin17] = 1
-    // c.state.Device20Out[OutTestPin18] = 1
-    // c.state.Device20Out[OutTestPin20] = 1
-
-    // І вимикаємо
-    // c.state.Device20Out[OutTestPin17] = 0
-    // c.state.Device20Out[OutTestPin18] = 0
-    // c.state.Device20Out[OutTestPin20] = 0
-    fmt.Printf("30 - %b\n", c.state.Device10In[Pin29])
-    if c.state.Device10In[Pin29] == 1 {
-      c.state.Device20Out[OutTestPin29] = 0
-    } else {
-      c.state.Device20Out[OutTestPin29] = 1
-    }
-  })
 }
 
 func doTrayStepToggle(c *Controller) {
