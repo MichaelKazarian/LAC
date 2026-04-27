@@ -23,7 +23,7 @@ import (
 
 // RegisterOperations реєструє всі технологічні операції.
 func RegisterOperations(r *OperationRegistry) {
-	r.Add("operation1",  "Завантаження магазину",  build1)
+	r.Add("op_mag_shutter",  "Завантаження магазину",  buildMagShutter)
 	r.Add("op_tray_move",  "Крок лотка",  buildTrayMove)
 	r.Add("op_tray_move_auto", "Переміщення лотка",  buildTrayAutoFill)
 	r.Add("op_loader",  "Підведення завантажувача",  buildLoader)
@@ -51,9 +51,13 @@ func RegisterOperations(r *OperationRegistry) {
 // sync_mirror
 // =============================================================================
 
-func build1() []Step {
+func buildMagShutter() []Step {
 	return []Step{
-    stepBuild1_0(),
+    {
+      Name: "Перемикання шторки магазину",
+      Do:   doMagShutterToggle,
+      Wait: waitAlwaysOK, 
+    },
 		// stepTestOut0Enable(),
     // stepTestOut1Enable(),
     // stepTestOut2Enable(),
@@ -63,15 +67,7 @@ func build1() []Step {
 	}
 }
 
-func stepBuild1_0() Step {
-	return Step{
-		Name: "Магазин 0",
-		Do:   doBuild1_0,
-    // Wait: waitTime(2 * time.Second),
-	}
-}
-
-func doBuild1_0(c *Controller) {
+func doMagShutterToggle(c *Controller) {
   c.apply(func() {
     // Вмикаємо двіжки
     // c.state.Device20Out[OutTestPin17] = 1
@@ -82,11 +78,15 @@ func doBuild1_0(c *Controller) {
     // c.state.Device20Out[OutTestPin17] = 0
     // c.state.Device20Out[OutTestPin18] = 0
     // c.state.Device20Out[OutTestPin20] = 0
-    fmt.Printf("30 - %b\n", c.state.Device10In[Pin29])
-    if c.state.Device10In[Pin29] == 1 {
-      c.state.Device20Out[OutTestPin29] = 0
+    fmt.Printf("30 - %b\n", c.state.Device10In[PinMagShutterHome])
+    isHome := c.state.Device10In[PinMagShutterHome] == 1   
+    fmt.Printf("[MAG] Shutter Home sensor: %v\n", isHome)
+    if isHome {
+      c.state.Device20Out[OutMagShutterOpen] = 1
+      fmt.Println("[MAG] Action: Opening shutter")
     } else {
-      c.state.Device20Out[OutTestPin29] = 1
+      c.state.Device20Out[OutMagShutterOpen] = 0
+      fmt.Println("[MAG] Action: Closing shutter")
     }
   })
 }

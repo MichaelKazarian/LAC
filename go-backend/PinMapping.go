@@ -43,7 +43,7 @@ const (
   Pin26         = 26
   PinTrayGateHome         = 27
   PinTrayGateOpen         = 28
-  Pin29         = 29
+  PinMagShutterHome         = 29
   Pin30         = 30
   Pin31         = 31
 )
@@ -71,7 +71,7 @@ const (
   OutTestPin26      = 26
   OutTestPin27      = 27
   OutTrayGateOpen      = 28
-  OutTestPin29      = 29
+  OutMagShutterOpen      = 29
   OutTestPin30      = 30
   OutTestPin31      = 31
 )
@@ -112,7 +112,7 @@ var PinNamesIn = map[int]string{
   Pin26: "Патрон шп. розажато",  // фізично не зайдено
   PinTrayGateHome: "Вх. лоток відсікача вих",
   PinTrayGateOpen: "Вх. лоток відсікача відкр.",
-  Pin29: "Магазин відсікач. вих.",
+  PinMagShutterHome: "Магазин відсікач. вих.",
   Pin30: "Вмикач живлення приводів",
   Pin31: "Вимикач живлення приводів",
     // Додайте інші входи тут
@@ -139,7 +139,7 @@ var PinNamesOut = map[int]string {
     OutTestPin26:     "Завантажувач до осі шпінделя", // Залежить від положення Out23
     OutTestPin27:     "Заштовхувач заготовки вперед", // Залежить від положення Out23, Out26
     OutTrayGateOpen:     "Лоток відсікача відчинено", // Завантажує деталі в лоток заштовхувача (Out26) Датчик не працює
-    OutTestPin29:     "Вхідний магазин відсікача відкритий", // Клапан відпацював, проблема з пневматикою.
+    OutMagShutterOpen:     "Вхідний магазин відсікача відкритий",
     OutTestPin30:     "Продув шпінделя",
     OutTestPin31:     "Дозування змазки", //Вмикати періодично TODO it temporary replace OutMainMotor fix it
   }

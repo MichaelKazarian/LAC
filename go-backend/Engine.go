@@ -195,7 +195,7 @@ func GetAllowedManualOpsFromView(v SystemView) []string {
 	}
 
 	allowed = append(
-    allowed, "operation1", "op_tray_move",
+    allowed, "op_mag_shutter", "op_tray_move",
     "op_tray_move_auto", "op_loader", "op_safety_stop")
 
 	// Тут вже НЕ можна перевіряти щось типу mutex / online flags напряму —
