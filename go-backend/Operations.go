@@ -135,22 +135,21 @@ func doTrayStepToggle(c *Controller) {
 
     isHome := c.state.Device10In[PinTrayGateHome] == 1
     isOpen := c.state.Device10In[PinTrayGateOpen] == 1
-
     switch {
     case isHome && !isOpen: // відкриваємо
-      c.state.Device20Out[OutTrayGateOpen] = 1
+      c.state.Device20Out[OutTrayGateOpen] = 0
 
     case !isHome && isOpen: // закриваємо
-      c.state.Device20Out[OutTrayGateOpen] = 0
+      c.state.Device20Out[OutTrayGateOpen] = 1
 
     case !isHome && !isOpen:
       // ПРОБЛЕМА: Зависли посередині (немає повітря або циліндр застряг)
       // пробуємо повернути в Home (безпечний стан)
-      c.state.Device20Out[OutTrayGateOpen] = 0
+      c.state.Device20Out[OutTrayGateOpen] = 1
       // TODO: додати лог: "Попередження: втрата позиції лотка"
 
     case isHome && isOpen: // КРИТИЧНО: замикання або збій датчиків
-      c.state.Device20Out[OutTrayGateOpen] = 0 // Вимикаємо
+      c.state.Device20Out[OutTrayGateOpen] = 1 // Вимикаємо
     }
   })
 }
