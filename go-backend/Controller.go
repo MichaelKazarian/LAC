@@ -120,24 +120,30 @@ func (c *Controller) logicWorker() {
   }
 }
 
-// execSteps виконує послідовність Steps для операції з вказаним ID.
+// execSteps executes a sequence of Steps for the operation with the specified ID.
 //
-// ActiveOperation встановлюється на початку і гарантовано скидається
-// через defer — незалежно від того, як завершилось виконання:
-// штатно, через break або EmergencyStop.
+// ActiveOperation is set at the start and is guaranteed to be cleared
+// via defer — regardless of how the execution finished:
+// normally, via break/return, or due to an EmergencyStop.
 //
-// Порядок виконання кожного кроку:
-//  1. Перевірка EmergencyStop перед Do      — міг прийти зовнішній сигнал
-//  2. Do()                                  — фізична дія (миттєво)
-//  3. Перевірка EmergencyStop перед Wait    — Do міг спровокувати зупинку
-//  4. Wait()                                — очікування завершення процесу
-//  5. Перевірка EmergencyStop перед Cleanup — Wait могла тривати довго
-//  6. Cleanup()                             — аналог defer для Step,
-//                                            не викликається при EmergencyStop
+// Execution flow for each step:
+//   1. EmergencyStop check before Do()      — check for external signals between steps.
+//   2. Do()                                 — physical action (must be instantaneous).
+//   3. EmergencyStop check before Wait()    — check if Do() triggered a safety fault.
+//   4. Wait()                               — blocking wait for process completion.
+//   5. EmergencyStop check before Cleanup() — check for faults after long-running Wait().
+//   6. Cleanup()                            — Step-level defer/cleanup.
+//                                             NOT called if EmergencyStop is active.
+//
+// Control Logic:
+//   - If Wait() returns StepOK:     Proceed to the next index (i++).
+//   - If Wait() returns StepRepeat: Re-run the SAME step (re-execute Do and Wait).
+//   - If Wait() returns StepFail:   Stop the operation immediately.
+//   - If Wait() returns StepAbort:  Stop the operation immediately.
 func (c *Controller) execSteps(opID string) {
   op, ok := c.opsMap[opID]
   if !ok {
-    fmt.Printf("[CTRL]️ Операція %s не знайдена\n", opID)
+    fmt.Printf("[CTRL] Операція %s не знайдена\n", opID)
     return
   }
 
@@ -151,8 +157,10 @@ func (c *Controller) execSteps(opID string) {
     c.state.mu.Unlock()
   }()
 
-  steps := op.Build() 
-  for _, step := range steps {
+  steps := op.Build()
+  for i := 0; i < len(steps); {
+    step := steps[i]
+
     if c.isEmergency() { break }
     if step.Do != nil { step.Do(c) }
     if c.isEmergency() { break }
@@ -165,14 +173,21 @@ func (c *Controller) execSteps(opID string) {
       step.Cleanup(c)
     }
 
-    if result.Status == StepAbort {
+    switch result.Status {
+    case StepOK:
+      i++ // Все добре, йдемо до наступного кроку
+    case StepRepeat:
+      fmt.Printf("[CTRL] Step %s repeating: %s\n", step.Name, result.Message)
+      continue // Цикл повториться для ТОГО Ж кроку: виконає Do() та Wait().
+    case StepFail:
+      fmt.Printf("[CTRL] Step %s failed: %s\n", step.Name, result.Message)
+      return // Використовуємо return замість break для гарантованої зупинки
+    case StepAbort:
       fmt.Printf("[CTRL] Step %s aborted: %s\n", step.Name, result.Message)
-      break
+      return
     }
-    if result.Status == StepFail {
-      fmt.Printf("[CTRL]️ Step %s failed: %s\n", step.Name, result.Message)
-      break
-    }
+
+    if c.isEmergency() { break }
   }
 }
 

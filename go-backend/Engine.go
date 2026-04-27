@@ -4,23 +4,26 @@ import (
 	"time"
 )
 
-// StepStatus описує результат виконання одного кроку (Step).
+// StepStatus describes the result of a single Step execution.
 //
-// Це стан логічного процесу.
-// Контролер використовує цей статус, щоб вирішити — продовжувати операцію,
-// зупинити її або аварійно перервати.
+// It represents the state of a logical process.
+// The controller uses this status to decide whether to continue the operation,
+// stop it, repeat the current step, or trigger an emergency abort.
 //
-//	StepOK    — крок успішно завершений, можна переходити до наступного.
-//	StepFail  — крок завершився штатною помилкою (технологічна невдача).
-//	            Операція зупиняється, але без EmergencyStop.
-//	StepAbort — виконання перервано зовнішньою умовою (EmergencyStop,
-//	            блокування, зміна режиму тощо).
+//    StepOK     — Step completed successfully, proceed to the next one.
+//    StepFail   — Step finished with a functional error (process failure).
+//                 Operation stops, but without triggering a full EmergencyStop.
+//    StepAbort  — Execution interrupted by an external condition (EmergencyStop,
+//                 interlock activation, mode change, etc.).
+//    StepRepeat — Step needs to be re-executed (repeat Do() and Wait() phases).
+//                 Used for cyclic actions until a condition is met.
 type StepStatus int
 
 const (
 	StepOK StepStatus = iota
 	StepFail
 	StepAbort
+  StepRepeat
 )
 
 // StepResult — результат очікування завершення кроку.
