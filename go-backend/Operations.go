@@ -24,8 +24,8 @@ import (
 // RegisterOperations реєструє всі технологічні операції.
 func RegisterOperations(r *OperationRegistry) {
 	r.Add("operation1",  "Завантаження магазину",  build1)
-	r.Add("op_tray_move",  "Переміщення лотка",  buildTrayMove)
-	r.Add("operation3",  "Операція 3",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
+	r.Add("op_tray_move",  "Крок лотка",  buildTrayMove)
+	r.Add("op_tray_move_auto", "Переміщення лотка",  buildTrayAutoFill)
 	r.Add("operation4",  "Операція 4",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation5",  "Операція 5",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation6",  "Операція 6",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -84,6 +84,29 @@ func buildTrayMove() []Step {
       Wait: waitTime(500 * time.Millisecond),
     },
 	}
+}
+
+func buildTrayAutoFill() []Step {
+  return []Step{
+    {
+      Name: "Переміщення лотка доки заготовки не буде в завантажувачі",
+      Do:   doTrayStepToggle,
+      Wait: func(c *Controller) StepResult {
+        time.Sleep(500 * time.Millisecond)
+
+        c.state.mu.RLock()
+        found := c.state.Device10In[PinPartInLoader] == 1
+        c.state.mu.RUnlock()
+
+        if found {
+          return StepResult{Status: StepOK, Message: "Заготовка на місці"}
+        }
+
+        // Якщо не знайшли — повторюємо цей же крок (знову Do -> Wait)
+        return StepResult{Status: StepRepeat, Message: "Деталі немає, наступний такт"}
+      },
+    },
+  }
 }
 
 var m uint16 = 1
