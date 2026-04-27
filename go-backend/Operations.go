@@ -23,8 +23,8 @@ import (
 
 // RegisterOperations реєструє всі технологічні операції.
 func RegisterOperations(r *OperationRegistry) {
-	r.Add("operation2",  "Завантаження магазину",  build1)
-	r.Add("operation1",  "Лоток",  build2)
+	r.Add("operation1",  "Завантаження магазину",  build1)
+	r.Add("op_tray_move",  "Переміщення лотка",  buildTrayMove)
 	r.Add("operation3",  "Операція 3",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation4",  "Операція 4",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation5",  "Операція 5",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -71,26 +71,18 @@ func stepBuild1_0() Step {
 	}
 }
 
-func build2() []Step {
+func buildTrayMove() []Step {
 	return []Step{
-    stepBuild2_0(),
-    stepBuild2_1(),
-    stepBuild2_1(),
-	}
-}
-
-func stepBuild2_0() Step {
-	return Step{
-		Name: "Лоток 0",
-		Do:   doBuild2_0,
-	}
-}
-
-func stepBuild2_1() Step {
-	return Step{
-		Name: "Лоток 1",
-		Do:   doBuild2_1,
-    Wait: waitTime(1 * time.Second),
+    {
+      Name: "Рух лотка, такт 1",
+      Do:   doTrayStepToggle,
+      Wait: waitTime(500 * time.Millisecond),
+    },
+    {
+      Name: "Рух лотка, такт 2",
+      Do:   doTrayStepToggle,
+      Wait: waitTime(500 * time.Millisecond),
+    },
 	}
 }
 
@@ -105,34 +97,47 @@ func doBuild1_0(c *Controller) {
   })
 }
 
-var d uint16 = 0
 
-func doBuild2_0(c *Controller) {
+// func doTrayInit(c *Controller) {
+//   c.apply(func() {
+//     sensorTrayState = c.state.Device10In[PinTrayGateHome]
+//     // c.state.Device20Out[OutTestPin17] = 0
+//     // c.state.Device20Out[OutTestPin18] = 0
+//     // c.state.Device20Out[OutTestPin20] = 0
+
+//     // c.state.Device20Out[OutTestPin23] = 0
+//     // c.state.Device20Out[OutTrayGateOpen] = 0
+//   })
+// }
+
+func doTrayStepToggle(c *Controller) {
   c.apply(func() {
-    d = c.state.Device10In[Pin27]
-    // c.state.Device20Out[OutTestPin17] = 0
-    // c.state.Device20Out[OutTestPin18] = 0
-    // c.state.Device20Out[OutTestPin20] = 0
-
-    // c.state.Device20Out[OutTestPin23] = 0
-    // c.state.Device20Out[OutTestPin28] = 0
-  })
-}
-
-func doBuild2_1(c *Controller) {
-  c.apply(func() {
-    if c.state.Device10In[Pin24] == 1 {
+    // якщо датчик бачить заготовку, припиняємо рух
+    if c.state.Device10In[PinPartInLoader] == 1 {
       return
     }
-    if d == 1 {
-      c.state.Device20Out[OutTestPin28] = 0
-    }  else {
-      c.state.Device20Out[OutTestPin28] = 1
+
+    isHome := c.state.Device10In[PinTrayGateHome] == 1
+    isOpen := c.state.Device10In[PinTrayGateOpen] == 1
+
+    switch {
+    case isHome && !isOpen: // відкриваємо
+      c.state.Device20Out[OutTrayGateOpen] = 1
+
+    case !isHome && isOpen: // закриваємо
+      c.state.Device20Out[OutTrayGateOpen] = 0
+
+    case !isHome && !isOpen:
+      // ПРОБЛЕМА: Зависли посередині (немає повітря або циліндр застряг)
+      // пробуємо повернути в Home (безпечний стан)
+      c.state.Device20Out[OutTrayGateOpen] = 0
+      // TODO: додати лог: "Попередження: втрата позиції лотка"
+
+    case isHome && isOpen: // КРИТИЧНО: замикання або збій датчиків
+      c.state.Device20Out[OutTrayGateOpen] = 0 // Вимикаємо
     }
-    d = c.state.Device10In[Pin28]
   })
 }
-
 
 func stepTestOut0Enable() Step {
 	return Step{
