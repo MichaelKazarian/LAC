@@ -89,26 +89,19 @@ func buildTrayMove() []Step {
 var m uint16 = 1
 
 func doBuild1_0(c *Controller) {
-  c.apply(func() {    
+  c.apply(func() {
+    // Вмикаємо двіжки
     // c.state.Device20Out[OutTestPin17] = 1
     // c.state.Device20Out[OutTestPin18] = 1
     // c.state.Device20Out[OutTestPin20] = 1
+
+    // І вимикаємо
+    // c.state.Device20Out[OutTestPin17] = 0
+    // c.state.Device20Out[OutTestPin18] = 0
+    // c.state.Device20Out[OutTestPin20] = 0
     m = c.state.Device10In[Pin25]
   })
 }
-
-
-// func doTrayInit(c *Controller) {
-//   c.apply(func() {
-//     sensorTrayState = c.state.Device10In[PinTrayGateHome]
-//     // c.state.Device20Out[OutTestPin17] = 0
-//     // c.state.Device20Out[OutTestPin18] = 0
-//     // c.state.Device20Out[OutTestPin20] = 0
-
-//     // c.state.Device20Out[OutTestPin23] = 0
-//     // c.state.Device20Out[OutTrayGateOpen] = 0
-//   })
-// }
 
 func doTrayStepToggle(c *Controller) {
   c.apply(func() {
