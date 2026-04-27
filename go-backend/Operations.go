@@ -26,7 +26,7 @@ func RegisterOperations(r *OperationRegistry) {
 	r.Add("operation1",  "Завантаження магазину",  build1)
 	r.Add("op_tray_move",  "Крок лотка",  buildTrayMove)
 	r.Add("op_tray_move_auto", "Переміщення лотка",  buildTrayAutoFill)
-	r.Add("op_loader",  "Підведення завантажувача",  buildLoader })
+	r.Add("op_loader",  "Підведення завантажувача",  buildLoader)
 	r.Add("operation5",  "Операція 5",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation6",  "Операція 6",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation7",  "Операція 7",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -90,7 +90,6 @@ func doBuild1_0(c *Controller) {
     }
   })
 }
-
 
 func buildTrayMove() []Step {
 	return []Step{
@@ -158,11 +157,85 @@ func doTrayStepToggle(c *Controller) {
   })
 }
 
-func stepTestOut0Enable() Step {
-	return Step{
-		Name: "Тестове вмикання",
-		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin23] = 1 }) },
-    Wait: waitTime(2 * time.Second),
+func buildLoader() []Step {
+	return []Step{
+    {
+      Name: "Завантажувач у вихідне положення, відвід осьового інструменту",
+      Do:   func (c *Controller) { c.apply(func() {
+        fmt.Printf("18 Вих перед. - %b\n", c.state.Device10In[Pin18])
+        fmt.Printf("17 Робоче (0)- %b\n", c.state.Device10In[Pin17])
+        c.state.Device20Out[OutTestPin23] = 1 
+        fmt.Printf("18 Вих після. - %b\n", c.state.Device10In[Pin18])
+        fmt.Printf("17 Робоче (0)- %b\n", c.state.Device10In[Pin17])
+      }) },
+      Wait: waitTime(2000 * time.Millisecond),
+    },
+    {
+      Name: "Вивантажувач у вихідне положення",
+      Do:   func (c *Controller) { c.apply(func() {
+        fmt.Printf("15 Вих перед. - %b\n", c.state.Device10In[Pin15])
+        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
+        c.state.Device20Out[OutTestPin21] = 1 
+        fmt.Printf("15 Вих після. - %b\n", c.state.Device10In[Pin15])
+        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
+      }) },
+      Wait: waitTime(2000 * time.Millisecond),
+    },
+    {
+      Name: "Розтискання цанги",
+      Do:   func (c *Controller) { c.apply(func() {
+        c.state.Device20Out[OutTestPin25] = 1 
+      }) },
+      Wait: waitTime(2000 * time.Millisecond),
+    },
+    
+    {
+      Name: "Затискання цанги",
+      Do:   func (c *Controller) { c.apply(func() {
+        c.state.Device20Out[OutTestPin25] = 0
+      }) },
+      Wait: waitTime(2000 * time.Millisecond),
+    },
+    // {
+    //   Name: "Завантажувач у вихідне положення",
+    //   Do:   func (c *Controller) { c.apply(func() {
+    //     c.state.Device20Out[OutTestPin26] = 1 
+    //     fmt.Printf("20 Вих (1). - %b\n", c.state.Device10In[Pin23])
+    //     fmt.Printf("21 На осі (0)- %b\n", c.state.Device10In[Pin22])
+    //   }) },
+    //   Wait: waitTime(2000 * time.Millisecond),
+    // },
+    // {
+    //   Name: "Переміщення заштовхувача в вих. положення\n",
+    //   Do:   func (c *Controller) { c.apply(func() {
+    //     c.state.Device20Out[OutTestPin27] = 1
+    //     fmt.Printf("23 Вих. - %b\n", c.state.Device10In[Pin23])
+    //     fmt.Printf("22 - %b\n", c.state.Device10In[Pin22])
+    //   }) },
+    //   Wait: waitTime(2000 * time.Millisecond),
+    // },
+    {
+      Name: "Вивантажувач назад",
+      Do:   func (c *Controller) { c.apply(func() {
+        fmt.Printf("15 Вих перед. - %b\n", c.state.Device10In[Pin15])
+        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
+        c.state.Device20Out[OutTestPin21] = 0
+        fmt.Printf("15 Вих після. - %b\n", c.state.Device10In[Pin15])
+        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
+      }) },
+      Wait: waitTime(2000 * time.Millisecond),
+    },
+    {
+      Name: "Завантажувач назад",
+      Do:   func (c *Controller) { c.apply(func() {
+        fmt.Printf("18 Вих перед. - %b\n", c.state.Device10In[Pin18])
+        fmt.Printf("17 Робоче (0)- %b\n", c.state.Device10In[Pin17])
+        c.state.Device20Out[OutTestPin23] = 0
+        fmt.Printf("18 Вих після. - %b\n", c.state.Device10In[Pin18])
+        fmt.Printf("17 Робоче (0)- %b\n", c.state.Device10In[Pin17])
+      }) },
+      Wait: waitTime(2000 * time.Millisecond),
+    },
 	}
 }
 

@@ -105,8 +105,8 @@ var PinNamesIn = map[int]string{
   Pin19: "Патрон шп. зажато",    // фізично не зайдено
   Pin20: "Завантажувач вих.",
   Pin21: "Завантажувач на осі шп.",
-  Pin22: "Заштовхувач вих.",     // вих. положення в цангі
-  Pin23: "Заштовхувач спереду",
+  Pin22: "Заштовхувач спереду",
+  Pin23: "Заштовхувач вих.", // вих. положення в цангі
   PinPartInLoader: "Датчик заготовки в завантажувачі",
   Pin25: "Датчик заготовки на вих магазина",
   Pin26: "Патрон шп. розажато",  // фізично не зайдено
@@ -131,7 +131,7 @@ var PinNamesOut = map[int]string {
     OutTestPin18:     "ПЧВ швидкість 1", //depends OutDrivePower
     OutTestPin19:     "ПЧВ швидкість 2", //depends OutDrivePower
     OutTestPin20:     "ПЧВ реверс", //depends OutDrivePower and pin18/19
-    OutTestPin21:     "Вловлювач", // ловить деталь,not depends
+    OutTestPin21:     "Вивантажувач", // ловить деталь,not depends
     OutTestPin22:     "Виштовхувач", // виштовхує деталь, not depends
     OutTestPin23:     "Відвод інструменту", // not depends, switch In 17-18
     OutTestPin24:     "Плавний пуск пневматики", // not depends, In 5 On
