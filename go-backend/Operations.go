@@ -182,38 +182,33 @@ func buildLoader() []Step {
       Wait: waitTime(2000 * time.Millisecond),
     },
     {
-      Name: "Розтискання цанги",
+      Name: "Розтискання цанги", // Without sensor
       Do:   func (c *Controller) { c.apply(func() {
         c.state.Device20Out[OutTestPin25] = 1 
       }) },
-      Wait: waitTime(2000 * time.Millisecond),
+      Wait: waitTime(1000 * time.Millisecond),
     },
-    
     {
-      Name: "Затискання цанги",
+      Name: "Виштовхування\n", // Without sensor
       Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutTestPin25] = 0
+        c.state.Device20Out[OutTestPin22] = 1
       }) },
-      Wait: waitTime(2000 * time.Millisecond),
+      Wait: waitTime(500 * time.Millisecond), // Час фіксований, датчиків нема
     },
-    // {
-    //   Name: "Завантажувач у вихідне положення",
-    //   Do:   func (c *Controller) { c.apply(func() {
-    //     c.state.Device20Out[OutTestPin26] = 1 
-    //     fmt.Printf("20 Вих (1). - %b\n", c.state.Device10In[Pin23])
-    //     fmt.Printf("21 На осі (0)- %b\n", c.state.Device10In[Pin22])
-    //   }) },
-    //   Wait: waitTime(2000 * time.Millisecond),
-    // },
-    // {
-    //   Name: "Переміщення заштовхувача в вих. положення\n",
-    //   Do:   func (c *Controller) { c.apply(func() {
-    //     c.state.Device20Out[OutTestPin27] = 1
-    //     fmt.Printf("23 Вих. - %b\n", c.state.Device10In[Pin23])
-    //     fmt.Printf("22 - %b\n", c.state.Device10In[Pin22])
-    //   }) },
-    //   Wait: waitTime(2000 * time.Millisecond),
-    // },
+    {
+      Name: "Продування шпінделя вкл", // Without sensor
+      Do:   func (c *Controller) { c.apply(func() {
+        c.state.Device20Out[OutTestPin30] = 1 
+      }) },
+      Wait: waitTime(500 * time.Millisecond),
+    },
+    {
+      Name: "Продування шпінделя викл",
+      Do:   func (c *Controller) { c.apply(func() {
+        c.state.Device20Out[OutTestPin30] = 0 
+      }) },
+      Wait: waitTime(500 * time.Millisecond),
+    },
     {
       Name: "Вивантажувач назад",
       Do:   func (c *Controller) { c.apply(func() {
@@ -224,6 +219,77 @@ func buildLoader() []Step {
         fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
       }) },
       Wait: waitTime(2000 * time.Millisecond),
+    },
+    {
+      Name: "Завантажувач на ось",
+      Do:   func (c *Controller) { c.apply(func() {
+        fmt.Printf("20 Вих ДО. - %b\n", c.state.Device10In[Pin23])
+        fmt.Printf("21 На осі - %b\n", c.state.Device10In[Pin22])
+        c.state.Device20Out[OutTestPin26] = 1 
+        fmt.Printf("20 Вих (1). - %b\n", c.state.Device10In[Pin23])
+        fmt.Printf("21 На осі (0)- %b\n", c.state.Device10In[Pin22])
+      }) },
+      Wait: waitTime(2000 * time.Millisecond),
+    },
+    {
+      Name: "Переміщення заштовхувача в вих. положення\n",
+      Do:   func (c *Controller) { c.apply(func() {
+        c.state.Device20Out[OutTestPin27] = 1
+        fmt.Printf("23 Вих. - %b\n", c.state.Device10In[Pin23])
+        fmt.Printf("22 - %b\n", c.state.Device10In[Pin22])
+      }) },
+      Wait: waitTime(2000 * time.Millisecond),
+    },
+    {
+      Name: "Вивантажувач назад",
+      Do:   func (c *Controller) { c.apply(func() {
+        fmt.Printf("15 Вих перед. - %b\n", c.state.Device10In[Pin15])
+        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
+        c.state.Device20Out[OutTestPin21] = 0
+        fmt.Printf("15 Вих після. - %b\n", c.state.Device10In[Pin15])
+        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
+      }) },
+      Wait: waitTime(2000 * time.Millisecond),
+    },
+    {
+      Name: "Затискання цанги",
+      Do:   func (c *Controller) { c.apply(func() {
+        c.state.Device20Out[OutTestPin25] = 0
+      }) },
+      Wait: waitTime(1000 * time.Millisecond),
+    },
+    {
+      Name: "Заштовхувач заготовки вперед",
+      Do:   func (c *Controller) { c.apply(func() {
+        fmt.Printf("22. - %b\n", c.state.Device10In[Pin22])
+        fmt.Printf("23.- %b\n", c.state.Device10In[Pin23])
+        c.state.Device20Out[OutTestPin27] = 1
+        fmt.Printf("22. - %b\n", c.state.Device10In[Pin22])
+        fmt.Printf("23.- %b\n", c.state.Device10In[Pin23])
+      }) },
+      Wait: waitTime(500 * time.Millisecond),
+    },
+    {
+      Name: "Заштовхувач заготовки назад",
+      Do:   func (c *Controller) { c.apply(func() {
+        fmt.Printf("22. - %b\n", c.state.Device10In[Pin22])
+        fmt.Printf("23.- %b\n", c.state.Device10In[Pin23])
+        c.state.Device20Out[OutTestPin27] = 0
+        fmt.Printf("22. - %b\n", c.state.Device10In[Pin22])
+        fmt.Printf("23.- %b\n", c.state.Device10In[Pin23])
+      }) },
+      Wait: waitTime(500 * time.Millisecond),
+    },
+    {
+      Name: "Завантажувач до осі шпінделя у вихідне",
+      Do:   func (c *Controller) { c.apply(func() {
+        fmt.Printf("20 Вих ДО. - %b\n", c.state.Device10In[Pin23])
+        fmt.Printf("21 На осі - %b\n", c.state.Device10In[Pin22])
+        c.state.Device20Out[OutTestPin26] = 0
+        fmt.Printf("20 Вих ПІСЛЯ. - %b\n", c.state.Device10In[Pin23])
+        fmt.Printf("21 На осі (0)- %b\n", c.state.Device10In[Pin22])
+      }) },
+      Wait: waitTime(500 * time.Millisecond),
     },
     {
       Name: "Завантажувач назад",
