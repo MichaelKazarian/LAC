@@ -168,15 +168,18 @@ func buildLoader() []Step {
       },
     },
     {
-      Name: "Вивантажувач у вихідне положення",
-      Do:   func (c *Controller) { c.apply(func() {
-        fmt.Printf("15 Вих перед. - %b\n", c.state.Device10In[Pin15])
-        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
-        c.state.Device20Out[OutTestPin21] = 1 
-        fmt.Printf("15 Вих після. - %b\n", c.state.Device10In[Pin15])
-        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
-      }) },
-      Wait: waitTime(2000 * time.Millisecond),
+      Name: "Вивантажувач: відвід у вихідне положення (Home)",
+      Do: func(c *Controller) {
+        logPins(c, "[BEFORE]", PinUnloaderHome, PinUnloaderOnAxis)
+        c.apply(func() {
+          c.state.Device20Out[OutUnloaderMove] = 1
+        })
+      },
+      Wait: func(c *Controller) StepResult {
+        res := waitTime(2000 * time.Millisecond)(c)
+        logPins(c, "[ AFTER]", PinUnloaderHome, PinUnloaderOnAxis)
+        return res
+      },
     },
     {
       Name: "Розтискання цанги", // Without sensor
@@ -207,15 +210,18 @@ func buildLoader() []Step {
       Wait: waitTime(500 * time.Millisecond),
     },
     {
-      Name: "Вивантажувач назад",
-      Do:   func (c *Controller) { c.apply(func() {
-        fmt.Printf("15 Вих перед. - %b\n", c.state.Device10In[Pin15])
-        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
-        c.state.Device20Out[OutTestPin21] = 0
-        fmt.Printf("15 Вих після. - %b\n", c.state.Device10In[Pin15])
-        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
-      }) },
-      Wait: waitTime(2000 * time.Millisecond),
+      Name: "Вивантажувач: повернення на вісь (On Axis)",
+      Do: func(c *Controller) {
+        logPins(c, "[BEFORE]", PinUnloaderHome, PinUnloaderOnAxis)
+        c.apply(func() {
+          c.state.Device20Out[OutUnloaderMove] = 0
+        })
+      },
+      Wait: func(c *Controller) StepResult {
+        res := waitTime(2000 * time.Millisecond)(c)
+        logPins(c, "[ AFTER]", PinUnloaderHome, PinUnloaderOnAxis)
+        return res
+      },
     },
     {
       Name: "Завантажувач на ось",
@@ -240,11 +246,11 @@ func buildLoader() []Step {
     {
       Name: "Вивантажувач назад",
       Do:   func (c *Controller) { c.apply(func() {
-        fmt.Printf("15 Вих перед. - %b\n", c.state.Device10In[Pin15])
-        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
-        c.state.Device20Out[OutTestPin21] = 0
-        fmt.Printf("15 Вих після. - %b\n", c.state.Device10In[Pin15])
-        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[Pin16])
+        fmt.Printf("15 Вих перед. - %b\n", c.state.Device10In[PinUnloaderHome])
+        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[PinUnloaderOnAxis])
+        c.state.Device20Out[OutUnloaderMove] = 0
+        fmt.Printf("15 Вих після. - %b\n", c.state.Device10In[PinUnloaderHome])
+        fmt.Printf("16 Робоче (0)- %b\n", c.state.Device10In[PinUnloaderOnAxis])
       }) },
       Wait: waitTime(2000 * time.Millisecond),
     },
