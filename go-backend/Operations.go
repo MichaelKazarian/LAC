@@ -58,12 +58,6 @@ func buildMagShutter() []Step {
       Do:   doMagShutterToggle,
       Wait: waitAlwaysOK, 
     },
-		// stepTestOut0Enable(),
-    // stepTestOut1Enable(),
-    // stepTestOut2Enable(),
-    // stepTestOut2Disable(),
-    // stepTestOut1Disable(),
-		// stepTestOut0Disable(),
 	}
 }
 
@@ -325,22 +319,6 @@ func stepTestOut2Disable() Step {
 	return Step{
 		Name: "Тестове вмикання",
 		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin27] = 0 }) },
-    Wait: waitTime(2 * time.Second),
-	}
-}
-
-func stepTestOut1Disable() Step {
-	return Step{
-		Name: "Тестове вмикання",
-		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin26] = 0 }) },
-    Wait: waitTime(2 * time.Second),
-	}
-}
-
-func stepTestOut0Disable() Step {
-	return Step{
-		Name: "Тестове вмикання",
-		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin23] = 0 }) },
     Wait: waitTime(2 * time.Second),
 	}
 }
