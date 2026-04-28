@@ -160,6 +160,7 @@ func (c *Controller) execSteps(opID string) {
   steps := op.Build()
   for i := 0; i < len(steps); {
     step := steps[i]
+    fmt.Printf("[STEP] %d/%d: %s\n", i+1, len(steps), step.Name)
 
     if c.isEmergency() { break }
     if step.Do != nil { step.Do(c) }
