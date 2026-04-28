@@ -19,6 +19,7 @@ package main
 import (
 	"fmt"
 	"time"
+  "strings"
 )
 
 // RegisterOperations реєструє всі технологічні операції.
@@ -154,15 +155,19 @@ func doTrayStepToggle(c *Controller) {
 func buildLoader() []Step {
 	return []Step{
     {
-      Name: "Завантажувач у вихідне положення, відвід осьового інструменту",
-      Do:   func (c *Controller) { c.apply(func() {
-        fmt.Printf("18 Вих перед. - %b\n", c.state.Device10In[Pin18])
-        fmt.Printf("17 Робоче (0)- %b\n", c.state.Device10In[Pin17])
-        c.state.Device20Out[OutTestPin23] = 1 
-        fmt.Printf("18 Вих після. - %b\n", c.state.Device10In[Pin18])
-        fmt.Printf("17 Робоче (0)- %b\n", c.state.Device10In[Pin17])
-      }) },
-      Wait: waitTime(2000 * time.Millisecond),
+      Name: "Завантажувач: відвід інструмента (Withdraw)",
+      Do:   func (c *Controller) {
+        logPins(c, "[BEFORE]", PinToolOnAxis, PinToolWithdrawn)
+        c.apply(func() {
+          c.state.Device20Out[OutToolWithdraw] = 1
+          fmt.Printf("18 ПІСЛЯ. - %b\n", c.state.Device10In[PinToolWithdrawn])
+          fmt.Printf("17        - %b\n", c.state.Device10In[PinToolOnAxis])
+        }) },
+      Wait: func(c *Controller) StepResult {
+        res := waitTime(2000 * time.Millisecond)(c)
+        logPins(c, "[ AFTER]", PinToolOnAxis, PinToolWithdrawn)
+        return res
+      },
     },
     {
       Name: "Вивантажувач у вихідне положення",
@@ -287,14 +292,17 @@ func buildLoader() []Step {
     },
     {
       Name: "Завантажувач назад",
-      Do:   func (c *Controller) { c.apply(func() {
-        fmt.Printf("18 Вих перед. - %b\n", c.state.Device10In[Pin18])
-        fmt.Printf("17 Робоче (0)- %b\n", c.state.Device10In[Pin17])
-        c.state.Device20Out[OutTestPin23] = 0
-        fmt.Printf("18 Вих після. - %b\n", c.state.Device10In[Pin18])
-        fmt.Printf("17 Робоче (0)- %b\n", c.state.Device10In[Pin17])
-      }) },
-      Wait: waitTime(2000 * time.Millisecond),
+      Do: func(c *Controller) {
+        logPins(c, "[BEFORE]", PinToolWithdrawn, PinToolOnAxis)
+        c.apply(func() {
+          c.state.Device20Out[OutToolWithdraw] = 0
+        })
+      },
+      Wait: func(c *Controller) StepResult {
+        res := waitTime(500 * time.Millisecond)(c)
+        logPins(c, "[ AFTER]", PinToolWithdrawn, PinToolOnAxis)
+        return res
+      },
     },
 	}
 }
@@ -492,4 +500,23 @@ func waitTime(duration time.Duration) func(c *Controller) StepResult {
 
 func stepItWorks(c *Controller) {
 	fmt.Println("✅ Це працює")
+}
+
+// logPins друкує стан вказаних вхідних пінів у зручному форматі.
+// prefix — зазвичай "[BEFORE]" або "[ AFTER]"
+func logPins(c *Controller, prefix string, pins ...int) {
+    var reports []string
+    
+    // Блокуємо стан для читання, щоб отримати консистентний зріз
+    c.state.mu.RLock()
+    defer c.state.mu.RUnlock()
+
+    for _, p := range pins {
+        name := GetPinName(p, false) // false, бо нас цікавлять входи (sensors)
+        val := c.state.Device10In[p]
+        reports = append(reports, fmt.Sprintf("%d (%s): %d", p, name, val))
+    }
+
+    // З'єднуємо всі звіти через роздільник
+    fmt.Printf("%s %s\n", prefix, strings.Join(reports, " | "))
 }
