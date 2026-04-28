@@ -82,10 +82,10 @@ func doMagShutterToggle(c *Controller) {
     isHome := c.state.Device10In[PinMagShutterHome] == 1   
     fmt.Printf("[MAG] Shutter Home sensor: %v\n", isHome)
     if isHome {
-      c.state.Device20Out[OutMagShutterOpen] = 1
+      c.state.Device20Out[OutMagShutterOpen] = 0
       fmt.Println("[MAG] Action: Opening shutter")
     } else {
-      c.state.Device20Out[OutMagShutterOpen] = 0
+      c.state.Device20Out[OutMagShutterOpen] = 1
       fmt.Println("[MAG] Action: Closing shutter")
     }
   })
