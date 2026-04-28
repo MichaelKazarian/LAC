@@ -160,8 +160,6 @@ func buildLoader() []Step {
         logPins(c, "[BEFORE]", PinToolOnAxis, PinToolWithdrawn)
         c.apply(func() {
           c.state.Device20Out[OutToolWithdraw] = 1
-          fmt.Printf("18 ПІСЛЯ. - %b\n", c.state.Device10In[PinToolWithdrawn])
-          fmt.Printf("17        - %b\n", c.state.Device10In[PinToolOnAxis])
         }) },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
