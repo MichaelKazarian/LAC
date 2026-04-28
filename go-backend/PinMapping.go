@@ -64,7 +64,7 @@ const (
   OutTestPin19      = 19
   OutTestPin20      = 20
   OutUnloaderMove      = 21
-  OutTestPin22      = 22
+  OutEjector      = 22
   OutToolWithdraw      = 23
   OutTestPin24      = 24
   OutColletOpen      = 25
@@ -132,7 +132,7 @@ var PinNamesOut = map[int]string {
     OutTestPin19:     "ПЧВ швидкість 2", //depends OutDrivePower
     OutTestPin20:     "ПЧВ реверс", //depends OutDrivePower and pin18/19
     OutUnloaderMove:     "Вивантажувач", // ловить деталь,not depends
-    OutTestPin22:     "Виштовхувач", // виштовхує деталь, not depends
+    OutEjector:     "Виштовхувач (Ejector)", // виштовхує деталь, not depends
     OutToolWithdraw:     "Відвод інструменту", // not depends, switch In 17-18
     OutTestPin24:     "Плавний пуск пневматики", // not depends, In 5 On
     OutColletOpen:     "Патрон шпінделя відкр.", // not depends

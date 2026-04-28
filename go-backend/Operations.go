@@ -189,9 +189,9 @@ func buildLoader() []Step {
       Wait: waitTime(1000 * time.Millisecond),
     },
     {
-      Name: "Виштовхування\n", // Without sensor
+      Name: "Виштовхування", // Without sensor
       Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutTestPin22] = 1
+        c.state.Device20Out[OutEjector] = 1
       }) },
       Wait: waitTime(500 * time.Millisecond), // Час фіксований, датчиків нема
     },
