@@ -173,16 +173,16 @@ func buildLoader() []Step {
       },
     },
     {
-      Name: "Вивантажувач на вісь (вперед)",
+      Name: "Вивантажувач на вісь (переміщення вперед)",
       Do: func(c *Controller) {
-        logPins(c, "[BEFORE]", PinUnloaderHome, PinUnloaderOnAxis)
+        logPins(c, "[BEFORE]", PinUnloaderHome, PinUnloaderAxis)
         c.apply(func() {
-          c.state.Device20Out[OutUnloaderMove] = 1
+          c.state.Device20Out[OutUnloader] = 1
         })
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[ AFTER]", PinUnloaderHome, PinUnloaderOnAxis)
+        logPins(c, "[ AFTER]", PinUnloaderHome, PinUnloaderAxis)
         return res
       },
     },
@@ -215,16 +215,16 @@ func buildLoader() []Step {
       Wait: waitTime(250 * time.Millisecond),
     },
     {
-      Name: "Вивантажувач: повернення на вихідне (назад)",
+      Name: "Вивантажувач: повернення у вихідне (назад)",
       Do: func(c *Controller) {
-        logPins(c, "[BEFORE]", PinUnloaderHome, PinUnloaderOnAxis)
+        logPins(c, "[BEFORE]", PinUnloaderHome, PinUnloaderAxis)
         c.apply(func() {
-          c.state.Device20Out[OutUnloaderMove] = 0
+          c.state.Device20Out[OutUnloader] = 0
         })
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[ AFTER]", PinUnloaderHome, PinUnloaderOnAxis)
+        logPins(c, "[AFTER]", PinUnloaderHome, PinUnloaderAxis)
         return res
       },
     },
