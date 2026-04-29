@@ -203,14 +203,14 @@ func buildLoader() []Step {
     {
       Name: "Продування шпінделя вкл", // Without sensor
       Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutTestPin30] = 1 
+        c.state.Device20Out[OutAirBlast] = 1
       }) },
       Wait: waitTime(250 * time.Millisecond),
     },
     {
       Name: "Продування шпінделя викл",
       Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutTestPin30] = 0 
+        c.state.Device20Out[OutAirBlast] = 0
       }) },
       Wait: waitTime(250 * time.Millisecond),
     },

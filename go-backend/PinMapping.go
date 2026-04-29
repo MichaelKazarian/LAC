@@ -72,7 +72,7 @@ const (
   OutTestPin27      = 27
   OutTrayGateOpen      = 28
   OutMagShutterOpen      = 29
-  OutTestPin30      = 30
+  OutAirBlast      = 30
   OutTestPin31      = 31
 )
 
@@ -140,7 +140,7 @@ var PinNamesOut = map[int]string {
     OutTestPin27:     "Заштовхувач заготовки", // Залежить від положення Out23, Out26
     OutTrayGateOpen:     "Лоток відсікача відчинено", // Завантажує деталі в лоток заштовхувача (Out26) Датчик не працює
     OutMagShutterOpen:     "Вхідний магазин відсікача відкритий",
-    OutTestPin30:     "Продув шпінделя",
+    OutAirBlast:     "Продув шпінделя",
     OutTestPin31:     "Дозування змазки", //Вмикати періодично TODO it temporary replace OutMainMotor fix it
   }
 
