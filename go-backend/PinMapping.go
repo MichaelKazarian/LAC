@@ -67,7 +67,7 @@ const (
   OutEjector      = 22
   OutTool      = 23
   OutTestPin24      = 24
-  OutColletOpen      = 25
+  OutCollet      = 25
   OutTestPin26      = 26
   OutTestPin27      = 27
   OutTrayGateOpen      = 28
@@ -135,7 +135,7 @@ var PinNamesOut = map[int]string {
     OutEjector:     "Виштовхувач (Ejector)", // виштовхує деталь, not depends
     OutTool:     "Інструмент", // not depends, switch In 17-18
     OutTestPin24:     "Плавний пуск пневматики", // not depends, In 5 On
-    OutColletOpen:     "Патрон шпінделя відкр.", // not depends
+    OutCollet:     "Цанга", // not depends
     OutTestPin26:     "Завантажувач до осі шпінделя", // Залежить від положення Out23
     OutTestPin27:     "Заштовхувач заготовки", // Залежить від положення Out23, Out26
     OutTrayGateOpen:     "Лоток відсікача відчинено", // Завантажує деталі в лоток заштовхувача (Out26) Датчик не працює

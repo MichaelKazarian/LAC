@@ -189,7 +189,7 @@ func buildLoader() []Step {
     {
       Name: "Розтискання цанги", // Without sensor
       Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutColletOpen] = 1 
+        c.state.Device20Out[OutCollet] = 1 
       }) },
       Wait: waitTime(1000 * time.Millisecond),
     },
@@ -251,7 +251,7 @@ func buildLoader() []Step {
     {
       Name: "Затискання цанги",
       Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutColletOpen] = 0
+        c.state.Device20Out[OutCollet] = 0
       }) },
       Wait: waitTime(250 * time.Millisecond),
     },
