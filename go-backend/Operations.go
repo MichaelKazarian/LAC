@@ -160,15 +160,15 @@ func doTrayStepToggle(c *Controller) {
 func buildLoader() []Step {
 	return []Step{
     {
-      Name: "Відвід інструмента у вихідне (переміщення назад)(Withdraw)",
+      Name: "Відвід інструмента у вихідне (переміщення назад)",
       Do:   func (c *Controller) {
-        logPins(c, "[BEFORE]", PinToolOnAxis, PinToolWithdrawn)
+        logPins(c, "[BEFORE]", PinToolAxis, PinToolHome)
         c.apply(func() {
-          c.state.Device20Out[OutToolWithdraw] = 1
+          c.state.Device20Out[OutTool] = 1
         }) },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[ AFTER]", PinToolOnAxis, PinToolWithdrawn)
+        logPins(c, "[AFTER]", PinToolAxis, PinToolHome)
         return res
       },
     },
@@ -280,14 +280,14 @@ func buildLoader() []Step {
     {
       Name: "Відвід інструмента на вісь (вперед)",
       Do: func(c *Controller) {
-        logPins(c, "[BEFORE]", PinToolWithdrawn, PinToolOnAxis)
+        logPins(c, "[BEFORE]", PinToolHome, PinToolAxis)
         c.apply(func() {
-          c.state.Device20Out[OutToolWithdraw] = 0
+          c.state.Device20Out[OutTool] = 0
         })
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(500 * time.Millisecond)(c)
-        logPins(c, "[ AFTER]", PinToolWithdrawn, PinToolOnAxis)
+        logPins(c, "[AFTER]", PinToolHome, PinToolAxis)
         return res
       },
     },

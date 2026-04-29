@@ -31,8 +31,8 @@ const (
   Pin14         = 14
   PinUnloaderHome         = 15
   PinUnloaderOnAxis         = 16
-  PinToolOnAxis         = 17
-  PinToolWithdrawn         = 18
+  PinToolAxis         = 17
+  PinToolHome         = 18
   Pin19         = 19
   Pin20         = 20
   Pin21         = 21
@@ -65,7 +65,7 @@ const (
   OutTestPin20      = 20
   OutUnloaderMove      = 21
   OutEjector      = 22
-  OutToolWithdraw      = 23
+  OutTool      = 23
   OutTestPin24      = 24
   OutColletOpen      = 25
   OutTestPin26      = 26
@@ -100,8 +100,8 @@ var PinNamesIn = map[int]string{
   Pin14: "Блок-контакт автомата мотора змазки",
   PinUnloaderHome: "Вигружач вихідне",
   PinUnloaderOnAxis: "Вигружач на осі шп.",
-  PinToolOnAxis: "Відвод інструмента вихідне - на осі шпінделя",
-  PinToolWithdrawn: "Відвод інструмента - відведено",
+  PinToolAxis: "Інструмент: на осі",
+  PinToolHome: "Інструмент: вихідне",
   Pin19: "Патрон шп. зажато",    // фізично не зайдено
   Pin20: "Завантажувач вих.",
   Pin21: "Завантажувач на осі шп.",
@@ -133,7 +133,7 @@ var PinNamesOut = map[int]string {
     OutTestPin20:     "ПЧВ реверс", //depends OutDrivePower and pin18/19
     OutUnloaderMove:     "Вивантажувач", // ловить деталь,not depends
     OutEjector:     "Виштовхувач (Ejector)", // виштовхує деталь, not depends
-    OutToolWithdraw:     "Відвод інструменту", // not depends, switch In 17-18
+    OutTool:     "Інструмент", // not depends, switch In 17-18
     OutTestPin24:     "Плавний пуск пневматики", // not depends, In 5 On
     OutColletOpen:     "Патрон шпінделя відкр.", // not depends
     OutTestPin26:     "Завантажувач до осі шпінделя", // Залежить від положення Out23
