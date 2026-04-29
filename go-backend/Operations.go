@@ -167,13 +167,13 @@ func buildLoader() []Step {
     {
       Name: "Відвід інструмента у вихідне (переміщення назад)",
       Do:   func (c *Controller) {
-        logPins(c, "[BEFORE]", PinToolAxis, PinToolHome)
+        logPins(c, "[BEFORE]", PinToolHome, PinToolAxis)
         c.apply(func() {
           c.state.Device20Out[OutTool] = 1
         }) },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[AFTER]", PinToolAxis, PinToolHome)
+        logPins(c, "[AFTER]", PinToolHome, PinToolAxis)
         return res
       },
     },
