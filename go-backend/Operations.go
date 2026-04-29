@@ -173,7 +173,7 @@ func buildLoader() []Step {
         }) },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[AFTER]", PinToolHome, PinToolAxis)
+        logPins(c, "[AFTER] ", PinToolHome, PinToolAxis)
         return res
       },
     },
@@ -187,7 +187,7 @@ func buildLoader() []Step {
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[AFTER]", PinUnloaderHome, PinUnloaderAxis)
+        logPins(c, "[AFTER] ", PinUnloaderHome, PinUnloaderAxis)
         return res
       },
     },
@@ -229,7 +229,7 @@ func buildLoader() []Step {
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[AFTER]", PinUnloaderHome, PinUnloaderAxis)
+        logPins(c, "[AFTER] ", PinUnloaderHome, PinUnloaderAxis)
         return res
       },
     },
@@ -243,7 +243,7 @@ func buildLoader() []Step {
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[AFTER]", PinLoaderHome, PinLoaderAxis)
+        logPins(c, "[AFTER] ", PinLoaderHome, PinLoaderAxis)
         return res
       },
     },
@@ -257,7 +257,7 @@ func buildLoader() []Step {
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[AFTER]", PinPusherHome, PinPusherAxis)
+        logPins(c, "[AFTER] ", PinPusherHome, PinPusherAxis)
         return res
       },
     },
@@ -278,7 +278,7 @@ func buildLoader() []Step {
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(500 * time.Millisecond)(c)
-        logPins(c, "[AFTER]", PinPusherHome, PinPusherAxis)
+        logPins(c, "[AFTER] ", PinPusherHome, PinPusherAxis)
         return res
       },
     },
@@ -292,7 +292,7 @@ func buildLoader() []Step {
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(500 * time.Millisecond)(c)
-        logPins(c, "[AFTER]", PinLoaderHome, PinLoaderAxis)
+        logPins(c, "[AFTER] ", PinLoaderHome, PinLoaderAxis)
         return res
       },
     },
@@ -306,7 +306,7 @@ func buildLoader() []Step {
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(500 * time.Millisecond)(c)
-        logPins(c, "[AFTER]", PinToolHome, PinToolAxis)
+        logPins(c, "[AFTER] ", PinToolHome, PinToolAxis)
         return res
       },
     },
