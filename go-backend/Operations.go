@@ -249,10 +249,17 @@ func buildLoader() []Step {
     },
     {
       Name: "Переміщення заштовхувача в робоче (вперед)",
-      Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutTestPin27] = 1
-      }) },
-      Wait: waitTime(2000 * time.Millisecond),
+      Do: func(c *Controller) {
+        logPins(c, "[BEFORE]", PinPusherHome, PinPusherAxis)
+        c.apply(func() {
+          c.state.Device20Out[OutPusher] = 1
+        })
+      },
+      Wait: func(c *Controller) StepResult {
+        res := waitTime(2000 * time.Millisecond)(c)
+        logPins(c, "[AFTER]", PinPusherHome, PinPusherAxis)
+        return res
+      },
     },
     {
       Name: "Затискання цанги",
