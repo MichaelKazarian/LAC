@@ -18,7 +18,12 @@
 // Термінологія
 // Поняття : "Вихідне положення (Home)" і "Положення на осі (Axis)".
 // Дії: "Переміщення вперед (MoveAxis)", це перехід з вихідного в робоче положення (на вісь)
-// і "переміщення назад (MoveHome)" — зворотня дія 
+// і "переміщення назад (MoveHome)" — зворотня дія
+// Вузли:
+// Заштовхувач (Pusher) безпосередньо вводить деталь у цангу.
+// Завантажувач (Loader) підносить деталь до осі або забирає її.
+// Важливо не плутати Pusher та Loader
+
 package main
 
 import (
@@ -230,21 +235,22 @@ func buildLoader() []Step {
     },
     {
       Name: "Завантажувач на вісь (вперед)",
-      Do:   func (c *Controller) { c.apply(func() {
-        fmt.Printf("20 Вих ДО. - %b\n", c.state.Device10In[Pin23])
-        fmt.Printf("21 На осі - %b\n", c.state.Device10In[Pin22])
-        c.state.Device20Out[OutTestPin26] = 1 
-        fmt.Printf("20 Вих (1). - %b\n", c.state.Device10In[Pin23])
-        fmt.Printf("21 На осі (0)- %b\n", c.state.Device10In[Pin22])
-      }) },
-      Wait: waitTime(2000 * time.Millisecond),
+      Do: func(c *Controller) {
+        logPins(c, "[BEFORE]", PinLoaderAxis, PinLoaderHome)
+        c.apply(func() {
+          c.state.Device20Out[OutLoader] = 1 
+        })
+      },
+      Wait: func(c *Controller) StepResult {
+        res := waitTime(2000 * time.Millisecond)(c)
+        logPins(c, "[AFTER]", PinLoaderAxis, PinLoaderHome)
+        return res
+      },
     },
     {
       Name: "Переміщення заштовхувача в робоче (вперед)",
       Do:   func (c *Controller) { c.apply(func() {
         c.state.Device20Out[OutTestPin27] = 1
-        fmt.Printf("23 Вих. - %b\n", c.state.Device10In[Pin23])
-        fmt.Printf("22 - %b\n", c.state.Device10In[Pin22])
       }) },
       Wait: waitTime(2000 * time.Millisecond),
     },
@@ -258,24 +264,23 @@ func buildLoader() []Step {
     {
       Name: "Переміщення заштовхувача на вихідне (назад)",
       Do:   func (c *Controller) { c.apply(func() {
-        fmt.Printf("22. - %b\n", c.state.Device10In[Pin22])
-        fmt.Printf("23.- %b\n", c.state.Device10In[Pin23])
         c.state.Device20Out[OutTestPin27] = 0
-        fmt.Printf("22. - %b\n", c.state.Device10In[Pin22])
-        fmt.Printf("23.- %b\n", c.state.Device10In[Pin23])
       }) },
       Wait: waitTime(500 * time.Millisecond),
     },
     {
       Name: "Завантажувач у вихідне (назад)",
-      Do:   func (c *Controller) { c.apply(func() {
-        fmt.Printf("20 Вих ДО. - %b\n", c.state.Device10In[Pin23])
-        fmt.Printf("21 На осі - %b\n", c.state.Device10In[Pin22])
-        c.state.Device20Out[OutTestPin26] = 0
-        fmt.Printf("20 Вих ПІСЛЯ. - %b\n", c.state.Device10In[Pin23])
-        fmt.Printf("21 На осі (0)- %b\n", c.state.Device10In[Pin22])
-      }) },
-      Wait: waitTime(500 * time.Millisecond),
+      Do: func(c *Controller) {
+        logPins(c, "[BEFORE]", PinLoaderAxis, PinLoaderHome)
+        c.apply(func() {
+          c.state.Device20Out[OutLoader] = 0
+        })
+      },
+      Wait: func(c *Controller) StepResult {
+        res := waitTime(500 * time.Millisecond)(c)
+        logPins(c, "[AFTER]", PinLoaderAxis, PinLoaderHome)
+        return res
+      },
     },
     {
       Name: "Відвід інструмента на вісь (вперед)",
@@ -291,30 +296,6 @@ func buildLoader() []Step {
         return res
       },
     },
-	}
-}
-
-func stepTestOut1Enable() Step {
-	return Step{
-		Name: "Тестове вмикання",
-		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin26] = 1 }) },
-    Wait: waitTime(2 * time.Second),
-	}
-}
-
-func stepTestOut2Enable() Step {
-	return Step{
-		Name: "Тестове вмикання",
-		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin27] = 1 }) },
-    Wait: waitTime(2 * time.Second),
-	}
-}
-
-func stepTestOut2Disable() Step {
-	return Step{
-		Name: "Тестове вмикання",
-		Do:   func (c *Controller) { c.apply(func() { c.state.Device20Out[OutTestPin27] = 0 }) },
-    Wait: waitTime(2 * time.Second),
 	}
 }
 

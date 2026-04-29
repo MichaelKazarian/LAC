@@ -36,8 +36,8 @@ const (
   Pin19         = 19
   Pin20         = 20
   Pin21         = 21
-  Pin22         = 22
-  Pin23         = 23
+  PinLoaderAxis         = 22
+  PinLoaderHome         = 23
   PinPartInLoader         = 24
   Pin25         = 25
   Pin26         = 26
@@ -68,7 +68,7 @@ const (
   OutTool      = 23
   OutTestPin24      = 24
   OutCollet      = 25
-  OutTestPin26      = 26
+  OutLoader      = 26
   OutTestPin27      = 27
   OutTrayGateOpen      = 28
   OutMagShutterOpen      = 29
@@ -105,8 +105,8 @@ var PinNamesIn = map[int]string{
   Pin19: "Патрон шп. зажато",    // фізично не зайдено
   Pin20: "Завантажувач вих.",
   Pin21: "Завантажувач на осі шп.",
-  Pin22: "Заштовхувач спереду",
-  Pin23: "Заштовхувач вих.", // вих. положення в цангі
+  PinLoaderAxis: "Заштовхувач: на осі (Axis)",
+  PinLoaderHome: "Заштовхувач: вихідне (Home)", // вих. положення в цангі
   PinPartInLoader: "Датчик заготовки в завантажувачі",
   Pin25: "Датчик заготовки на вих магазина",
   Pin26: "Патрон шп. розажато",  // фізично не зайдено
@@ -136,7 +136,7 @@ var PinNamesOut = map[int]string {
     OutTool:     "Інструмент", // not depends, switch In 17-18
     OutTestPin24:     "Плавний пуск пневматики", // not depends, In 5 On
     OutCollet:     "Цанга", // not depends
-    OutTestPin26:     "Завантажувач до осі шпінделя", // Залежить від положення Out23
+    OutLoader:     "Завантажувач до осі шпінделя", // Залежить від положення Out23
     OutTestPin27:     "Заштовхувач заготовки", // Залежить від положення Out23, Out26
     OutTrayGateOpen:     "Лоток відсікача відчинено", // Завантажує деталі в лоток заштовхувача (Out26) Датчик не працює
     OutMagShutterOpen:     "Вхідний магазин відсікача відкритий",
