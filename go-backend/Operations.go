@@ -270,10 +270,17 @@ func buildLoader() []Step {
     },
     {
       Name: "Переміщення заштовхувача на вихідне (назад)",
-      Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutTestPin27] = 0
-      }) },
-      Wait: waitTime(500 * time.Millisecond),
+      Do: func(c *Controller) {
+        logPins(c, "[BEFORE]", PinPusherHome, PinPusherAxis)
+        c.apply(func() {
+          c.state.Device20Out[OutPusher] = 0
+        })
+      },
+      Wait: func(c *Controller) StepResult {
+        res := waitTime(500 * time.Millisecond)(c)
+        logPins(c, "[AFTER]", PinPusherHome, PinPusherAxis)
+        return res
+      },
     },
     {
       Name: "Завантажувач у вихідне (назад)",
