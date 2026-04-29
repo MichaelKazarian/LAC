@@ -1,3 +1,4 @@
+
 // Цей файл містить реєстрацію та реалізацію технологічних операцій.
 //
 // # Структура файлу
@@ -496,7 +497,7 @@ func logPins(c *Controller, prefix string, pins ...int) {
     for _, p := range pins {
         name := GetPinName(p, false) // false, бо нас цікавлять входи (sensors)
         val := c.state.Device10In[p]
-        reports = append(reports, fmt.Sprintf("%d (%s): %d", p, name, val))
+        reports = append(reports, fmt.Sprintf("%d %s: %d", p, name, val))
     }
 
     // З'єднуємо всі звіти через роздільник
