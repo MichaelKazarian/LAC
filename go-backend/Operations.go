@@ -236,14 +236,14 @@ func buildLoader() []Step {
     {
       Name: "Завантажувач на вісь (вперед)",
       Do: func(c *Controller) {
-        logPins(c, "[BEFORE]", PinLoaderAxis, PinLoaderHome)
+        logPins(c, "[BEFORE]", PinLoaderHome, PinLoaderAxis)
         c.apply(func() {
           c.state.Device20Out[OutLoader] = 1 
         })
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[AFTER]", PinLoaderAxis, PinLoaderHome)
+        logPins(c, "[AFTER]", PinLoaderHome, PinLoaderAxis)
         return res
       },
     },
@@ -271,14 +271,14 @@ func buildLoader() []Step {
     {
       Name: "Завантажувач у вихідне (назад)",
       Do: func(c *Controller) {
-        logPins(c, "[BEFORE]", PinLoaderAxis, PinLoaderHome)
+        logPins(c, "[BEFORE]", PinLoaderHome, PinLoaderAxis )
         c.apply(func() {
           c.state.Device20Out[OutLoader] = 0
         })
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(500 * time.Millisecond)(c)
-        logPins(c, "[AFTER]", PinLoaderAxis, PinLoaderHome)
+        logPins(c, "[AFTER]", PinLoaderHome, PinLoaderAxis)
         return res
       },
     },
