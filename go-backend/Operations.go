@@ -187,7 +187,7 @@ func buildLoader() []Step {
       },
       Wait: func(c *Controller) StepResult {
         res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[ AFTER]", PinUnloaderHome, PinUnloaderAxis)
+        logPins(c, "[AFTER]", PinUnloaderHome, PinUnloaderAxis)
         return res
       },
     },
