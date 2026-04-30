@@ -166,20 +166,7 @@ func doTrayStepToggle(c *Controller) {
 func buildLoader() []Step {
 	return []Step{
     stepToolToHome(),
-    {
-      Name: "Вивантажувач на вісь (переміщення вперед)",
-      Do: func(c *Controller) {
-        logPins(c, "[BEFORE]", PinUnloaderHome, PinUnloaderAxis)
-        c.apply(func() {
-          c.state.Device20Out[OutUnloader] = 1
-        })
-      },
-      Wait: func(c *Controller) StepResult {
-        res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[AFTER] ", PinUnloaderHome, PinUnloaderAxis)
-        return res
-      },
-    },
+    stepUnloaderToAxis(),
     {
       Name: "Розтискання цанги", // Without sensor
       Do:   func (c *Controller) { c.apply(func() {
@@ -208,20 +195,7 @@ func buildLoader() []Step {
       }) },
       Wait: waitTime(250 * time.Millisecond),
     },
-    {
-      Name: "Вивантажувач: повернення у вихідне (назад)",
-      Do: func(c *Controller) {
-        logPins(c, "[BEFORE]", PinUnloaderHome, PinUnloaderAxis)
-        c.apply(func() {
-          c.state.Device20Out[OutUnloader] = 0
-        })
-      },
-      Wait: func(c *Controller) StepResult {
-        res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[AFTER] ", PinUnloaderHome, PinUnloaderAxis)
-        return res
-      },
-    },
+    stepUnloaderHome(),
     {
       Name: "Завантажувач на вісь (вперед)",
       Do: func(c *Controller) {
@@ -321,6 +295,69 @@ func stepToolToHome() Step {
       },
     }
   }
+
+func stepUnloaderToAxis() Step {
+	return Step{
+		Name: "Вивантажувач на вісь (переміщення вперед)",
+		Before: func(c *Controller) StepResult {
+			logPins(c, "[BEFORE]", PinUnloaderHome, PinUnloaderAxis)
+			// Очікуємо: вихідне (15) = 1, на осі (16) = 0
+			if c.state.Device10In[PinUnloaderHome] != 1 || c.state.Device10In[PinUnloaderAxis] != 0 {
+				return StepResult{
+					Status:  StepFail,
+					Message: "Вивантажувач не у вихідному положенні перед виходом на вісь",
+				}
+			}
+			return StepResult{Status: StepOK}
+		},
+		Do: func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutUnloader] = 1
+			})
+		},
+		Wait: func(c *Controller) StepResult {
+			res := waitCond(func(c *Controller) bool {
+				// Очікуємо: вихідне (15) = 0, на осі (16) = 1
+				return c.state.Device10In[PinUnloaderHome] == 0 &&
+					c.state.Device10In[PinUnloaderAxis] == 1
+			}, 2000*time.Millisecond)(c)
+			logPins(c, "[AFTER] ", PinUnloaderHome, PinUnloaderAxis)
+			return res
+		},
+	}
+}
+
+func stepUnloaderHome() Step {
+	return Step{
+		Name: "Вивантажувач: повернення у вихідне (Home)",
+		Before: func(c *Controller) StepResult {
+			logPins(c, "[BEFORE]", PinUnloaderHome, PinUnloaderAxis)
+			// Очікуємо: на осі (16) = 1, вихідне (15) = 0
+			if c.state.Device10In[PinUnloaderHome] != 0 || c.state.Device10In[PinUnloaderAxis] != 1 {
+				return StepResult{
+					Status:  StepFail,
+					Message: "Вивантажувач не в робочому положенні перед поверненням додому",
+				}
+			}
+			return StepResult{Status: StepOK}
+		},
+		Do: func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutUnloader] = 0
+			})
+		},
+		Wait: func(c *Controller) StepResult {
+			res := waitCond(func(c *Controller) bool {
+				// Очікуємо: вихідне (15) = 1, на осі (16) = 0
+				return c.state.Device10In[PinUnloaderHome] == 1 &&
+					c.state.Device10In[PinUnloaderAxis] == 0
+			}, 2000*time.Millisecond)(c)
+
+			logPins(c, "[AFTER] ", PinUnloaderHome, PinUnloaderAxis)
+			return res
+		},
+	}
+}
 
 func stepToolToAxis() Step {
 	return Step {
