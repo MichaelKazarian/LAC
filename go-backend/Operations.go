@@ -173,19 +173,12 @@ func buildLoader() []Step {
     stepUnloaderHome(),
     stepLoaderToAxis(),
     stepPusherToAxis(),
-    {
-      Name: "Затискання цанги",
-      Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutCollet] = 0
-      }) },
-      Wait: waitTime(250 * time.Millisecond),
-    },
+    stepColletClose(),
     stepPusherHome(),
     stepLoaderHome(),
     stepToolToAxis(),
 	}
 }
-
 
 ///
 func stepToolToHome() Step {
@@ -358,7 +351,7 @@ func stepLoaderToAxis() Step {
 
 func stepPusherToAxis() Step {
 	return Step{
-		Name: "Заштовхувач на вісь (вперед)",
+		Name: "Заштовхувач в робоче (вперед)",
 		Before: func(c *Controller) StepResult {
 			logPins(c, "[BEFORE]", PinPusherHome, PinPusherAxis)
 			// Очікуємо: вихідне (23) = 1, на осі (22) = 0
@@ -385,6 +378,18 @@ func stepPusherToAxis() Step {
 			logPins(c, "[AFTER] ", PinPusherHome, PinPusherAxis)
 			return res
 		},
+	}
+}
+
+func stepColletClose() Step {
+	return Step{
+		Name: "Затискання цанги",
+		Do: func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutCollet] = 0
+			})
+		},
+		Wait: waitTime(250 * time.Millisecond),
 	}
 }
 
