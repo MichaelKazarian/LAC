@@ -167,13 +167,28 @@ func buildLoader() []Step {
 	return []Step{
     {
       Name: "Відвід інструмента у вихідне (переміщення назад)",
-      Do:   func (c *Controller) {
+      Before: func(c *Controller) StepResult {
         logPins(c, "[BEFORE]", PinToolHome, PinToolAxis)
+        // Очікуємо: вихідне (18) = 0, на осі (17) = 1
+        if c.state.Device10In[PinToolHome] != 0 || c.state.Device10In[PinToolAxis] != 1 {
+          return StepResult{
+            Status:  StepFail,
+            Message: "Інструмент не в робочому положенні перед відводом",
+          }
+        }
+        return StepResult{Status: StepOK}
+      },
+      Do: func(c *Controller) {
         c.apply(func() {
           c.state.Device20Out[OutTool] = 1
-        }) },
+        })
+      },
       Wait: func(c *Controller) StepResult {
-        res := waitTime(2000 * time.Millisecond)(c)
+        res := waitCond(func(c *Controller) bool {
+          // Очікуємо: вихідне (18) = 1, на осі (17) = 0
+          return c.state.Device10In[PinToolHome] == 1 &&
+            c.state.Device10In[PinToolAxis] == 0
+        }, 2000*time.Millisecond)(c)
         logPins(c, "[AFTER] ", PinToolHome, PinToolAxis)
         return res
       },
