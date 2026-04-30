@@ -162,6 +162,14 @@ func (c *Controller) execSteps(opID string) {
     step := steps[i]
     fmt.Printf("[STEP] %d/%d: %s\n", i+1, len(steps), step.Name)
 
+		if c.isEmergency() { break }
+		if step.Before != nil {
+			beforeRes := step.Before(c)
+			if beforeRes.Status != StepOK {
+				fmt.Printf("[CTRL] Step %s: Before-check failed: %s\n", step.Name, beforeRes.Message)
+				return
+			}
+		}
     if c.isEmergency() { break }
     if step.Do != nil { step.Do(c) }
     if c.isEmergency() { break }

@@ -103,6 +103,7 @@ type StepResult struct {
 //   - розширюваною без вкладених state machine
 type Step struct {
 	Name    string
+  Before  func(c *Controller) StepResult
 	Do      func(c *Controller)
 	Wait    func(c *Controller) StepResult
 	Cleanup func(c *Controller)
@@ -163,6 +164,8 @@ func waitAlwaysOK(_ *Controller) StepResult {
 	return StepResult{Status: StepOK}
 }
 
+// --- Системні функції ---
+
 // waitTime повертає функцію очікування для заданої тривалості.
 // Використовується як: Wait: waitTime(20 * time.Millisecond)
 func waitTime(duration time.Duration) func(c *Controller) StepResult {
@@ -181,7 +184,26 @@ func waitTime(duration time.Duration) func(c *Controller) StepResult {
   }
 }
 
-// --- Системні функції ---
+// waitCond — чекає умови, використовуючи waitTime як базу для безпечних пауз.
+func waitCond(condition func(c *Controller) bool, timeout time.Duration) func(c *Controller) StepResult {
+	return func(c *Controller) StepResult {
+		deadline := time.Now().Add(timeout)
+		for time.Now().Before(deadline) {
+			if condition(c) {
+				return StepResult{Status: StepOK}
+			}
+			// Якщо за ці 5мс натиснуть Emergency — waitTime поверне StepAbort, 
+			res := waitTime(5 * time.Millisecond)(c)
+			if res.Status == StepAbort {
+				return res
+			}
+		}
+		return StepResult{
+			Status:  StepFail,
+			Message: "Таймаут: умову не виконано",
+		}
+	}
+}
 
 // GetAllowedManualOpsFromView — UI-safe версія.
 // Працює тільки з immutable snapshot, без доступу до runtime state.
