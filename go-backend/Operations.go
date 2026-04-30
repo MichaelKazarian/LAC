@@ -165,34 +165,7 @@ func doTrayStepToggle(c *Controller) {
 
 func buildLoader() []Step {
 	return []Step{
-    {
-      Name: "Відвід інструмента у вихідне (переміщення назад)",
-      Before: func(c *Controller) StepResult {
-        logPins(c, "[BEFORE]", PinToolHome, PinToolAxis)
-        // Очікуємо: вихідне (18) = 0, на осі (17) = 1
-        if c.state.Device10In[PinToolHome] != 0 || c.state.Device10In[PinToolAxis] != 1 {
-          return StepResult{
-            Status:  StepFail,
-            Message: "Інструмент не в робочому положенні перед відводом",
-          }
-        }
-        return StepResult{Status: StepOK}
-      },
-      Do: func(c *Controller) {
-        c.apply(func() {
-          c.state.Device20Out[OutTool] = 1
-        })
-      },
-      Wait: func(c *Controller) StepResult {
-        res := waitCond(func(c *Controller) bool {
-          // Очікуємо: вихідне (18) = 1, на осі (17) = 0
-          return c.state.Device10In[PinToolHome] == 1 &&
-            c.state.Device10In[PinToolAxis] == 0
-        }, 2000*time.Millisecond)(c)
-        logPins(c, "[AFTER] ", PinToolHome, PinToolAxis)
-        return res
-      },
-    },
+    stepToolToHome(),
     {
       Name: "Вивантажувач на вісь (переміщення вперед)",
       Do: func(c *Controller) {
@@ -312,36 +285,74 @@ func buildLoader() []Step {
         return res
       },
     },
-    {
-      Name: "Відвід інструмента на вісь (вперед)",
+    stepToolToAxis(),
+	}
+}
+
+
+///
+func stepToolToHome() Step {
+  return Step {
+    Name: "Відвід інструмента у вихідне (переміщення назад)",
       Before: func(c *Controller) StepResult {
         logPins(c, "[BEFORE]", PinToolHome, PinToolAxis)
-        // Очікуємо: вихідне (18) = 1, на осі (17) = 0
-        if c.state.Device10In[PinToolHome] != 1 || c.state.Device10In[PinToolAxis] != 0 {
+        // Очікуємо: вихідне (18) = 0, на осі (17) = 1
+        if c.state.Device10In[PinToolHome] != 0 || c.state.Device10In[PinToolAxis] != 1 {
           return StepResult{
             Status:  StepFail,
-            Message: "Інструмент не у вихідному положенні перед подачею на вісь",
+            Message: "Інструмент не в робочому положенні перед відводом",
           }
         }
         return StepResult{Status: StepOK}
       },
       Do: func(c *Controller) {
         c.apply(func() {
-          c.state.Device20Out[OutTool] = 0
+          c.state.Device20Out[OutTool] = 1
         })
       },
       Wait: func(c *Controller) StepResult {
         res := waitCond(func(c *Controller) bool {
-          // Очікуємо: вихідне (18) = 0, на осі (17) = 1
-          return c.state.Device10In[PinToolHome] == 0 &&
-            c.state.Device10In[PinToolAxis] == 1
+          // Очікуємо: вихідне (18) = 1, на осі (17) = 0
+          return c.state.Device10In[PinToolHome] == 1 &&
+            c.state.Device10In[PinToolAxis] == 0
         }, 2000*time.Millisecond)(c)
         logPins(c, "[AFTER] ", PinToolHome, PinToolAxis)
         return res
       },
-    },
+    }
+  }
+
+func stepToolToAxis() Step {
+	return Step {
+		Name: "Відвід інструмента на вісь (вперед)",
+		Before: func(c *Controller) StepResult {
+			logPins(c, "[BEFORE]", PinToolHome, PinToolAxis)
+			// Очікуємо: вихідне (18) = 1, на осі (17) = 0
+			if c.state.Device10In[PinToolHome] != 1 || c.state.Device10In[PinToolAxis] != 0 {
+				return StepResult{
+					Status:  StepFail,
+					Message: "Інструмент не у вихідному положенні перед подачею на вісь",
+				}
+			}
+			return StepResult{Status: StepOK}
+		},
+		Do: func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutTool] = 0
+			})
+		},
+		Wait: func(c *Controller) StepResult {
+			res := waitCond(func(c *Controller) bool {
+				// Очікуємо: вихідне (18) = 0, на осі (17) = 1
+				return c.state.Device10In[PinToolHome] == 0 &&
+					c.state.Device10In[PinToolAxis] == 1
+			}, 2000*time.Millisecond)(c)
+			logPins(c, "[AFTER] ", PinToolHome, PinToolAxis)
+			return res
+		},
 	}
 }
+///
 
 func stepMotorOn() Step {
 	return Step{
