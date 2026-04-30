@@ -169,19 +169,16 @@ func waitAlwaysOK(_ *Controller) StepResult {
 // waitTime повертає функцію очікування для заданої тривалості.
 // Використовується як: Wait: waitTime(20 * time.Millisecond)
 func waitTime(duration time.Duration) func(c *Controller) StepResult {
-  return func(c *Controller) StepResult {
-    deadline := time.Now().Add(duration)
-    for time.Now().Before(deadline) {
-      if c.isEmergency() {
-        return StepResult{
-          Status:  StepAbort,
-          Message: "Очікування перервано: Safety Lock",
-        }
-      }
-      time.Sleep(5 * time.Millisecond)
-    }
-    return StepResult{Status: StepOK}
-  }
+	return func(c *Controller) StepResult {
+		if c.isEmergency() {
+			return StepResult{Status: StepAbort, Message: "Safety Lock"}
+		}
+		time.Sleep(duration)
+		if c.isEmergency() {
+			return StepResult{Status: StepAbort, Message: "Safety Lock"}
+		}
+		return StepResult{Status: StepOK}
+	}
 }
 
 // waitCond — чекає умови, використовуючи waitTime як базу для безпечних пауз.
@@ -192,7 +189,6 @@ func waitCond(condition func(c *Controller) bool, timeout time.Duration) func(c 
 			if condition(c) {
 				return StepResult{Status: StepOK}
 			}
-			// Якщо за ці 5мс натиснуть Emergency — waitTime поверне StepAbort, 
 			res := waitTime(5 * time.Millisecond)(c)
 			if res.Status == StepAbort {
 				return res
