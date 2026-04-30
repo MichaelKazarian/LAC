@@ -172,7 +172,7 @@ func buildLoader() []Step {
     stepAirBlastPulse(),
     stepUnloaderHome(),
     stepLoaderToAxis(),
-    stepPusherToAxis(),
+    stepPusherToAxis(2),
     stepColletClose(),
     stepPusherHome(),
     stepLoaderHome(),
@@ -349,7 +349,7 @@ func stepLoaderToAxis() Step {
 	}
 }
 
-func stepPusherToAxis() Step {
+func stepPusherToAxis(attempts int) Step {
 	return Step{
 		Name: "Заштовхувач в робоче (вперед)",
 		Before: func(c *Controller) StepResult {
@@ -369,14 +369,34 @@ func stepPusherToAxis() Step {
 			})
 		},
 		Wait: func(c *Controller) StepResult {
-			res := waitCond(func(c *Controller) bool {
-				// Очікуємо: 23:0, 22:1
-				return c.state.Device10In[PinPusherHome] == 0 &&
-					c.state.Device10In[PinPusherAxis] == 1
-			}, 2000*time.Millisecond)(c)
+			for i := 1; i <= attempts; i++ {
+				res := waitCond(func(c *Controller) bool {
+					return c.state.Device10In[PinPusherHome] == 0 &&
+						c.state.Device10In[PinPusherAxis] == 1
+				}, 1500*time.Millisecond)(c)
 
-			logPins(c, "[AFTER] ", PinPusherHome, PinPusherAxis)
-			return res
+				if res.Status == StepOK {
+					if i > 1 {
+						logPins(c, fmt.Sprintf("[OK] Заштовхувач дотиснув з спроби %d", i), PinPusherHome, PinPusherAxis)
+					}
+					return res
+				}
+
+				// Якщо не дотиснув і є ще спроби
+				if i < attempts {
+					logPins(c, fmt.Sprintf("[RETRY] Спроба %d невдала, пересмикування...", i), PinPusherHome, PinPusherAxis)
+					c.apply(func() { c.state.Device20Out[OutPusher] = 0 })   // Відводимо назад
+					waitTime(600 * time.Millisecond)(c)
+					c.apply(func() { c.state.Device20Out[OutPusher] = 1 }) // Знову вперед
+				} else {
+					logPins(c, "[ERROR] Всі спроби заштовхування вичерпано", PinPusherHome, PinPusherAxis)
+					return StepResult{
+						Status:  StepFail,
+						Message: fmt.Sprintf("Заштовхувач не зміг дослати деталь після %d спроб", attempts),
+					}
+				}
+			}
+			return StepResult{Status: StepFail}
 		},
 	}
 }
