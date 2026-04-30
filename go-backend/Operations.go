@@ -372,7 +372,7 @@ func stepSafetyStop() Step {
 	return Step{
 		Name:    "Стоп",
 		Do:      doSafetyStop,
-		Wait:    waitStop2s,
+		Wait:    waitTime(1000 * time.Millisecond),
 		Cleanup: cleanupSafetyStop,
 	}
 }
@@ -447,34 +447,6 @@ func waitSyncMirror(c *Controller) StepResult {
 		time.Sleep(2 * time.Millisecond)
 	}
 	return StepResult{Status: StepOK}
-}
-
-// waitTime повертає функцію очікування для заданої тривалості.
-// Використовується як: Wait: waitTime(2 * time.Second)
-func waitTime(duration time.Duration) func(c *Controller) StepResult {
-	return func(c *Controller) StepResult {
-		deadline := time.Now().Add(duration)
-
-		for time.Now().Before(deadline) {
-			// 1. Перевірка Safety Lock (Emergency Stop)
-			c.state.mu.RLock()
-			locked := c.state.IsSafetyLocked
-			c.state.mu.RUnlock()
-
-			if locked {
-				return StepResult{
-					Status:  StepAbort,
-					Message: "Очікування перервано: Safety Lock",
-				}
-			}
-
-			// 2. Коротка пауза, щоб не перевантажувати CPU
-			// 20-50мс достатньо для оперативності в промислових задачах
-			time.Sleep(25 * time.Millisecond)
-		}
-
-		return StepResult{Status: StepOK}
-	}
 }
 
 // =============================================================================

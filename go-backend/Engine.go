@@ -163,16 +163,22 @@ func waitAlwaysOK(_ *Controller) StepResult {
 	return StepResult{Status: StepOK}
 }
 
-// waitStop2s — очікування 2 секунди з перевіркою EmergencyStop.
-func waitStop2s(c *Controller) StepResult {
-	start := time.Now()
-	for time.Since(start) < 2*time.Second {
-		if c.isEmergency() {
-			return StepResult{Status: StepAbort, Message: "Зупинено через SafetyLock"}
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	return StepResult{Status: StepOK}
+// waitTime повертає функцію очікування для заданої тривалості.
+// Використовується як: Wait: waitTime(20 * time.Millisecond)
+func waitTime(duration time.Duration) func(c *Controller) StepResult {
+  return func(c *Controller) StepResult {
+    deadline := time.Now().Add(duration)
+    for time.Now().Before(deadline) {
+      if c.isEmergency() {
+        return StepResult{
+          Status:  StepAbort,
+          Message: "Очікування перервано: Safety Lock",
+        }
+      }
+      time.Sleep(5 * time.Millisecond)
+    }
+    return StepResult{Status: StepOK}
+  }
 }
 
 // --- Системні функції ---
