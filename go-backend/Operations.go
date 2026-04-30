@@ -172,20 +172,7 @@ func buildLoader() []Step {
     stepAirBlastPulse(),
     stepUnloaderHome(),
     stepLoaderToAxis(),
-    {
-      Name: "Переміщення заштовхувача в робоче (вперед)",
-      Do: func(c *Controller) {
-        logPins(c, "[BEFORE]", PinPusherHome, PinPusherAxis)
-        c.apply(func() {
-          c.state.Device20Out[OutPusher] = 1
-        })
-      },
-      Wait: func(c *Controller) StepResult {
-        res := waitTime(2000 * time.Millisecond)(c)
-        logPins(c, "[AFTER] ", PinPusherHome, PinPusherAxis)
-        return res
-      },
-    },
+    stepPusherToAxis(),
     {
       Name: "Затискання цанги",
       Do:   func (c *Controller) { c.apply(func() {
@@ -193,20 +180,7 @@ func buildLoader() []Step {
       }) },
       Wait: waitTime(250 * time.Millisecond),
     },
-    {
-      Name: "Переміщення заштовхувача на вихідне (назад)",
-      Do: func(c *Controller) {
-        logPins(c, "[BEFORE]", PinPusherHome, PinPusherAxis)
-        c.apply(func() {
-          c.state.Device20Out[OutPusher] = 0
-        })
-      },
-      Wait: func(c *Controller) StepResult {
-        res := waitTime(500 * time.Millisecond)(c)
-        logPins(c, "[AFTER] ", PinPusherHome, PinPusherAxis)
-        return res
-      },
-    },
+    stepPusherHome(),
     stepLoaderHome(),
     stepToolToAxis(),
 	}
@@ -377,6 +351,70 @@ func stepLoaderToAxis() Step {
 					c.state.Device10In[PinLoaderAxis] == 1
 			}, 2000*time.Millisecond)(c)
 			logPins(c, "[AFTER] ", PinLoaderHome, PinLoaderAxis)
+			return res
+		},
+	}
+}
+
+func stepPusherToAxis() Step {
+	return Step{
+		Name: "Заштовхувач на вісь (вперед)",
+		Before: func(c *Controller) StepResult {
+			logPins(c, "[BEFORE]", PinPusherHome, PinPusherAxis)
+			// Очікуємо: вихідне (23) = 1, на осі (22) = 0
+			if c.state.Device10In[PinPusherHome] != 1 || c.state.Device10In[PinPusherAxis] != 0 {
+				return StepResult{
+					Status:  StepFail,
+					Message: "Заштовхувач не у вихідному положенні перед робочим ходом",
+				}
+			}
+			return StepResult{Status: StepOK}
+		},
+		Do: func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutPusher] = 1
+			})
+		},
+		Wait: func(c *Controller) StepResult {
+			res := waitCond(func(c *Controller) bool {
+				// Очікуємо: 23:0, 22:1
+				return c.state.Device10In[PinPusherHome] == 0 &&
+					c.state.Device10In[PinPusherAxis] == 1
+			}, 2000*time.Millisecond)(c)
+
+			logPins(c, "[AFTER] ", PinPusherHome, PinPusherAxis)
+			return res
+		},
+	}
+}
+
+func stepPusherHome() Step {
+	return Step{
+		Name: "Заштовхувач у вихідне (Home)",
+		Before: func(c *Controller) StepResult {
+			logPins(c, "[BEFORE]", PinPusherHome, PinPusherAxis)
+			// Очікуємо: на осі (22) = 1, вихідне (23) = 0
+			if c.state.Device10In[PinPusherHome] != 0 || c.state.Device10In[PinPusherAxis] != 1 {
+				return StepResult{
+					Status:  StepFail,
+					Message: "Заштовхувач не в робочому положенні перед поверненням додому",
+				}
+			}
+			return StepResult{Status: StepOK}
+		},
+		Do: func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutPusher] = 0
+			})
+		},
+		Wait: func(c *Controller) StepResult {
+			res := waitCond(func(c *Controller) bool {
+				// Очікуємо: 23:1, 22:0
+				return c.state.Device10In[PinPusherHome] == 1 &&
+					c.state.Device10In[PinPusherAxis] == 0
+			}, 2000*time.Millisecond)(c)
+
+			logPins(c, "[AFTER] ", PinPusherHome, PinPusherAxis)
 			return res
 		},
 	}
