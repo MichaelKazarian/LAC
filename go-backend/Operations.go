@@ -167,34 +167,9 @@ func buildLoader() []Step {
 	return []Step{
     stepToolToHome(),
     stepUnloaderToAxis(),
-    {
-      Name: "Розтискання цанги", // Without sensor
-      Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutCollet] = 1 
-      }) },
-      Wait: waitTime(1000 * time.Millisecond),
-    },
-    {
-      Name: "Виштовхувач вперед", // Without sensor
-      Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutEjector] = 1
-      }) },
-      Wait: waitTime(500 * time.Millisecond), // Час фіксований, датчиків нема
-    },
-    {
-      Name: "Продування шпінделя вкл", // Without sensor
-      Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutAirBlast] = 1
-      }) },
-      Wait: waitTime(250 * time.Millisecond),
-    },
-    {
-      Name: "Продування шпінделя викл",
-      Do:   func (c *Controller) { c.apply(func() {
-        c.state.Device20Out[OutAirBlast] = 0
-      }) },
-      Wait: waitTime(250 * time.Millisecond),
-    },
+    stepColletOpen(),
+    stepEjectorForward(),
+    stepAirBlastPulse(),
     stepUnloaderHome(),
     {
       Name: "Завантажувач на вісь (вперед)",
@@ -324,6 +299,49 @@ func stepUnloaderToAxis() Step {
 			logPins(c, "[AFTER] ", PinUnloaderHome, PinUnloaderAxis)
 			return res
 		},
+	}
+}
+
+func stepColletOpen() Step {
+	return Step{
+		Name: "Розтискання цанги", // Without sensor
+		Do: func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutCollet] = 1
+			})
+		},
+		Wait: waitTime(1000 * time.Millisecond),
+	}
+}
+
+func stepAirBlastPulse() Step {
+	return Step{
+		Name: "Продування шпінделя",
+		Do: func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutAirBlast] = 1
+			})
+		},
+		Wait: func(c *Controller) StepResult {
+			waitTime(250 * time.Millisecond)(c)
+			c.apply(func() {
+				c.state.Device20Out[OutAirBlast] = 0
+			})
+			
+			return StepResult{Status: StepOK}
+		},
+	}
+}
+
+func stepEjectorForward() Step {
+	return Step{
+		Name: "Виштовхувач вперед", // Without sensor
+		Do: func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutEjector] = 1
+			})
+		},
+		Wait: waitTime(500 * time.Millisecond), // Час фіксований, датчиків нема
 	}
 }
 
