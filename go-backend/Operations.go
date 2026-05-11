@@ -39,8 +39,8 @@ func RegisterOperations(r *OperationRegistry) {
 	r.Add("op_tray_move",  "Крок лотка",  buildTrayMove)
 	r.Add("op_tray_move_auto", "Переміщення лотка",  buildTrayAutoFill)
 	r.Add("op_loader",  "Підведення завантажувача",  buildLoader)
-	r.Add("operation5",  "Операція 5",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation6",  "Операція 6",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
+  r.Add("op_spindle_on", "Старт шпінделя", func() []Step { return []Step{stepSpindleMotorOn()}  })
+  r.Add("op_spindle_off", "Стоп шпінделя", func() []Step { return []Step{stepSpindleMotorOff()} })
 	r.Add("operation7",  "Операція 7",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation8",  "Операція 8",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation9",  "Операція 9",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -509,11 +509,19 @@ func stepToolToAxis() Step {
 }
 ///
 
-func stepMotorOn() Step {
+func stepSpindleMotorOn() Step {
 	return Step{
-		Name: "Включення двигуна",
-		Do:   doMotorOn,
-		Wait: waitMotorOn,
+		Name: "Увімкнення двигуна шпінделя",
+		Do:   doSpindleMotorOn,
+    Wait: waitTime(200 * time.Millisecond),
+	}
+}
+
+func stepSpindleMotorOff() Step {
+	return Step{
+		Name: "Вимкнення двигуна шпінделя",
+		Do:   doSpindleMotorOff,
+    Wait: waitTime(200 * time.Millisecond),
 	}
 }
 
@@ -521,7 +529,6 @@ func stepMotorOn() Step {
 
 func buildSyncMirror() []Step {
 	return []Step{
-		stepMotorOn(),
 		stepSyncMirror(),
 	}
 }
@@ -535,8 +542,18 @@ func stepSyncMirror() Step {
 	}
 }
 
-func doMotorOn(c *Controller) {
-	c.apply(func() { c.state.Device20Out[OutTestPin31] = 1 })
+func doSpindleMotorOn(c *Controller) {
+	c.apply(func() {
+    c.state.Device20Out[OutDrivePower] = 1
+    c.state.Device20Out[OutSpindleMotor] = 1
+  })
+}
+
+func doSpindleMotorOff(c *Controller) {
+	c.apply(func() {
+    c.state.Device20Out[OutDrivePower] = 0
+    c.state.Device20Out[OutSpindleMotor] = 0
+  })
 }
 
 func doSyncMirror(c *Controller) {

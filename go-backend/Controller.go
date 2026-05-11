@@ -236,25 +236,27 @@ func (c *Controller) runAutomaticCycleSteps() {
 	c.state.mu.Unlock()
 }
 
-// syncHardware перевіряє зміни в Device20Out та записує їх у залізо.
-// Логіка роботи:
-// Якщо система заблокована (EmergencyStop або операторська зупинка) — 
-//   гарантуємо, що мотор  вимкнений перед записом (current[OutTestPin31]=0)
-// Порівнюємо з останнім записаним станом, щоб уникнути зайвих записів.
-// При помилці запису Modbus:
-// - встановлюємо outputsLost = true, щоб не писати в плату виходів
-// - скидання outputsLost тільки в SafetyStart()
-// - фізично відключаємо живлення плати виходів через power.DisableOutputsPower()
-// - викликаємо EmergencyStop, щоб очистити черги та гарантувати безпечний стан
-// - Кешуємо новий стан лише при успішному записі.
+// syncHardware monitors changes in Device20Out and commits them to the physical hardware.
 //
-// Сценарії:
-// - Штатна зупинка (SAFE_LOCK):
-//      Motor вимкнений, плати IN та OUT доступні, система чекає команди SafetyStart
-// - Аварія IN-плати:
-//      EmergencyStop через Modbus, мотор вимкнений, решта логіки заморожена
-// - Аварія OUT-плати:
-//      Латч outputsLost, живлення плати відключене, EmergencyStop викликається для гарантії безпечного стану
+// Logic Workflow:
+// 1. Safety Guard: If the system is locked (EmergencyStop or Operator Stop),
+//    it forces all power equipment (spindle, motors, pumps) to an OFF state
+//    via stopMotors() before any data is transmitted.
+// 2. Change Detection: Compares the current desired state with lastOutput cache
+//    to minimize redundant Modbus write operations.
+// 3. Error Handling (Fail-Safe): If a Modbus write fails:
+//    - Sets IsOutputsOnline to false (latching the error state).
+//    - Physically cuts power to the output board via power.DisableOutputsPower().
+//    - Triggers emergencyStop to clear queues and lock the logic.
+// 4. State Sync: The local cache is updated only upon a confirmed successful hardware write.
+//
+// Operational Scenarios:
+// - Standard Stop (SAFE_LOCK):
+//   Critical motors are killed; IN/OUT boards remain accessible; system awaits SafetyStart/Reset.
+// - Input Board Failure:
+//   Triggers EmergencyStop; motors killed; logic execution frozen due to sensor data loss.
+// - Output Board Failure (Critical):
+//   Latches outputsLost; hardware power disconnected; EmergencyStop ensures total system lock.
 func (c *Controller) syncHardware() {
   c.state.mu.RLock()
   current := c.state.Device20Out
@@ -267,7 +269,7 @@ func (c *Controller) syncHardware() {
   }
 
   if locked { // не дає випадково включити мотор
-    current[OutTestPin31] = 0
+    c.stopMotors(&current)
   }
   // Перевіряємо наявність змін
   if current == c.lastOutput && !c.firstRun {
@@ -477,7 +479,7 @@ func (c *Controller) Stop(reason string) {
 
 	fmt.Printf("[CTRL] STOP: %s (Операція: %s)\n", reason, c.state.ActiveOperation)
 
-	c.state.Device20Out[OutTestPin31] = 0 // force motor off
+	c.stopMotors(&c.state.Device20Out)
 	c.state.IsSafetyLocked = true
 	c.state.IsPaused = false
 	c.state.ActiveOperation = ""
@@ -549,4 +551,14 @@ func (c *Controller) ToggleSafetyLock() bool {
 	c.state.mu.RLock()
 	defer c.state.mu.RUnlock()
 	return c.state.IsSafetyLocked
+}
+
+// stopMotors примусово встановлює виходи силового обладнання в 0 (OFF).
+// Викликається при зупинці, аварії або блокуванні.
+func (c *Controller) stopMotors(out *[32]uint16) {
+  out[OutDrivePower] = 0
+	out[OutSpindleMotor] = 0 // Шпіндель
+	out[OutTestPin31] = 0    // Тестовий пін або інший двигун
+	// Додай сюди інші двигуни/насоси, які мають стати в 0 при аварії
+	// наприклад: out[OutCoolantPump] = 0
 }
