@@ -213,11 +213,12 @@ func stepToolToHome() Step {
     Name: "Відвід інструмента у вихідне (переміщення назад)",
       Before: func(c *Controller) StepResult {
         logPins(c, "[BEFORE]", PinToolHome, PinToolAxis)
-        // Очікуємо: вихідне (18) = 0, на осі (17) = 1
-        if c.state.Device10In[PinToolHome] != 0 || c.state.Device10In[PinToolAxis] != 1 {
+        if c.state.Device10In[PinToolHome] == c.state.Device10In[PinToolAxis] {
+          msg := "Помилка датчиків інструмента"
+          c.emergencyStop(msg)
           return StepResult{
             Status:  StepFail,
-            Message: "Інструмент не в робочому положенні перед відводом",
+            Message: msg
           }
         }
         return StepResult{Status: StepOK}
@@ -236,10 +237,10 @@ func stepToolToHome() Step {
 }
 
 func doToolHome(c *Controller) {
-        c.apply(func() {
-          c.state.Device20Out[OutTool] = 1
-        })
-      }
+  c.apply(func() {
+    c.state.Device20Out[OutTool] = 1
+  })
+}
 
 func stepUnloaderToAxis() Step {
 	return Step{
