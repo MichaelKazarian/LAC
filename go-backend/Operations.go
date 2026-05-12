@@ -38,7 +38,7 @@ func RegisterOperations(r *OperationRegistry) {
 	r.Add("op_mag_shutter",  "Завантаження магазину",  buildMagShutter)
 	r.Add("op_tray_move",  "Крок лотка",  buildTrayMove)
 	r.Add("op_tray_move_auto", "Переміщення лотка",  buildTrayAutoFill)
-	r.Add("op_loader",  "Підведення завантажувача",  buildLoader)
+	r.Add("op_loader",  "Цикл",  buildLoader)
   r.Add("op_spindle_on", "Старт шпінделя", func() []Step { return []Step{stepSpindleMotorOn()}  })
   r.Add("op_spindle_off", "Стоп шпінделя", func() []Step { return []Step{stepSpindleMotorOff()} })
 	r.Add("operation7",  "Операція 7",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
