@@ -46,7 +46,7 @@ func RegisterOperations(r *OperationRegistry) {
 	r.Add("operation9",  "Операція 9",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("sync_mirror",    "Дзеркалювання",   buildSyncMirror)
 	r.Add("op_safety_stop", "Безпечна зупинка", buildSafetyStop)
-	r.Add("operation10", "Операція 10", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
+	r.Add("op_move_to_safe_pos", "Розжати", buildMoveToSafePosition)
 	r.Add("operation11", "Операція 11", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation12", "Операція 12", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 	r.Add("operation13", "Операція 13", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
@@ -59,9 +59,36 @@ func RegisterOperations(r *OperationRegistry) {
 	r.Add("operation20", "Операція 20", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
 }
 
-// =============================================================================
-// sync_mirror
-// =============================================================================
+
+func buildMoveToSafePosition() []Step {
+	return []Step{
+    {
+      Name: "Примусово повертаємо вивантажувач",
+      Do: doUnloaderHome,
+      Wait: waitTime(1000 * time.Millisecond),
+    },
+    {
+      Name: "Примусово повертаємо інструмент",
+      Do:   doToolHome,
+      Wait: waitTime(1000 * time.Millisecond),
+    },
+    {
+      Name: "Примусово повертаємо заштовхувач",
+      Do:   doPusherHome,
+      Wait: waitTime(1000 * time.Millisecond),
+    },
+    {
+      Name: "Примусово повертаємо лоток",
+      Do:   doLoaderHome,
+      Wait: waitTime(1000 * time.Millisecond),
+    },
+    {
+      Name: "Примусово відкриваємо цангу",
+      Do:   doColletOpen,
+      Wait: waitTime(100 * time.Millisecond),
+    },
+	}
+}
 
 func buildMagShutter() []Step {
 	return []Step{
@@ -195,11 +222,7 @@ func stepToolToHome() Step {
         }
         return StepResult{Status: StepOK}
       },
-      Do: func(c *Controller) {
-        c.apply(func() {
-          c.state.Device20Out[OutTool] = 1
-        })
-      },
+      Do: doToolHome,
       Wait: func(c *Controller) StepResult {
         res := waitCond(func(c *Controller) bool {
           // Очікуємо: вихідне (18) = 1, на осі (17) = 0
@@ -210,7 +233,13 @@ func stepToolToHome() Step {
         return res
       },
     }
-  }
+}
+
+func doToolHome(c *Controller) {
+        c.apply(func() {
+          c.state.Device20Out[OutTool] = 1
+        })
+      }
 
 func stepUnloaderToAxis() Step {
 	return Step{
@@ -246,13 +275,15 @@ func stepUnloaderToAxis() Step {
 func stepColletOpen() Step {
 	return Step{
 		Name: "Розтискання цанги", // Without sensor
-		Do: func(c *Controller) {
-			c.apply(func() {
-				c.state.Device20Out[OutCollet] = 1
-			})
-		},
+		Do: doColletOpen,
 		Wait: waitTime(1000 * time.Millisecond),
 	}
+}
+
+func doColletOpen(c *Controller) {
+  c.apply(func() {
+    c.state.Device20Out[OutCollet] = 1
+  })
 }
 
 func stepAirBlastPulse() Step {
@@ -277,13 +308,15 @@ func stepAirBlastPulse() Step {
 func stepEjectorForward() Step {
 	return Step{
 		Name: "Виштовхувач вперед", // Without sensor
-		Do: func(c *Controller) {
-			c.apply(func() {
-				c.state.Device20Out[OutEjector] = 1
-			})
-		},
+		Do: doEjectorForward,
 		Wait: waitTime(500 * time.Millisecond), // Час фіксований, датчиків нема
 	}
+}
+
+func doEjectorForward(c *Controller) {
+  c.apply(func() {
+    c.state.Device20Out[OutEjector] = 1
+  })
 }
 
 func stepUnloaderHome() Step {
@@ -300,11 +333,7 @@ func stepUnloaderHome() Step {
 			}
 			return StepResult{Status: StepOK}
 		},
-		Do: func(c *Controller) {
-			c.apply(func() {
-				c.state.Device20Out[OutUnloader] = 0
-			})
-		},
+		Do: doUnloaderHome,
 		Wait: func(c *Controller) StepResult {
 			res := waitCond(func(c *Controller) bool {
 				// Очікуємо: вихідне (15) = 1, на осі (16) = 0
@@ -316,6 +345,12 @@ func stepUnloaderHome() Step {
 			return res
 		},
 	}
+}
+
+func doUnloaderHome(c *Controller) {
+  c.apply(func() {
+    c.state.Device20Out[OutUnloader] = 0
+  })
 }
 
 func stepLoaderToAxis() Step {
@@ -370,6 +405,7 @@ func stepPusherToAxis(attempts int) Step {
 		},
 		Wait: func(c *Controller) StepResult {
 			for i := 1; i <= attempts; i++ {
+				// Очікуємо спрацювання датчика "на осі"
 				res := waitCond(func(c *Controller) bool {
 					return c.state.Device10In[PinPusherHome] == 0 &&
 						c.state.Device10In[PinPusherAxis] == 1
@@ -377,7 +413,7 @@ func stepPusherToAxis(attempts int) Step {
 
 				if res.Status == StepOK {
 					if i > 1 {
-						logPins(c, fmt.Sprintf("[OK] Заштовхувач дотиснув з спроби %d", i), PinPusherHome, PinPusherAxis)
+						fmt.Printf("[CTRL] Успішно доштовхнуло з спроби %d\n", i)
 					}
 					return res
 				}
@@ -389,10 +425,21 @@ func stepPusherToAxis(attempts int) Step {
 					waitTime(600 * time.Millisecond)(c)
 					c.apply(func() { c.state.Device20Out[OutPusher] = 1 }) // Знову вперед
 				} else {
-					logPins(c, "[ERROR] Всі спроби заштовхування вичерпано", PinPusherHome, PinPusherAxis)
+					// Спроби закінчилися — викликаємо Emergency Stop
+					msg := fmt.Sprintf("Заштовхувач не зміг дослати деталь за %d спроб", attempts)
+          c.apply(func() { //Повертаємо
+            c.state.Device20Out[OutPusher] = 0
+          })
+          waitTime(500 * time.Millisecond)(c)
+          c.apply(func() { //Повертаємо
+            c.state.Device20Out[OutEjector] = 1
+          })
+          waitTime(500 * time.Millisecond)(c)
+					c.emergencyStop(msg) 
+					
 					return StepResult{
 						Status:  StepFail,
-						Message: fmt.Sprintf("Заштовхувач не зміг дослати деталь після %d спроб", attempts),
+						Message: msg,
 					}
 				}
 			}
@@ -427,11 +474,7 @@ func stepPusherHome() Step {
 			}
 			return StepResult{Status: StepOK}
 		},
-		Do: func(c *Controller) {
-			c.apply(func() {
-				c.state.Device20Out[OutPusher] = 0
-			})
-		},
+		Do: doPusherHome,
 		Wait: func(c *Controller) StepResult {
 			res := waitCond(func(c *Controller) bool {
 				// Очікуємо: 23:1, 22:0
@@ -444,6 +487,12 @@ func stepPusherHome() Step {
 		},
 	}
 }
+
+func doPusherHome(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutPusher] = 0
+			})
+		}
 
 func stepLoaderHome() Step {
 	return Step{
@@ -459,11 +508,7 @@ func stepLoaderHome() Step {
 			}
 			return StepResult{Status: StepOK}
 		},
-		Do: func(c *Controller) {
-			c.apply(func() {
-				c.state.Device20Out[OutLoader] = 0
-			})
-		},
+		Do: doLoaderHome,
 		Wait: func(c *Controller) StepResult {
 			res := waitCond(func(c *Controller) bool {
 				// Очікуємо: 20:1, 21:0
@@ -475,6 +520,12 @@ func stepLoaderHome() Step {
 			return res
 		},
 	}
+}
+
+func doLoaderHome(c *Controller) {
+  c.apply(func() {
+    c.state.Device20Out[OutLoader] = 0
+  })
 }
 
 func stepToolToAxis() Step {
