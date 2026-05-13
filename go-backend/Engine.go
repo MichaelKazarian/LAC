@@ -129,33 +129,10 @@ type OperationInfo struct {
 	// Викликається КОЖЕН раз перед запуском операції.
 }
 
-// OperationRegistry — реєстр доступних операцій.
-type OperationRegistry struct {
-	ops []OperationInfo
-}
-
 type AutoModeConfig struct {
   Before []OperationInfo
   Main   []OperationInfo
   After  []OperationInfo
-}
-
-func NewOperationRegistry() *OperationRegistry {
-	return &OperationRegistry{}
-}
-
-// Add реєструє нову операцію.
-func (r *OperationRegistry) Add(id, displayName string, build func() []Step) {
-	r.ops = append(r.ops, OperationInfo{
-		ID:          id,
-		DisplayName: displayName,
-		Build:       build,
-	})
-}
-
-// All повертає всі зареєстровані операції.
-func (r *OperationRegistry) All() []OperationInfo {
-	return r.ops
 }
 
 // StepDoWait — helper для створення простого кроку з Do і Wait.

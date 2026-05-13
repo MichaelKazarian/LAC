@@ -1,10 +1,17 @@
 package main
 
-var catalog = make(map[string]OperationInfo)
+var (
+  catalog     = make(map[string]OperationInfo)
+  orderedKeys []string
+)
 
 func InitCatalog() {
+  catalog = make(map[string]OperationInfo)
+  orderedKeys = []string{}
+
   add := func(id, name string, build func() []Step) {
     catalog[id] = OperationInfo{ID: id, DisplayName: name, Build: build}
+    orderedKeys = append(orderedKeys, id)
   }
   add("op_mag_shutter",     "Завантаження магазину", buildMagShutter)
   add("op_tray_move",       "Крок лотка",            buildTrayMove)
@@ -35,4 +42,12 @@ func GetAutoModeConfig() AutoModeConfig {
       c["op_spindle_off"],
     },
   }
+}
+
+func GetManualConfig() []OperationInfo {
+  res := make([]OperationInfo, 0, len(orderedKeys))
+  for _, id := range orderedKeys {
+    res = append(res, catalog[id])
+  }
+  return res
 }

@@ -28,34 +28,28 @@ type Controller struct {
   power PowerControl
 }
 
-func GetOperationsList(r *OperationRegistry) [][]string {
-	list := make([][]string, 0, len(r.ops))
-	for _, op := range r.ops {
-		list = append(list, []string{op.ID, op.DisplayName})
-	}
-	return list
-}
-
 func NewController(hw HardwareService, state *HardwareState) *Controller {
-	registry := NewOperationRegistry()
-	RegisterOperations(registry)
+    orderedOps := GetManualConfig() // Отримуємо впорядкований список
+    guiList := make([][]string, 0, len(orderedOps))
+    opsMap := make(map[string]OperationInfo)
 
-	// Швидкий доступ по ID
-	opMap := make(map[string]OperationInfo)
-	for _, op := range registry.All() {
-		opMap[op.ID] = op
-	}
+    for _, op := range orderedOps {
+        guiList = append(guiList, []string{op.ID, op.DisplayName})
+        opsMap[op.ID] = op // Для швидкого доступу всередині контролера
+    }
 
-	state.OpsList = GetOperationsList(registry)
-  power := &MockPowerControl{}
+    state.mu.Lock()
+    state.OpsList = guiList
+    state.mu.Unlock()
 
-	return &Controller{
-		hw:      hw,
-		state:   state,
-    power:   power,
-		opsMap:  opMap,
-		opQueue: make(chan string, 10),
-	}
+    power := &MockPowerControl{}
+    return &Controller{
+        hw:      hw,
+        state:   state,
+        power:   power,
+        opsMap:  opsMap,
+        opQueue: make(chan string, 10),
+    }
 }
 
 // Run — основний цикл контролера

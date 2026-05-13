@@ -33,33 +33,6 @@ import (
   "strings"
 )
 
-// RegisterOperations реєструє всі технологічні операції.
-func RegisterOperations(r *OperationRegistry) {
-	r.Add("op_mag_shutter",  "Завантаження магазину",  buildMagShutter)
-	r.Add("op_tray_move",  "Крок лотка",  buildTrayMove)
-	r.Add("op_tray_move_auto", "Переміщення лотка",  buildTrayAutoFill)
-	r.Add("op_loader",  "Цикл",  buildLoader)
-  r.Add("op_spindle_on", "Старт шпінделя", func() []Step { return []Step{stepSpindleMotorOn()}  })
-  r.Add("op_spindle_off", "Стоп шпінделя", func() []Step { return []Step{stepSpindleMotorOff()} })
-	r.Add("operation7",  "Операція 7",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation8",  "Операція 8",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation9",  "Операція 9",  func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("sync_mirror",    "Дзеркалювання",   buildSyncMirror)
-	r.Add("op_safety_stop", "Безпечна зупинка", buildSafetyStop)
-	r.Add("op_move_to_safe_pos", "Розжати", buildMoveToSafePosition)
-	r.Add("operation11", "Операція 11", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation12", "Операція 12", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation13", "Операція 13", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation14", "Операція 14", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation15", "Операція 15", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation16", "Операція 16", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation17", "Операція 17", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation18", "Операція 18", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation19", "Операція 19", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-	r.Add("operation20", "Операція 20", func() []Step { return []Step{StepDoWait("DoSomething", stepItWorks, waitAlwaysOK)} })
-}
-
-
 func buildMoveToSafePosition() []Step {
 	return []Step{
     {
