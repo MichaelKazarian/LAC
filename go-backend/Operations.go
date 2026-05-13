@@ -419,18 +419,13 @@ func stepPusherToAxis(attempts int) Step {
 					}
 					return res
 				}
-
-				// Якщо не дотиснув і є ще спроби
-				if i < attempts {
+        c.apply(func() { c.state.Device20Out[OutEjector] = 0 })
+				if i < attempts { // Якщо не дотиснув і є ще спроби
 					logPins(c, fmt.Sprintf("[RETRY] Спроба %d невдала, пересмикування...", i), PinPusherHome, PinPusherAxis)
-					c.apply(func() {
-            c.state.Device20Out[OutPusher] = 0
-            c.state.Device20Out[OutEjector] = 0
-          })   // Відводимо назад
-					waitTime(600 * time.Millisecond)(c)
+					c.apply(func() {  c.state.Device20Out[OutPusher] = 0 })   // Відводимо назад
+					waitTime(500 * time.Millisecond)(c)
 					c.apply(func() { c.state.Device20Out[OutPusher] = 1 }) // Знову вперед
-				} else {
-					// Спроби закінчилися — викликаємо Emergency Stop
+				} else {					// Спроби закінчилися — викликаємо Emergency Stop
 					msg := fmt.Sprintf("Заштовхувач не зміг дослати деталь за %d спроб", attempts)
           c.apply(func() { c.state.Device20Out[OutPusher] = 0 })
           waitTime(500 * time.Millisecond)(c)
