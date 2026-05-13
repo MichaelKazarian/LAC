@@ -218,7 +218,7 @@ func stepToolToHome() Step {
           c.emergencyStop(msg)
           return StepResult{
             Status:  StepFail,
-            Message: msg
+            Message: msg,
           }
         }
         return StepResult{Status: StepOK}
@@ -401,6 +401,7 @@ func stepPusherToAxis(attempts int) Step {
 		},
 		Do: func(c *Controller) {
 			c.apply(func() {
+        c.state.Device20Out[OutEjector] = 0
 				c.state.Device20Out[OutPusher] = 1
 			})
 		},
@@ -422,19 +423,20 @@ func stepPusherToAxis(attempts int) Step {
 				// Якщо не дотиснув і є ще спроби
 				if i < attempts {
 					logPins(c, fmt.Sprintf("[RETRY] Спроба %d невдала, пересмикування...", i), PinPusherHome, PinPusherAxis)
-					c.apply(func() { c.state.Device20Out[OutPusher] = 0 })   // Відводимо назад
+					c.apply(func() {
+            c.state.Device20Out[OutPusher] = 0
+            c.state.Device20Out[OutEjector] = 0
+          })   // Відводимо назад
 					waitTime(600 * time.Millisecond)(c)
 					c.apply(func() { c.state.Device20Out[OutPusher] = 1 }) // Знову вперед
 				} else {
 					// Спроби закінчилися — викликаємо Emergency Stop
 					msg := fmt.Sprintf("Заштовхувач не зміг дослати деталь за %d спроб", attempts)
-          c.apply(func() { //Повертаємо
-            c.state.Device20Out[OutPusher] = 0
-          })
+          c.apply(func() { c.state.Device20Out[OutPusher] = 0 })
           waitTime(500 * time.Millisecond)(c)
-          c.apply(func() { //Повертаємо
-            c.state.Device20Out[OutEjector] = 1
-          })
+          c.apply(func() { c.state.Device20Out[OutEjector] = 1 })
+          waitTime(500 * time.Millisecond)(c)
+          c.apply(func() { c.state.Device20Out[OutEjector] = 0 })
           waitTime(500 * time.Millisecond)(c)
 					c.emergencyStop(msg) 
 					
