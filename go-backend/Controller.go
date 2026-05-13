@@ -81,35 +81,34 @@ func (c *Controller) logicWorker() {
   fmt.Println("[CTRL] Logic Worker запущено")
   
   for {
-    // Перевіряємо режим та стан паузи
     c.state.mu.RLock()
     mode := c.state.Mode
     paused := c.state.IsPaused
     locked := c.state.IsSafetyLocked
     c.state.mu.RUnlock()
 
-    // Якщо система заблокована (Emergency Stop) — чекаємо розблокування
     if locked {
       time.Sleep(10 * time.Millisecond)
       continue
     }
 
-    // Пріоритетна черга ручних команд (Web/API)
-    // Використовуємо select з default, щоб не блокуватися, якщо черга порожня
     select {
     case opID := <-c.opQueue:
-      fmt.Printf("[CTRL] Виконання ручної команди: %s\n", opID)
-      c.execSteps(opID)
+      fmt.Printf("[CTRL] Ручна команда: %s\n", opID)
+      c.execSteps(opID) // Виконуємо одну конкретну операцію
     default:
       if (mode == ModeAutomatic || mode == ModeSingle) && !paused {
-				c.runAutomaticCycleSteps()
-				if mode == ModeSingle {
-					c.SetMode(ModeManual)
-					fmt.Println("[CTRL] Одиночний цикл завершено")
-				}
-			} else {
-				time.Sleep(50 * time.Millisecond)
-			}
+        // Запускаємо логіку автоматичного циклу
+        c.runAutomaticCycleSteps()
+
+        // Якщо це був одиночний режим — повертаємо в ручний
+        if mode == ModeSingle {
+          c.SetMode(ModeManual)
+          fmt.Println("[CTRL] Одиночний цикл завершено")
+        }
+      } else {
+        time.Sleep(50 * time.Millisecond)
+      }
     }
   }
 }
@@ -134,65 +133,72 @@ func (c *Controller) logicWorker() {
 //   - If Wait() returns StepRepeat: Re-run the SAME step (re-execute Do and Wait).
 //   - If Wait() returns StepFail:   Stop the operation immediately.
 //   - If Wait() returns StepAbort:  Stop the operation immediately.
-func (c *Controller) execSteps(opID string) {
-  op, ok := c.opsMap[opID]
-  if !ok {
-    fmt.Printf("[CTRL] Операція %s не знайдена\n", opID)
-    return
-  }
+func (c *Controller) execSteps(opID string) bool { // Додали повернення bool
+	op, ok := c.opsMap[opID]
+	if !ok {
+		fmt.Printf("[CTRL] Операція %s не знайдена\n", opID)
+		return false
+	}
 
-  c.state.mu.Lock()
-  c.state.ActiveOperation = opID
-  c.state.mu.Unlock()
+	c.state.mu.Lock()
+	c.state.ActiveOperation = opID
+	c.state.mu.Unlock()
 
-  defer func() {
-    c.state.mu.Lock()
-    c.state.ActiveOperation = ""
-    c.state.mu.Unlock()
-  }()
+	defer func() {
+		c.state.mu.Lock()
+		c.state.ActiveOperation = ""
+		c.state.mu.Unlock()
+	}()
 
-  steps := op.Build()
-  for i := 0; i < len(steps); {
-    step := steps[i]
-    fmt.Printf("[STEP] %d/%d: %s\n", i+1, len(steps), step.Name)
+	steps := op.Build()
+	for i := 0; i < len(steps); {
+		step := steps[i]
+		fmt.Printf("[STEP] %d/%d: %s\n", i+1, len(steps), step.Name)
 
-		if c.isEmergency() { break }
+		if c.isEmergency() { return false } // Екстрена зупинка — це невдача
+
 		if step.Before != nil {
 			beforeRes := step.Before(c)
 			if beforeRes.Status != StepOK {
 				fmt.Printf("[CTRL] Step %s: Before-check failed: %s\n", step.Name, beforeRes.Message)
-				return
+				return false
 			}
 		}
-    if c.isEmergency() { break }
-    if step.Do != nil { step.Do(c) }
-    if c.isEmergency() { break }
 
-    var result StepResult = StepResult{Status: StepOK}
-    if step.Wait != nil { result = step.Wait(c) }
+		if c.isEmergency() { return false }
+		if step.Do != nil { step.Do(c) }
+		if c.isEmergency() { return false }
 
-    // Cleanup — аналог defer, виконується завжди крім EmergencyStop
-    if !c.isEmergency() && step.Cleanup != nil {
-      step.Cleanup(c)
-    }
+		var result StepResult = StepResult{Status: StepOK}
+		if step.Wait != nil {
+			result = step.Wait(c)
+		}
 
-    switch result.Status {
-    case StepOK:
-      i++ // Все добре, йдемо до наступного кроку
-    case StepRepeat:
-      fmt.Printf("[CTRL] Step %s repeating: %s\n", step.Name, result.Message)
-      continue // Цикл повториться для ТОГО Ж кроку: виконає Do() та Wait().
-    case StepFail:
-      fmt.Printf("[CTRL] Step %s failed: %s\n", step.Name, result.Message)
-      return // Використовуємо return замість break для гарантованої зупинки
-    case StepAbort:
-      fmt.Printf("[CTRL] Step %s aborted: %s\n", step.Name, result.Message)
-      return
-    }
+		// Cleanup виконується завжди, якщо немає Emergency
+		if !c.isEmergency() && step.Cleanup != nil {
+			step.Cleanup(c)
+		}
 
-    if c.isEmergency() { break }
-  }
+		switch result.Status {
+		case StepOK:
+			i++
+		case StepRepeat:
+			fmt.Printf("[CTRL] Step %s repeating: %s\n", step.Name, result.Message)
+			// Не інкрементуємо i, цикл повторить крок
+		case StepFail:
+			fmt.Printf("[CTRL] Step %s failed: %s\n", step.Name, result.Message)
+			return false
+		case StepAbort:
+			fmt.Printf("[CTRL] Step %s aborted: %s\n", step.Name, result.Message)
+			return false
+		}
+
+		if c.isEmergency() { return false }
+	}
+
+	return true // Усі кроки виконані успішно
 }
+
 
 func (c *Controller) isEmergency() bool {
     c.state.mu.RLock()
@@ -200,34 +206,53 @@ func (c *Controller) isEmergency() bool {
     return c.state.IsSafetyLocked
 }
 
-// --- Автоматичний цикл через Steps ---
 func (c *Controller) runAutomaticCycleSteps() {
-	c.state.mu.Lock()
-	if c.needsCounterReset {
-		c.state.Counter = 0
-		c.needsCounterReset = false
-	}
-	c.state.mu.Unlock()
+	config := GetAutoModeConfig()
 
-	for _, opEntry := range c.state.OpsList {
-		c.waitIfPaused()
+	// Допоміжна функція для проходу по фазах
+	runPhase := func(phase []OperationInfo) bool {
+		for _, op := range phase {
+			// Перевіряємо, чи не натиснули паузу/стоп перед початком операції
+			if !c.canContinue() { return false }
 
-		c.state.mu.RLock()
-		mode := c.state.Mode
-		locked := c.state.IsSafetyLocked
-		c.state.mu.RUnlock()
-
-		if mode == ModeManual || locked {
-			fmt.Printf("[CTRL] Цикл перервано перед кроком %s\n", opEntry[0])
-			return
+			// Виконуємо операцію і перевіряємо результат
+			if ok := c.execSteps(op.ID); !ok {
+				return false // Зупиняємо все, якщо операція зафейлилась
+			}
 		}
-
-		c.execSteps(opEntry[0])
+		return true
 	}
 
-	c.state.mu.Lock()
-	c.state.Counter++
-	c.state.mu.Unlock()
+	// 1. ПІДГОТОВКА (Before)
+	if !runPhase(config.Before) { return }
+
+	// 2. ОСНОВНИЙ ЦИКЛ (Main)
+	for {
+		if !runPhase(config.Main) { break }
+
+		c.state.mu.Lock()
+		c.state.Counter++
+		isSingle := (c.state.Mode == ModeSingle)
+		c.state.mu.Unlock()
+
+		if isSingle { break }
+		if !c.canContinue() { break }
+	}
+
+	// 3. ЗАВЕРШЕННЯ (After)
+	// Виконуємо, якщо система не в критичному блокуванні
+	runPhase(config.After)
+}
+
+func (c *Controller) canContinue() bool {
+  c.state.mu.RLock()
+  defer c.state.mu.RUnlock()
+
+  // Перевіряємо, чи ми все ще в автоматичному/одиночному режимі
+  // та чи немає паузи/блокування
+  return (c.state.Mode == ModeAutomatic || c.state.Mode == ModeSingle) &&
+    !c.state.IsPaused &&
+    !c.state.IsSafetyLocked
 }
 
 // syncHardware monitors changes in Device20Out and commits them to the physical hardware.
