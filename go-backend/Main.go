@@ -9,9 +9,9 @@ import (
 type ControlMode int
 
 const (
-    ModeManual    ControlMode = iota // 0: Ручний режим
-    ModeSingle                       // 1: Одиночний цикл
-    ModeAutomatic                    // 2: Автоматичний режим
+  ModeManual    ControlMode = iota // 0: Ручний режим
+  ModeSingle                       // 1: Одиночний цикл
+  ModeAutomatic                    // 2: Автоматичний режим
 )
 
 // HardwareState - спільне сховище даних
@@ -46,26 +46,24 @@ func runWebServer(controller *Controller) {
 }
 
 func main() {
-    // 1. Спільний стан
-    state := &HardwareState{
-        Mode:ModeManual,
-    }
+  InitCatalog()
+  state := &HardwareState{ // Спільний стан
+    Mode:ModeManual,
+  }
 
-    // 2. Створюємо низькорівневий сервіс (але не запускаємо опитування)
-    hwService := NewModbusService("/dev/ttyS0", 38400)
-    // defer тут не спрацює для hwService, якщо ми передаємо його в горутину, 
-    // тому краще закривати його всередині runModbusPoll або через сигнал завершення системи.
+  // Створюємо низькорівневий сервіс (але не запускаємо опитування)
+  hwService := NewModbusService("/dev/ttyS0", 38400)
+  // defer тут не спрацює для hwService, якщо ми передаємо його в горутину,
+  // тому краще закривати його всередині runModbusPoll або через сигнал завершення системи.
 
-    // 3. Створюємо контролер (тепер він доступний як для Modbus, так і для Web)
-    controller := NewController(hwService, state)
+  // Створюємо контролер (тепер він доступний як для Modbus, так і для Web)
+  controller := NewController(hwService, state)
 
-    // 4. Запускаємо опитування Modbus у фоні
-    go func() {
-      defer hwService.Close()
-      go controller.logicWorker()
-      controller.Run()
-    }()
+  go func() { // у фоні опитуємо Modbus
+    defer hwService.Close()
+    go controller.logicWorker()
+    controller.Run()
+  }()
 
-    // 5. Створюємо Веб-сервер, передаючи йому і стан, і контролер
-    runWebServer(controller)
+  runWebServer(controller) // Передаємо Веб-серверу стан і контролер
 }

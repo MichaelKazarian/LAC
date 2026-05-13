@@ -134,6 +134,12 @@ type OperationRegistry struct {
 	ops []OperationInfo
 }
 
+type AutoModeConfig struct {
+  Before []OperationInfo
+  Main   []OperationInfo
+  After  []OperationInfo
+}
+
 func NewOperationRegistry() *OperationRegistry {
 	return &OperationRegistry{}
 }
