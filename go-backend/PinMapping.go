@@ -59,10 +59,10 @@ const (
   OutTestPin14      = 14
   OutTestPin15      = 15
   OutTestPin16      = 16
-  OutTestPin17      = 17
-  OutTestPin18      = 18
-  OutTestPin19      = 19
-  OutTestPin20      = 20
+  OutVFDEnable      = 17
+  OutVFDSpeed1      = 18
+  OutVFDSpeed2      = 19
+  OutVFDReverseBit  = 20
   OutUnloader      = 21
   OutEjector      = 22
   OutTool      = 23
@@ -127,10 +127,10 @@ var PinNamesOut = map[int]string {
     OutTestPin14:     "Індикація стопу",  // not depends2
     OutTestPin15:     "Зелений факел",  // not depends2
     OutTestPin16:     "Червоний факел",  // not depends2
-    OutTestPin17:     "вкл.частотним перетвоювачем", //depends OutDrivePower
-    OutTestPin18:     "ПЧВ швидкість 1", //depends OutDrivePower
-    OutTestPin19:     "ПЧВ швидкість 2", //depends OutDrivePower
-    OutTestPin20:     "ПЧВ реверс", //depends OutDrivePower and pin18/19
+    OutVFDEnable:     "Вкл.ПЧВ", //depends OutDrivePower
+    OutVFDSpeed1:     "ПЧВ швидкість 1", //depends OutDrivePower
+    OutVFDSpeed2:     "ПЧВ швидкість 2", //depends OutDrivePower
+    OutVFDReverseBit:     "ПЧВ реверс", //depends OutDrivePower and pin18/19
     OutUnloader:     "Вивантажувач", // ловить деталь,not depends
     OutEjector:     "Виштовхувач (Ejector)", // виштовхує деталь, not depends
     OutTool:     "Інструмент", // not depends, switch In 17-18

@@ -24,6 +24,9 @@ func InitCatalog() {
   add("sync_mirror",         "Дзеркалювання",   buildSyncMirror)
   add("op_safety_stop",      "Безпечна зупинка", buildSafetyStop)
   add("op_move_to_safe_pos", "Розжати",          buildMoveToSafePosition)
+  add("op_vfd_speed_1",     "ПЧВ: Швидкість 1",       buildVFDSpeed1)
+  add("op_vfd_speed_2",     "ПЧВ: Швидкість 2",       buildVFDSpeed2)
+  add("op_vfd_reverse",     "ПЧВ: Реверс",   buildVFDReverse)
 }
 
 func GetAutoModeConfig() AutoModeConfig {

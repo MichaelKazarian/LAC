@@ -1,4 +1,3 @@
-
 // Цей файл містить реєстрацію та реалізацію технологічних операцій.
 //
 // # Структура файлу
@@ -75,15 +74,6 @@ func buildMagShutter() []Step {
 
 func doMagShutterToggle(c *Controller) {
   c.apply(func() {
-    // Вмикаємо двіжки
-    // c.state.Device20Out[OutTestPin17] = 1
-    // c.state.Device20Out[OutTestPin18] = 1
-    // c.state.Device20Out[OutTestPin20] = 1
-
-    // І вимикаємо
-    // c.state.Device20Out[OutTestPin17] = 0
-    // c.state.Device20Out[OutTestPin18] = 0
-    // c.state.Device20Out[OutTestPin20] = 0
     fmt.Printf("30 - %b\n", c.state.Device10In[PinMagShutterHome])
     isHome := c.state.Device10In[PinMagShutterHome] == 1   
     fmt.Printf("[MAG] Shutter Home sensor: %v\n", isHome)
@@ -619,6 +609,124 @@ func doSpindleMotorOff(c *Controller) {
     c.state.Device20Out[OutDrivePower] = 0
     c.state.Device20Out[OutSpindleMotor] = 0
   })
+}
+
+// Крок активації ПЧВ
+func stepVFDEnable() Step {
+	return StepDoWait(
+		"Активація ПЧВ (Enable)",
+		func(c *Controller) {
+			c.apply(func() { c.state.Device20Out[OutVFDEnable] = 1 })
+		},
+		func(c *Controller) StepResult {
+			time.Sleep(200 * time.Millisecond)
+			return StepResult{Status: StepOK}
+		},
+	)
+}
+
+// Крок вибору швидкості 1
+func stepVFDSpeed1() Step {
+	return StepDoWait(
+		"ПЧВ: Швидкість 1",
+		func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutVFDSpeed1] = 1
+				c.state.Device20Out[OutVFDSpeed2] = 0
+			})
+		},
+		waitAlwaysOK,
+	)
+}
+
+// Крок вибору швидкості 2
+func stepVFDSpeed2() Step {
+	return StepDoWait(
+		"ПЧВ: Швидкість 2",
+		func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutVFDSpeed1] = 0
+				c.state.Device20Out[OutVFDSpeed2] = 1
+			})
+		},
+		waitAlwaysOK,
+	)
+}
+
+func buildVFDSpeed1() []Step {
+	return []Step{
+		stepDrivePowerOn(), // 1. Силове живлення
+		stepVFDEnable(),    // 2. Команда Enable
+    stepVFDReverseOff(),  // 3. Перевірка, що ми їдемо вперед
+		stepVFDSpeed1(),      // 4. Швидкість 1
+	}
+}
+
+func buildVFDSpeed2() []Step {
+	return []Step{
+		stepDrivePowerOn(), // 1. Силове живлення
+		stepVFDEnable(),    // 2. Команда Enable
+		stepVFDReverseOff(),  // 3. Перевірка, що ми їдемо вперед
+		stepVFDSpeed2(),      // 4. Швидкість 2
+	}
+}
+
+func buildVFDReverse() []Step {
+	return []Step{
+		stepDrivePowerOn(),
+    stepVFDSpeedsOff(),
+		stepVFDEnable(),
+		stepVFDSpeed1Reverse(),
+	}
+}
+
+// Крок: Гарантоване вимкнення всіх пінів швидкості
+func stepVFDSpeedsOff() Step {
+	return StepDoWait(
+		"Скидання швидкостей ПЧВ",
+		func(c *Controller) {
+			c.apply(func() { 
+				c.state.Device20Out[OutVFDSpeed1] = 0 
+				c.state.Device20Out[OutVFDSpeed2] = 0 
+			})
+		},
+		func(c *Controller) StepResult {
+			time.Sleep(100 * time.Millisecond)
+			return StepResult{Status: StepOK}
+		},
+	)
+}
+
+// Крок: Швидкість 1 + Реверс
+func stepVFDSpeed1Reverse() Step {
+	return StepDoWait(
+		"ПЧВ: Швидкість 1 (РЕВЕРС)",
+		func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutVFDSpeed1] = 1
+				c.state.Device20Out[OutVFDSpeed2] = 0
+				c.state.Device20Out[OutVFDReverseBit] = 1 // Активація реверсу
+			})
+		},
+		waitAlwaysOK,
+	)
+}
+
+// Крок: Вимкнення реверсу (Forward mode)
+func stepVFDReverseOff() Step {
+	return StepDoWait(
+		"Скидання реверсу",
+		func(c *Controller) {
+			c.apply(func() { 
+				c.state.Device20Out[OutVFDReverseBit] = 0 
+			})
+		},
+		func(c *Controller) StepResult {
+			// Коротка пауза (50-100мс) достатня для більшості ПЧВ
+			time.Sleep(100 * time.Millisecond)
+			return StepResult{Status: StepOK}
+		},
+	)
 }
 
 // =============================================================================

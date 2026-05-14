@@ -578,6 +578,7 @@ func (c *Controller) stopMotors(out *[32]uint16) {
   out[OutDrivePower] = 0
 	out[OutSpindleMotor] = 0 // Шпіндель
 	out[OutTestPin31] = 0    // Тестовий пін або інший двигун
+  out[OutVFDEnable] = 0
 	// Додай сюди інші двигуни/насоси, які мають стати в 0 при аварії
 	// наприклад: out[OutCoolantPump] = 0
 }
