@@ -27,6 +27,7 @@ func InitCatalog() {
   add("op_vfd_speed_1",     "ПЧВ: Швидкість 1",       buildVFDSpeed1)
   add("op_vfd_speed_2",     "ПЧВ: Швидкість 2",       buildVFDSpeed2)
   add("op_vfd_reverse",     "ПЧВ: Реверс",   buildVFDReverse)
+  add("op_vfd_stop",        "ПЧВ: СТОП",   buildVFDStop)
 }
 
 func GetAutoModeConfig() AutoModeConfig {

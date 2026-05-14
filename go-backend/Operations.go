@@ -722,11 +722,36 @@ func stepVFDReverseOff() Step {
 			})
 		},
 		func(c *Controller) StepResult {
-			// Коротка пауза (50-100мс) достатня для більшості ПЧВ
 			time.Sleep(100 * time.Millisecond)
 			return StepResult{Status: StepOK}
 		},
 	)
+}
+
+// buildVFDStop — тепер повертає []Step, як і всі інші build-функції
+func buildVFDStop() []Step {
+    return []Step{
+        stepVFDStop(),
+    }
+}
+
+// Виносимо логіку в окремий step, щоб вона була атомарною
+func stepVFDStop() Step {
+  return StepDoWait(
+    "Зупинка ПЧВ (Вимкнення Enable)",
+    func(c *Controller) {
+      c.apply(func() {
+        c.state.Device20Out[OutVFDSpeed1] = 0
+        c.state.Device20Out[OutVFDSpeed2] = 0
+        c.state.Device20Out[OutVFDReverseBit] = 0
+        c.state.Device20Out[OutVFDEnable] = 0
+      })
+    },
+    func(c *Controller) StepResult {
+      time.Sleep(100 * time.Millisecond)
+      return StepResult{Status: StepOK}
+    },
+  )
 }
 
 // =============================================================================
