@@ -120,7 +120,7 @@ var PinNamesIn = map[int]string{
 
 // PinNamesOut описує назви вихідних сигналів (Device 20)
 var PinNamesOut = map[int]string {
-    OutDrivePower:  "Пускач живлення приводів", // depends OutDrivePower
+    OutDrivePower:  "Пускач живлення приводів",
     OutSpindleMotor:  "Включення мотора шпінделя", // depends OutDrivePower
     OutTestPin12:     "Вкл. мотора поливної змазки", //lubricant, depends OutDrivePower
     OutTestPin13:     "Індикація старту", // not depends2

@@ -530,6 +530,61 @@ func stepToolToAxis() Step {
 	}
 }
 ///
+func buildDrivePowerOn() []Step {
+  return []Step{
+    stepDrivePowerOn(),
+  }
+}
+
+func stepDrivePowerOn() Step {
+  return StepDoWait(
+    "Увімкнення живлення приводів",
+    func(c *Controller) {
+      c.apply(func() {
+        c.state.Device20Out[OutDrivePower] = 1
+      })
+    },
+    func(c *Controller) StepResult {
+      time.Sleep(200 * time.Millisecond)
+
+      // Якщо буде фідбек з контактора:
+      // if c.state.Device20In[InDrivePowerOK] == 0 {
+      //     return StepResult{Status: StepFail, Message: "Немає підтвердження живлення приводів"}
+      // }
+
+      return StepResult{Status: StepOK}
+    },
+  )
+}
+
+func buildDrivePowerOff() []Step {
+	return []Step{
+		stepDrivePowerOff(),
+	}
+}
+
+// stepDrivePowerOff — крок, який можна перевикористовувати
+func stepDrivePowerOff() Step {
+	return StepDoWait(
+		"Вимкнення живлення приводів",
+		func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutDrivePower] = 0
+			})
+		},
+		func(c *Controller) StepResult {
+			time.Sleep(200 * time.Millisecond)
+			return StepResult{Status: StepOK}
+		},
+	)
+}
+
+func buildSpindleOn() []Step {
+  return []Step{
+    stepDrivePowerOn(),
+    stepSpindleMotorOn(),
+  }
+}
 
 func stepSpindleMotorOn() Step {
 	return Step{
@@ -537,6 +592,12 @@ func stepSpindleMotorOn() Step {
 		Do:   doSpindleMotorOn,
     Wait: waitTime(200 * time.Millisecond),
 	}
+}
+
+func buildSpindleOff() []Step {
+  return []Step{
+    stepSpindleMotorOff(),
+  }
 }
 
 func stepSpindleMotorOff() Step {
@@ -547,26 +608,8 @@ func stepSpindleMotorOff() Step {
 	}
 }
 
-//  Mirror
-
-func buildSyncMirror() []Step {
-	return []Step{
-		stepSyncMirror(),
-	}
-}
-
-func stepSyncMirror() Step {
-	return Step{
-		Name:    "Синхронізація",
-		Do:      doSyncMirror,
-		Wait:    waitSyncMirror,
-		Cleanup: cleanupSyncMirror,
-	}
-}
-
 func doSpindleMotorOn(c *Controller) {
 	c.apply(func() {
-    c.state.Device20Out[OutDrivePower] = 1
     c.state.Device20Out[OutSpindleMotor] = 1
   })
 }
@@ -576,20 +619,6 @@ func doSpindleMotorOff(c *Controller) {
     c.state.Device20Out[OutDrivePower] = 0
     c.state.Device20Out[OutSpindleMotor] = 0
   })
-}
-
-func doSyncMirror(c *Controller) {
-	c.apply(func() {
-		for i := 0; i < OutTestPin31; i++ {
-			c.state.Device20Out[i] = c.state.Device10In[i]
-		}
-	})
-}
-
-func cleanupSyncMirror(c *Controller) {
-	c.apply(func() {
-		for i := 0; i < OutTestPin31; i++ { c.state.Device20Out[i] = 0 }
-	})
 }
 
 // =============================================================================
@@ -653,6 +682,36 @@ func waitMotorOn(c *Controller) StepResult {
       }
     }
   }
+}
+
+//  Mirror
+func buildSyncMirror() []Step {
+	return []Step{
+		stepSyncMirror(),
+	}
+}
+
+func stepSyncMirror() Step {
+	return Step{
+		Name:    "Синхронізація",
+		Do:      doSyncMirror,
+		Wait:    waitSyncMirror,
+		Cleanup: cleanupSyncMirror,
+	}
+}
+
+func doSyncMirror(c *Controller) {
+	c.apply(func() {
+		for i := 0; i < OutTestPin31; i++ {
+			c.state.Device20Out[i] = c.state.Device10In[i]
+		}
+	})
+}
+
+func cleanupSyncMirror(c *Controller) {
+	c.apply(func() {
+		for i := 0; i < OutTestPin31; i++ { c.state.Device20Out[i] = 0 }
+	})
 }
 
 // waitSyncMirror — протягом 5 секунд дзеркалює входи.
