@@ -206,7 +206,7 @@ func GetAllowedManualOpsFromView(v SystemView) []string {
     "op_tray_move_auto", "op_loader", "op_drive_power_on",
     "op_spindle_on", "op_spindle_off", "op_drive_power_off",
     "op_vfd_speed_1", "op_vfd_speed_2", "op_vfd_reverse",
-    "op_vfd_stop", "op_move_to_safe_pos")
+    "op_vfd_to_0", "op_vfd_stop", "op_move_to_safe_pos")
 
 	// Тут вже НЕ можна перевіряти щось типу mutex / online flags напряму —
 	// тільки те, що є у snapshot.
