@@ -154,7 +154,10 @@ func doTrayStepToggle(c *Controller) {
 }
 
 func buildLoader() []Step {
-	return []Step{
+	return []Step {
+    stepCheckStartZeroDegree(),
+    //stepCheckPneumo,
+    //stepCheckCylinddresHome,
     stepToolToHome(),
     stepUnloaderToAxis(),
     stepColletOpen(),
@@ -167,10 +170,80 @@ func buildLoader() []Step {
     stepPusherHome(),
     stepLoaderHome(),
     stepToolToAxis(),
+    stepVFDEnable(),
+    stepVFDSpeed1(),
+    stepCheckStopZeroDegree(),
 	}
 }
 
 ///
+func stepCheckStartZeroDegree() Step {
+	return StepDoWait(
+		"Перевірка стартового положення розпредвалу (0°)",
+		func(c *Controller) {},
+		func(c *Controller) StepResult {
+			currentPos := int(c.state.EncoderValue)
+
+			if !isEncoderAtZero(currentPos) {
+				msg := fmt.Sprintf("Распредвал у неправильному положенні! Поточне: %d, очікувалось: [ 0, 1, 2, 719]", currentPos)
+				c.emergencyStop(msg)
+				return StepResult{
+					Status:  StepFail,
+					Message: msg,
+				}
+			}
+			fmt.Printf("[LOADER] Распредвал в правильному положенні: %d\n", currentPos)
+			return StepResult{Status: StepOK}
+		},
+	)
+}
+
+func stepCheckStopZeroDegree() Step {
+	var startTime time.Time
+	timeout := 30 * time.Second
+
+	return StepDoWait(
+		"Очікування завершення оберту валу (720°)",
+		func(c *Controller) {
+			startTime = time.Now()
+		},
+		func(c *Controller) StepResult {
+			currentPos := int(c.state.EncoderValue)
+
+			// 1. Перевірка на таймаут
+			if time.Since(startTime) > timeout {
+				msg := fmt.Sprintf("Аварія: Перевищено таймаут оберту розпредвалу (%v). Поточна позиція: %d", timeout, currentPos)
+				c.emergencyStop(msg)
+				return StepResult{Status: StepFail, Message: msg}
+			}
+
+			// 2. Умова успішного завершення: вал повернувся в нульову зону [719, 0, 1, 2]
+			if isEncoderAtZero(currentPos) {
+				fmt.Printf("[LOADER] Цикл завершено успішно. Вал у точці: %d за %v\n", currentPos, time.Since(startTime))
+				c.apply(func() {
+					// c.state.Device20Out[OutVFDEnable] = 0 // Гасимо частотник, щоб мінімізувати вибіг по інерції
+          c.state.Device20Out[OutVFDSpeed1] = 0
+				})
+
+				return StepResult{Status: StepOK}
+			}
+
+			// Вал ще крутиться і час не вийшов — повторюємо крок на наступному такті
+			return StepResult{Status: StepRepeat}
+		},
+	)
+}
+
+// isEncoderAtZero перевіряє, чи знаходиться розпредвал у "нульовій" зоні (інерція: 719, 0, 1, 2)
+func isEncoderAtZero(val int) bool {
+	switch val {
+	case 0, 1, 2, 719:
+		return true
+	default:
+		return false
+	}
+}
+
 func stepToolToHome() Step {
   return Step {
     Name: "Відвід інструмента у вихідне (переміщення назад)",
