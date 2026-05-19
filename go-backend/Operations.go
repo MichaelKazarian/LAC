@@ -32,6 +32,10 @@ import (
   "strings"
 )
 
+var (
+  stepStartTime time.Time
+)
+
 func buildMoveToSafePosition() []Step {
 	return []Step{
     {
@@ -178,22 +182,48 @@ func buildLoader() []Step {
 
 ///
 func stepCheckStartPosition() Step {
+  stepStartTime = time.Now()
 	return StepDoWait(
-		"Перевірка стартового положення розпредвалу (0°)",
+		"Перевірка та безпечне вирівнювання розпредвалу",
 		func(c *Controller) {},
 		func(c *Controller) StepResult {
-			currentPos := int(c.state.EncoderValue/2)
+			currentPos := int(c.state.EncoderValue / 2)
 
-			if !isEncoderAtStartPosition(currentPos) {
-				msg := fmt.Sprintf("Распредвал у неправильному положенні! Поточне: %d, очікувалось: 100", currentPos)
-				c.emergencyStop(msg)
-				return StepResult{
-					Status:  StepFail,
-					Message: msg,
-				}
+			// 1. УСПІХ: Вал на місці — глушимо мотори і йдемо далі
+			if isEncoderAtStartPosition(currentPos) {
+				c.apply(func() {
+					c.state.Device20Out[OutVFDSpeed1] = 0
+					c.state.Device20Out[OutVFDReverseBit] = 0
+				})
+				return StepResult{Status: StepOK}
 			}
-			fmt.Printf("[LOADER] Распредвал в правильному положенні: %d\n", currentPos)
-			return StepResult{Status: StepOK}
+
+			// 2. АВАРІЯ: Недоліт
+			if currentPos < 40 {
+				c.emergencyStop("Вал занадто далеко від дому")
+				return StepResult{Status: StepFail}
+			}
+
+			// 3. ПЕРЕЛІТ: Потребує реверсу
+			if currentPos > 106 {
+				// Якщо з моменту старту кроку ще НЕ минуло 3 секунди —
+				// гасимо швидкість вперед (якщо вона була) і просто чекаємо зупинки валу
+				if !stepStartTime.IsZero() && time.Since(stepStartTime) < 1 * time.Second {
+          fmt.Println("Поточний час старту кроку:", stepStartTime)
+					c.apply(func() { c.state.Device20Out[OutVFDSpeed1] = 0 })
+          time.Sleep(50 * time.Millisecond)
+					return StepResult{Status: StepRepeat}
+				}
+
+				// 4. Пауза в 3 секунди минула! Тепер безпечно вмикаємо реверс назад
+				c.apply(func() {
+          fmt.Println("BACK")
+					c.state.Device20Out[OutVFDEnable] = 1
+					c.state.Device20Out[OutVFDReverseBit] = 1
+					c.state.Device20Out[OutVFDSpeed1] = 1
+				})
+			}
+			return StepResult{Status: StepRepeat}
 		},
 	)
 }
@@ -257,7 +287,7 @@ func stepVFDToStartPosition() Step {
 }
 
 func isEncoderAtStartPosition(val int) bool {
-  return val > 80 && val < 106
+  return val > 80 && val <= 106
 }
 
 func stepToolToHome() Step {
