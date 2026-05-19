@@ -155,7 +155,7 @@ func doTrayStepToggle(c *Controller) {
 
 func buildLoader() []Step {
 	return []Step {
-    stepCheckStartZeroDegree(),
+    stepCheckStartPosition(),
     //stepCheckPneumo,
     //stepCheckCylinddresHome,
     stepToolToHome(),
@@ -177,15 +177,15 @@ func buildLoader() []Step {
 }
 
 ///
-func stepCheckStartZeroDegree() Step {
+func stepCheckStartPosition() Step {
 	return StepDoWait(
 		"Перевірка стартового положення розпредвалу (0°)",
 		func(c *Controller) {},
 		func(c *Controller) StepResult {
-			currentPos := int(c.state.EncoderValue)
+			currentPos := int(c.state.EncoderValue/2)
 
-			if !isEncoderAtZero(currentPos) {
-				msg := fmt.Sprintf("Распредвал у неправильному положенні! Поточне: %d, очікувалось: [ 0, 1, 2, 719]", currentPos)
+			if !isEncoderAtStartPosition(currentPos) {
+				msg := fmt.Sprintf("Распредвал у неправильному положенні! Поточне: %d, очікувалось: 100", currentPos)
 				c.emergencyStop(msg)
 				return StepResult{
 					Status:  StepFail,
@@ -199,36 +199,22 @@ func stepCheckStartZeroDegree() Step {
 }
 
 func stepCheckStopZeroDegree() Step {
-	var startTime time.Time
-	timeout := 30 * time.Second
-
 	return StepDoWait(
-		"Очікування завершення оберту валу (720°)",
-		func(c *Controller) {
-			startTime = time.Now()
-		},
+		"Очікування завершення оберту валу",
+		func(c *Controller) {},
 		func(c *Controller) StepResult {
-			currentPos := int(c.state.EncoderValue)
+			currentPos := int(c.state.EncoderValue / 2)
 
-			// 1. Перевірка на таймаут
-			if time.Since(startTime) > timeout {
-				msg := fmt.Sprintf("Аварія: Перевищено таймаут оберту розпредвалу (%v). Поточна позиція: %d", timeout, currentPos)
-				c.emergencyStop(msg)
-				return StepResult{Status: StepFail, Message: msg}
-			}
-
-			// 2. Умова успішного завершення: вал повернувся в нульову зону [719, 0, 1, 2]
-			if isEncoderAtZero(currentPos) {
-				fmt.Printf("[LOADER] Цикл завершено успішно. Вал у точці: %d за %v\n", currentPos, time.Since(startTime))
+			if isEncoderAtStartPosition(currentPos) {
+				fmt.Printf("[LOADER] Цикл завершено успішно. Вал у точці: %d\n", currentPos)
 				c.apply(func() {
-					// c.state.Device20Out[OutVFDEnable] = 0 // Гасимо частотник, щоб мінімізувати вибіг по інерції
-          c.state.Device20Out[OutVFDSpeed1] = 0
+          c.state.Device20Out[OutVFDEnable] = 0
+					c.state.Device20Out[OutVFDSpeed1] = 0
 				})
-
 				return StepResult{Status: StepOK}
 			}
 
-			// Вал ще крутиться і час не вийшов — повторюємо крок на наступному такті
+			// Вал ще крутиться — чекаемнаступний такт опроса
 			return StepResult{Status: StepRepeat}
 		},
 	)
@@ -236,60 +222,42 @@ func stepCheckStopZeroDegree() Step {
 
 func buildVFDToZero() []Step {
 	return []Step{
-		stepVFDToZero(),
+    stepDrivePowerOn(),
+    stepVFDEnable(),
+		stepVFDToStartPosition(),
 	}
 }
 
-func stepVFDToZero() Step {
-	var startTime time.Time
-	timeout := 15 * time.Second
-
+func stepVFDToStartPosition() Step {
 	return StepDoWait(
 		"Очікування та зупинка розпредвалу з випередженням",
-		func(c *Controller) {
-			startTime = time.Now()
-		},
+		func(c *Controller) {},
 		func(c *Controller) StepResult {
-			currentPos := int(c.state.EncoderValue)
+			currentPos := int(c.state.EncoderValue / 2)
 
-			// 1. Контроль таймауту
-			if time.Since(startTime) > timeout {
-				msg := fmt.Sprintf("Аварія: Таймаут оберту валу (%v). Позиція: %d", timeout, currentPos)
-				c.emergencyStop(msg)
-				return StepResult{Status: StepFail, Message: msg}
+			if isEncoderAtStartPosition(currentPos) {
+				return StepResult{Status: StepOK}
 			}
 
-			// 2. Ігноруємо перші 300 мс після старту, щоб вал вийшов з нуля і не вимкнувся відразу
-			if time.Since(startTime) < 300*time.Millisecond {
-				return StepResult{Status: StepRepeat}
-			}
-
-			// 3. Логіка випередження: якщо підлітаємо до нуля (від 710 до 719)
-			// або якщо вже проскочили в зону точного нуля [0, 1, 2]
-			if (currentPos >= 710 && currentPos < 720) || isEncoderAtZero(currentPos) {
-				fmt.Printf("[LOADER] Спрацювало випередження! Вимикаємо ПЧВ на позиції: %d, час кола: %v\n", currentPos, time.Since(startTime))
-
+			// ВИПЕРЕДЖЕННЯ: ловимо підліт до нуля, щоб вчасно зняти напругу
+			if currentPos >= 90 && currentPos <= 100 {
 				c.apply(func() {
-					// c.state.Device20Out[OutVFDEnable] = 0
-					c.state.Device20Out[OutVFDSpeed1] = 0
+					c.state.Device20Out[OutVFDEnable] = 0
+          c.state.Device20Out[OutVFDSpeed1] = 0
 				})
 				return StepResult{Status: StepOK}
 			}
 
-			// Поки вал у проміжних значеннях (наприклад, 100...600) — просто крутимо далі
+			c.apply(func() {
+				c.state.Device20Out[OutVFDSpeed1] = 1
+			})
 			return StepResult{Status: StepRepeat}
 		},
 	)
 }
 
-// isEncoderAtZero перевіряє, чи знаходиться розпредвал у "нульовій" зоні (інерція: 719, 0, 1, 2)
-func isEncoderAtZero(val int) bool {
-	switch val {
-	case 0, 1, 2, 719:
-		return true
-	default:
-		return false
-	}
+func isEncoderAtStartPosition(val int) bool {
+  return val > 98 && val < 106
 }
 
 func stepToolToHome() Step {
