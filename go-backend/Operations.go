@@ -208,7 +208,7 @@ func stepCheckStopZeroDegree() Step {
 			if isEncoderAtStartPosition(currentPos) {
 				fmt.Printf("[LOADER] Цикл завершено успішно. Вал у точці: %d\n", currentPos)
 				c.apply(func() {
-          c.state.Device20Out[OutVFDEnable] = 0
+          // c.state.Device20Out[OutVFsDEnable] = 0
 					c.state.Device20Out[OutVFDSpeed1] = 0
 				})
 				return StepResult{Status: StepOK}
@@ -240,9 +240,9 @@ func stepVFDToStartPosition() Step {
 			}
 
 			// ВИПЕРЕДЖЕННЯ: ловимо підліт до нуля, щоб вчасно зняти напругу
-			if currentPos >= 90 && currentPos <= 100 {
+			if currentPos >= 75 && currentPos <= 100 {
 				c.apply(func() {
-					c.state.Device20Out[OutVFDEnable] = 0
+					//c.state.Device20Out[OutVFDEnable] = 0
           c.state.Device20Out[OutVFDSpeed1] = 0
 				})
 				return StepResult{Status: StepOK}
@@ -257,7 +257,7 @@ func stepVFDToStartPosition() Step {
 }
 
 func isEncoderAtStartPosition(val int) bool {
-  return val > 98 && val < 106
+  return val > 80 && val < 106
 }
 
 func stepToolToHome() Step {
@@ -708,7 +708,7 @@ func stepVFDEnable() Step {
 			c.apply(func() { c.state.Device20Out[OutVFDEnable] = 1 })
 		},
 		func(c *Controller) StepResult {
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 			return StepResult{Status: StepOK}
 		},
 	)
@@ -724,7 +724,10 @@ func stepVFDSpeed1() Step {
 				c.state.Device20Out[OutVFDSpeed2] = 0
 			})
 		},
-		waitAlwaysOK,
+		func(c *Controller) StepResult {
+			time.Sleep(500 * time.Millisecond)
+			return StepResult{Status: StepOK}
+		},
 	)
 }
 
@@ -833,7 +836,7 @@ func stepVFDStop() Step {
         c.state.Device20Out[OutVFDSpeed1] = 0
         c.state.Device20Out[OutVFDSpeed2] = 0
         c.state.Device20Out[OutVFDReverseBit] = 0
-        c.state.Device20Out[OutVFDEnable] = 0
+        //c.state.Device20Out[OutVFDEnable] = 0
       })
     },
     func(c *Controller) StepResult {
