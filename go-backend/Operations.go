@@ -35,6 +35,7 @@ import (
 const (
 	EncoderStartRangeMin = 81  // Початок вікна старт-позиції
 	EncoderStartRangeMax = 106 // Кінець вікна старт-позиції
+  VFDLeaveStartTimeout = 2000 * time.Millisecond
 )
 
 var (
@@ -759,10 +760,11 @@ func stepVFDSpeed1() Step {
 				c.state.Device20Out[OutVFDSpeed2] = 0
 			})
 		},
-		func(c *Controller) StepResult {
-			time.Sleep(500 * time.Millisecond)
-			return StepResult{Status: StepOK}
-		},
+		// waitCond завершиться успішно (StepOK), як тільки вал вилетить за межі зони стопу
+		waitCond(func(c *Controller) bool {
+			currentPos := int(c.state.EncoderValue / 2)
+      return currentPos > EncoderStartRangeMax
+		}, VFDLeaveStartTimeout),
 	)
 }
 
