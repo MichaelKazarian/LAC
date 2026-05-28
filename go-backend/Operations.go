@@ -32,6 +32,11 @@ import (
   "strings"
 )
 
+const (
+	EncoderStartRangeMin = 81  // Початок вікна старт-позиції
+	EncoderStartRangeMax = 106 // Кінець вікна старт-позиції
+)
+
 var (
   stepStartTime time.Time
 )
@@ -287,7 +292,7 @@ func stepVFDToStartPosition() Step {
 }
 
 func isEncoderAtStartPosition(val int) bool {
-  return val > 80 && val <= 106
+	return val >= EncoderStartRangeMin && val <= EncoderStartRangeMax
 }
 
 func stepToolToHome() Step {
