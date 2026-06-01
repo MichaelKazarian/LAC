@@ -26,30 +26,32 @@ type Controller struct {
   commLost        bool
   lastCommError   string
   power PowerControl
+  constraints []Constraint
 }
 
 func NewController(hw HardwareService, state *HardwareState) *Controller {
-    orderedOps := GetManualConfig() // Отримуємо впорядкований список
-    guiList := make([][]string, 0, len(orderedOps))
-    opsMap := make(map[string]OperationInfo)
+  orderedOps := GetManualConfig()
+  guiList := make([][]string, 0, len(orderedOps))
+  opsMap := make(map[string]OperationInfo)
 
-    for _, op := range orderedOps {
-        guiList = append(guiList, []string{op.ID, op.DisplayName})
-        opsMap[op.ID] = op // Для швидкого доступу всередині контролера
-    }
+  for _, op := range orderedOps {
+    guiList = append(guiList, []string{op.ID, op.DisplayName})
+    opsMap[op.ID] = op // Для швидкого доступу всередині контролера
+  }
 
-    state.mu.Lock()
-    state.OpsList = guiList
-    state.mu.Unlock()
+  state.mu.Lock()
+  state.OpsList = guiList
+  state.mu.Unlock()
 
-    power := &MockPowerControl{}
-    return &Controller{
-        hw:      hw,
-        state:   state,
-        power:   power,
-        opsMap:  opsMap,
-        opQueue: make(chan string, 10),
-    }
+  power := &MockPowerControl{}
+  return &Controller{
+    hw:      hw,
+    state:   state,
+    power:   power,
+    opsMap:  opsMap,
+    opQueue: make(chan string, 10),
+    constraints: GetGlobalConstraints(),
+  }
 }
 
 // Run — основний цикл контролера
@@ -64,6 +66,7 @@ func (c *Controller) Run() {
 			c.updateEncoderState(sensor, true)
 			c.updateInputsState(&inputs, true)
       c.resetCommError()        // успішний обмін = зв'язок відновився
+      c.checkGlobalConstraints()
 		} else {
       c.state.mu.Lock()
       c.state.IsEncoderOnline = false
@@ -111,6 +114,26 @@ func (c *Controller) logicWorker() {
       }
     }
   }
+}
+
+// checkGlobalConstraints перевіряє всі апаратні обмеження безпеки.
+// Якщо виявлено аварію і система ще не заблокована, активує аварійну зупинку.
+func (c *Controller) checkGlobalConstraints() {
+	c.state.mu.RLock()
+	isLocked := c.state.IsSafetyLocked
+	c.state.mu.RUnlock()
+
+	if isLocked {
+		return
+	}
+
+	for _, check := range c.constraints {
+		if err := check(c); err != nil {
+			// Логування та fail-safe логіка виконуються в єдиній точці
+			c.emergencyStop(err.Error())
+			break
+		}
+	}
 }
 
 // execSteps executes a sequence of Steps for the operation with the specified ID.
