@@ -119,11 +119,7 @@ func (c *Controller) logicWorker() {
 // checkGlobalConstraints перевіряє всі апаратні обмеження безпеки.
 // Якщо виявлено аварію і система ще не заблокована, активує аварійну зупинку.
 func (c *Controller) checkGlobalConstraints() {
-	c.state.mu.RLock()
-	isLocked := c.state.IsSafetyLocked
-	c.state.mu.RUnlock()
-
-	if isLocked {
+	if c.isEmergency() {
 		return
 	}
 
@@ -598,6 +594,7 @@ func (c *Controller) ToggleSafetyLock() bool {
 // stopMotors примусово встановлює виходи силового обладнання в 0 (OFF).
 // Викликається при зупинці, аварії або блокуванні.
 func (c *Controller) stopMotors(out *[32]uint16) {
+  fmt.Println("Emergency StopMotors")
   out[OutDrivePower] = 0
 	out[OutSpindleMotor] = 0 // Шпіндель
 	out[OutTestPin31] = 0    // Тестовий пін або інший двигун
