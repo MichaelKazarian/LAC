@@ -302,22 +302,19 @@ func (c *Controller) syncHardware() {
   outputsOnline := c.state.IsOutputsOnline
   c.state.mu.RUnlock()
 
-  if locked { // не дає випадково включити мотор
-    c.stopMotors(&current)
-    if err := c.hw.Write(current); err != nil {
-			//c.handleOutputsError() // винесемо оновлення емердженсі, якщо треба
-			return
-		}
-		
-		// Оновлюємо кеш і виходимо, бо в залізо нулі вже пішли
-		c.lastOutput = current
-		c.firstRun = false
-		return
-  }
-
   if !outputsOnline {
-    return
-  }
+		if locked { // Якщо ми в аварії, треба ОДИН РАЗ примусово записати нулі в залізо
+			c.stopMotors(&current)
+
+			if current != c.lastOutput { // ми вже відправляли нулі?
+				if err := c.hw.Write(current); err == nil {
+					c.lastOutput = current
+					c.firstRun = false
+				}
+			}
+		}
+		return
+	}
 
   // Перевіряємо наявність змін
   if current == c.lastOutput && !c.firstRun {
