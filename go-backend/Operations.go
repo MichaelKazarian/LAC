@@ -82,6 +82,7 @@ func stepOperationLightOff() Step {
 
 func buildMoveToSafePosition() []Step {
 	return []Step{
+    stepCheckStartPosition(),
     {
       Name: "Примусово повертаємо вивантажувач",
       Do: doUnloaderHome,
@@ -243,13 +244,13 @@ func stepCheckStartPosition() Step {
 
 			// 2. АВАРІЯ: Недоліт
 			if currentPos < 40 {
-				c.emergencyStop("Вал занадто далеко від дому")
+				c.emergencyStop("Розпредвал не дійшов до стартової позиції")
 				return StepResult{Status: StepFail}
 			}
 
 			// 3. ПЕРЕЛІТ: Потребує реверсу
 			if currentPos > 106 {
-				// Якщо з моменту старту кроку ще НЕ минуло 3 секунди —
+				// Якщо з моменту старту кроку пауза НЕ закінчилась —
 				// гасимо швидкість вперед (якщо вона була) і просто чекаємо зупинки валу
 				if !stepStartTime.IsZero() && time.Since(stepStartTime) < 1 * time.Second {
           fmt.Println("Поточний час старту кроку:", stepStartTime)
@@ -258,7 +259,7 @@ func stepCheckStartPosition() Step {
 					return StepResult{Status: StepRepeat}
 				}
 
-				// 4. Пауза в 3 секунди минула! Тепер безпечно вмикаємо реверс назад
+				// 4. Пауза минула! Тепер безпечно вмикаємо реверс назад
 				c.apply(func() {
           fmt.Println("BACK")
 					c.state.Device20Out[OutVFDEnable] = 1
