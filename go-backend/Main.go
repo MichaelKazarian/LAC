@@ -46,7 +46,7 @@ func runWebServer(controller *Controller) {
 }
 
 func main() {
-  InitCatalog()
+  InitOperationCatalog()
   state := &HardwareState{ // Спільний стан
     Mode:ModeManual,
   }

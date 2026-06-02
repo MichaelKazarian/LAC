@@ -5,7 +5,7 @@ var (
   orderedKeys []string
 )
 
-func InitCatalog() {
+func InitOperationCatalog() {
   catalog = make(map[string]OperationInfo)
   orderedKeys = []string{}
 
