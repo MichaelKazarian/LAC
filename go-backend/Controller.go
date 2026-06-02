@@ -274,27 +274,21 @@ func (c *Controller) canContinue() bool {
     !c.state.IsSafetyLocked
 }
 
+
 // syncHardware monitors changes in Device20Out and commits them to the physical hardware.
 //
 // Logic Workflow:
-// 1. Safety Guard: If the system is locked (EmergencyStop or Operator Stop),
-//    it forces all power equipment (spindle, motors, pumps) to an OFF state
-//    via stopMotors() before any data is transmitted.
-// 2. Change Detection: Compares the current desired state with lastOutput cache
-//    to minimize redundant Modbus write operations.
-// 3. Error Handling (Fail-Safe): If a Modbus write fails:
-//    - Sets IsOutputsOnline to false (latching the error state).
-//    - Physically cuts power to the output board via power.DisableOutputsPower().
-//    - Triggers emergencyStop to clear queues and lock the logic.
-// 4. State Sync: The local cache is updated only upon a confirmed successful hardware write.
-//
-// Operational Scenarios:
-// - Standard Stop (SAFE_LOCK):
-//   Critical motors are killed; IN/OUT boards remain accessible; system awaits SafetyStart/Reset.
-// - Input Board Failure:
-//   Triggers EmergencyStop; motors killed; logic execution frozen due to sensor data loss.
-// - Output Board Failure (Critical):
-//   Latches outputsLost; hardware power disconnected; EmergencyStop ensures total system lock.
+// 1. Forced Emergency Stop: If the system is locked (IsSafetyLocked), it immediately
+//    forces all power equipment to an OFF state via stopMotors(), bypasses any cache
+//    change detection, and writes zeros directly to the hardware.
+// 2. Safe Lock Bypass: In a locked state, after a successful or failed force-write,
+//    the function updates local cache and returns early, bypassing standard cycle logic.
+// 3. Availability Check: If the system is not locked but outputs are marked offline,
+//    execution is blocked.
+// 4. Change Detection & Sync: In standard mode, compares desired state with lastOutput
+//    cache to minimize Modbus traffic. Writes to hardware only if changes are detected.
+// 5. Fail-Safe Error Handling: If a standard Modbus write fails, it latches IsOutputsOnline
+//    to false, physically cuts power via DisableOutputsPower(), and triggers emergencyStop.
 func (c *Controller) syncHardware() {
   c.state.mu.RLock()
   current := c.state.Device20Out
@@ -305,7 +299,6 @@ func (c *Controller) syncHardware() {
   if !outputsOnline {
 		if locked { // Якщо ми в аварії, треба ОДИН РАЗ примусово записати нулі в залізо
 			c.stopMotors(&current)
-
 			if current != c.lastOutput { // ми вже відправляли нулі?
 				if err := c.hw.Write(current); err == nil {
 					c.lastOutput = current
@@ -316,19 +309,18 @@ func (c *Controller) syncHardware() {
 		return
 	}
 
-  // Перевіряємо наявність змін
+  // Check for state changes
   if current == c.lastOutput && !c.firstRun {
     return
   }
 
   if err := c.hw.Write(current); err != nil {
     c.state.mu.Lock()
-    if c.state.IsOutputsOnline { // Латчимо стан тільки ОДИН раз
+    if c.state.IsOutputsOnline { // Freeze the state ONCE
       c.state.IsOutputsOnline = false
       c.state.mu.Unlock()
       fmt.Println("[CTRL] Outputs communication LOST → entering FAIL-SAFE")
-      _ = c.power.DisableOutputsPower() // Фізично відрубуємо плату
-      // Заморожуємо логіку стандартним шляхом
+      _ = c.power.DisableOutputsPower() // Physically disconnect the output board
       c.emergencyStop("Втрачено зв'язок з платою виходів")
     } else {
       c.state.mu.Unlock()
@@ -336,7 +328,7 @@ func (c *Controller) syncHardware() {
     return
   }
 
-  // Оновлюємо кеш тільки при успішному записі
+  // Update cache only upon successful hardware write
   c.lastOutput = current
   c.firstRun = false
 }

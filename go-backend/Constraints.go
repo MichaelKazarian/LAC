@@ -2,11 +2,11 @@ package main
 
 import "fmt"
 
-// Constraint — тип функції для глобальних перевірок апаратних аварій.
-// Якщо все гаразд, повертає nil. Якщо є аварія — повертає error.
+// Constraint defines a function type for global hardware safety checks.
+// It returns nil if the state is safe, or an error if a fault is detected.
 type Constraint func(c *Controller) error
 
-// GetGlobalConstraints повертає список усіх активних захисних блокувань верстата
+// GetGlobalConstraints returns a list of all active safety locks.
 func GetGlobalConstraints() []Constraint {
 	return []Constraint{
 		checkAirPressure,
@@ -14,15 +14,15 @@ func GetGlobalConstraints() []Constraint {
 	}
 }
 
-// checkAirPressure перевіряє стан реле тиску пневмосистеми (Pin6)
+// checkAirPressure verifies the state of the pneumatic system pressure switch.
 func checkAirPressure(c *Controller) error {
 	c.state.mu.RLock()
 	pressureSignal := c.state.Device10In[PinAirPressure]
 	c.state.mu.RUnlock()
 
-	// Припустимо, 0 — тиск впав (нормально-замкнутий контакт розімкнувся через відсутність повітря)
+	// 0 means pressure dropped
 	if pressureSignal == 0 {
-		return fmt.Errorf("Низький тиск у пневмосистемі (Pin6)")
+		return fmt.Errorf("Низький тиск у пневмосистемі")
 	}
 	return nil
 }
