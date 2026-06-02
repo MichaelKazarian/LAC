@@ -274,21 +274,19 @@ func (c *Controller) canContinue() bool {
     !c.state.IsSafetyLocked
 }
 
-
 // syncHardware monitors changes in Device20Out and commits them to the physical hardware.
 //
 // Logic Workflow:
-// 1. Forced Emergency Stop: If the system is locked (IsSafetyLocked), it immediately
-//    forces all power equipment to an OFF state via stopMotors(), bypasses any cache
-//    change detection, and writes zeros directly to the hardware.
-// 2. Safe Lock Bypass: In a locked state, after a successful or failed force-write,
-//    the function updates local cache and returns early, bypassing standard cycle logic.
-// 3. Availability Check: If the system is not locked but outputs are marked offline,
-//    execution is blocked.
-// 4. Change Detection & Sync: In standard mode, compares desired state with lastOutput
-//    cache to minimize Modbus traffic. Writes to hardware only if changes are detected.
-// 5. Fail-Safe Error Handling: If a standard Modbus write fails, it latches IsOutputsOnline
-//    to false, physically cuts power via DisableOutputsPower(), and triggers emergencyStop.
+// 1. Availability & Offline Emergency Check: If outputs are marked offline (fail-safe or
+//    latched active recovery), it checks if the system is locked. If locked, it applies
+//    stopMotors() and forces a single fail-safe write to Modbus (only if the cache does
+//    not already contain zeros) before blocking further execution.
+// 2. Change Detection & Sync: In normal operational mode (outputs online), it compares
+//    the desired state with the lastOutput cache to prevent redundant Modbus traffic.
+// 3. Fail-Safe Error Handling: If a standard Modbus write fails, it freezes IsOutputsOnline
+//    to false, physically cuts power to the hardware via power.DisableOutputsPower(),
+//    and triggers emergencyStop to clear queues.
+// 4. State Sync: The local cache is updated only upon a confirmed successful hardware write.
 func (c *Controller) syncHardware() {
   c.state.mu.RLock()
   current := c.state.Device20Out
@@ -297,9 +295,9 @@ func (c *Controller) syncHardware() {
   c.state.mu.RUnlock()
 
   if !outputsOnline {
-		if locked { // Якщо ми в аварії, треба ОДИН РАЗ примусово записати нулі в залізо
+		if locked { // System is locked; enforce a single-shot forced stop write to hardware
 			c.stopMotors(&current)
-			if current != c.lastOutput { // ми вже відправляли нулі?
+			if current != c.lastOutput { // Have we already sent emergency zeros?
 				if err := c.hw.Write(current); err == nil {
 					c.lastOutput = current
 					c.firstRun = false
