@@ -564,6 +564,8 @@ func (c *Controller) Reset() {
   c.state.IsOutputsOnline = true
   c.state.StopReason = ""
   c.state.ActiveOperation = ""
+  c.state.Device20Out[OutGreenLight] = 0
+  c.state.Device20Out[OutRedLight] = 0
   c.state.mu.Unlock()
   fmt.Println("[CTRL] Safety Start: блокування знято, система готова")
 }
@@ -594,6 +596,8 @@ func (c *Controller) ToggleSafetyLock() bool {
 // Викликається при зупинці, аварії або блокуванні.
 func (c *Controller) stopMotors(out *[32]uint16) {
   fmt.Println("Emergency StopMotors")
+  out[OutGreenLight] = 0
+  out[OutRedLight] = 1
   out[OutDrivePower] = 0
 	out[OutSpindleMotor] = 0 // Шпіндель
 	out[OutTestPin31] = 0    // Тестовий пін або інший двигун

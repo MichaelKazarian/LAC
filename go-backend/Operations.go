@@ -166,7 +166,6 @@ func doTrayStepToggle(c *Controller) {
 func buildLoader() []Step {
 	return []Step {
     stepCheckStartPosition(),
-    //stepCheckPneumo,
     //stepCheckCylinddresHome,
     stepToolToHome(),
     stepUnloaderToAxis(),

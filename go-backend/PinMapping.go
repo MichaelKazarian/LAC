@@ -57,8 +57,8 @@ const (
   OutTestPin12      = 12
   OutTestPin13      = 13
   OutTestPin14      = 14
-  OutTestPin15      = 15
-  OutTestPin16      = 16
+  OutGreenLight      = 15
+  OutRedLight      = 16
   OutVFDEnable      = 17
   OutVFDSpeed1      = 18
   OutVFDSpeed2      = 19
@@ -89,7 +89,7 @@ var PinNamesIn = map[int]string{
   Pin3: "Датчик дозованої змазки", // TODO: фізично не зайдено, якщо не вмикається видавати warning
   Pin4: "Реле тиску поливної змазки", // TODO: фізично не зайдено, якщо не вмикається видавати warnin
   Pin5: "Реле тиску пневмоситеми після пристрою плавного пуску",
-  PinAirPressure: "Реле тиску пневмосистеми", // TODO Аварія!!!
+  PinAirPressure: "Реле тиску пневмосистеми",
   Pin7: "Вкл. вперед",
   Pin8: "Викл. назад",
   Pin9: "Аварійна зупинка", // Нормально замкнутий
@@ -125,8 +125,8 @@ var PinNamesOut = map[int]string {
     OutTestPin12:     "Вкл. мотора поливної змазки", //lubricant, depends OutDrivePower
     OutTestPin13:     "Індикація старту", // not depends2
     OutTestPin14:     "Індикація стопу",  // not depends2
-    OutTestPin15:     "Зелений факел",  // not depends2
-    OutTestPin16:     "Червоний факел",  // not depends2
+    OutGreenLight:    "Зелений маяк",  // independent; signals normal machine operation
+    OutRedLight:      "Червоний маяк",  // independent; signals emergency/fault state
     OutVFDEnable:     "Вкл.ПЧВ", //depends OutDrivePower
     OutVFDSpeed1:     "ПЧВ швидкість 1", //depends OutDrivePower
     OutVFDSpeed2:     "ПЧВ швидкість 2", //depends OutDrivePower
