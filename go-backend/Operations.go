@@ -42,6 +42,44 @@ var (
   stepStartTime time.Time
 )
 
+func buildOperationLightOn() []Step {
+	return []Step{
+    stepOperationLightOn(),
+	}
+}
+
+func stepOperationLightOn() Step {
+	return Step{
+		Name: "Зелений ліхтар увімкнено",
+		Do: func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutGreenLight] = 1
+        c.state.Device20Out[OutRedLight] = 0
+			})
+		},
+		Wait: waitAlwaysOK,
+	}
+}
+
+func buildOperationLightOff() []Step {
+	return []Step{
+    stepOperationLightOff(),
+	}
+}
+
+func stepOperationLightOff() Step {
+	return Step{
+		Name: "Ліхтарі вимкнено",
+		Do: func(c *Controller) {
+			c.apply(func() {
+				c.state.Device20Out[OutGreenLight] = 0
+        c.state.Device20Out[OutRedLight] = 0
+			})
+		},
+		Wait: waitAlwaysOK,
+	}
+}
+
 func buildMoveToSafePosition() []Step {
 	return []Step{
     {

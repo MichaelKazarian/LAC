@@ -13,6 +13,7 @@ func InitOperationCatalog() {
     catalog[id] = OperationInfo{ID: id, DisplayName: name, Build: build}
     orderedKeys = append(orderedKeys, id)
   }
+  // Public operations
   add("op_drive_power_on",  "Живлення приводів УВІМК", buildDrivePowerOn)
   add("op_drive_power_off", "Живлення приводів ВИМК", buildDrivePowerOff)
   add("op_mag_shutter",     "Завантаження магазину", buildMagShutter)
@@ -29,6 +30,9 @@ func InitOperationCatalog() {
   add("op_vfd_reverse",     "ПЧВ: Реверс",   buildVFDReverse)
   add("op_vfd_to_0",     "ПЧВ: Вихід на 0",   buildVFDToZero)
   add("op_vfd_stop",        "ПЧВ: СТОП",   buildVFDStop)
+  // Private operations
+  add("op_light_on",   "",   buildOperationLightOn)
+  add("op_light_off",  "",   buildOperationLightOff)
 }
 
 func GetAutoModeConfig() AutoModeConfig {
@@ -37,6 +41,7 @@ func GetAutoModeConfig() AutoModeConfig {
     Before: []OperationInfo{
       c["op_drive_power_on"],
       c["op_spindle_on"],
+      c["op_light_on"],
     },
     Main:   []OperationInfo{
       c["op_tray_move_auto"],
@@ -44,6 +49,7 @@ func GetAutoModeConfig() AutoModeConfig {
     },
     After:  []OperationInfo{
       c["op_spindle_off"],
+      c["op_light_off"],
     },
   }
 }
