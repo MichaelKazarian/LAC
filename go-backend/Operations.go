@@ -30,6 +30,7 @@ import (
 	"fmt"
 	"time"
   "strings"
+  "sync"
 )
 
 const (
@@ -40,6 +41,8 @@ const (
 
 var (
   stepStartTime time.Time
+  trayBgMutex sync.Mutex
+	isTrayFillingBg bool // чи крутиться лоток у фоні
 )
 
 func buildOperationLightOn() []Step {
@@ -206,11 +209,119 @@ func doTrayStepToggle(c *Controller) {
   })
 }
 
+//неблокуючий крок для конвеєра
+func stepStartBackgroundTrayFill() Step {
+	return Step{
+		Name: "Запуск фонової підготовки наступної заготовки",
+		Do: func(c *Controller) {
+			startBgTrayFilling(c)
+		},
+		Wait: waitAlwaysOK, // Не блокує конвеєр, одразу йдемо далі
+	}
+}
+
+// startBgTrayFilling запускає фонову операцію, якщо вона ще не активна
+func startBgTrayFilling(c *Controller) {
+	trayBgMutex.Lock()
+	if isTrayFillingBg {
+		trayBgMutex.Unlock()
+		return
+	}
+	isTrayFillingBg = true
+	trayBgMutex.Unlock()
+
+	// Запускаємо виділену функцію в окремій горутині
+	go runTrayFeedingLoop(c)
+}
+
+// runTrayFeedingLoop виконує фоновий цикл подачі лотка до появи заготовки або аварії.
+func runTrayFeedingLoop(c *Controller) {
+	fmt.Println("[BG_TRAY] Background feeding STARTED")
+
+	for {
+		if c.isEmergency() {
+			fmt.Println("[BG_TRAY] Emergency stop detected, aborting background tray")
+			break
+		}
+
+		// 1. Смикаємо лоток вперед (Do)
+		doTrayStepToggle(c)
+		time.Sleep(500 * time.Millisecond)
+
+		c.state.mu.RLock()
+		partFound := c.state.Device10In[PinPartInLoader] == 1
+		c.state.mu.RUnlock()
+
+		if partFound {
+			fmt.Println("[BG_TRAY] Part detected! Background feeding SUCCESS")
+			break
+		}
+
+		fmt.Println("[BG_TRAY] Part not found yet, retrying next cycle...")
+	}
+
+	// Скидаємо прапорець проміжного стану перед виходом з горутини
+	trayBgMutex.Lock()
+	isTrayFillingBg = false
+	trayBgMutex.Unlock()
+}
+
+// stepInitBackgroundTrayIfNeeded перевіряє наявність заготовки на старті циклу.
+// Якщо завантажувач порожній і фонова рутина не активна, запускає подачу.
+func stepInitBackgroundTrayIfNeeded() Step {
+	return Step{
+		Name: "Перевірка потреби первинного завантаження",
+		Do: func(c *Controller) {
+			c.state.mu.RLock()
+			partFound := c.state.Device10In[PinPartInLoader] == 1
+			c.state.mu.RUnlock()
+
+			// Якщо заготовки немає, запускаємо фонову подачу
+			if !partFound {
+				startBgTrayFilling(c)
+			}
+		},
+		Wait: waitAlwaysOK,
+	}
+}
+
+// БЛОКУЮЧИЙ ЗАХИСТ: чекаємо, поки деталь буде в лотку
+func stepWaitBackgroundTrayReady() Step {
+	return Step{
+		Name: "Очікування завершення фонової подачі заготовки",
+		Do:   func(c *Controller) {}, // Нічого не робимо, просто чекаємо
+		Wait: func(c *Controller) StepResult {
+			trayBgMutex.Lock()
+			running := isTrayFillingBg
+			trayBgMutex.Unlock()
+
+			c.state.mu.RLock()
+			partFound := c.state.Device10In[PinPartInLoader] == 1
+			c.state.mu.RUnlock()
+
+			if !running && partFound {
+				return StepResult{Status: StepOK, Message: "Заготовка успішно підготовлена у фоні"}
+			}
+
+			if running && partFound {
+				return StepResult{Status: StepOK, Message: "Заготовка на місці (рутина ще гаситься)"}
+			}
+
+			// Якщо рутина ще працює, а деталі немає — чекаємо на цьому кроці
+			return StepResult{Status: StepRepeat, Message: "Очікування фонової подачі деталі..."}
+		},
+	}
+}
+
 func buildLoader() []Step {
 	return []Step {
     stepCheckStartPosition(),
+    stepInitBackgroundTrayIfNeeded(),
     //stepCheckCylinddresHome,
-    stepTrayAutoFill(), // Завантажуємо заготовку паралельно з підготовкою осей
+    // stepTrayAutoFill(), // Завантажуємо заготовку паралельно з підготовкою осей
+    // БЛОКУЮЧИЙ ЗАХИСТ: Перевіряємо, чи фонова рутина з минулого циклу
+    // вже дотягнула деталь. Якщо ні — тут трохи почекаємо.
+    stepWaitBackgroundTrayReady(),
     stepToolToHome(),
     stepUnloaderToAxis(),
     stepColletOpen(),
@@ -222,12 +333,18 @@ func buildLoader() []Step {
     stepColletClose(),
     stepPusherHome(),
     stepLoaderHome(), // Завантажувач очікує заготовку
-		stepTrayAutoFill(), // подаємо наступну заготовку,
+    //stepTrayAutoFill(), // подаємо наступну заготовку,
+
+    // АСИНХРОННИЙ СТАРТ: Завантажувач відійшов, шпинделю час працювати.
+		// Запускаємо лоток у фоні і летимо далі!
+		stepStartBackgroundTrayFill(),
+
+		// Ці кроки будуть виконуватися ПАРАЛЕЛЬНО з роботою лотка:
     stepToolToAxis(),
     stepVFDEnable(),
     stepVFDSpeed1(),
     stepCheckStopZeroDegree(),
-	}
+  }
 }
 
 ///
