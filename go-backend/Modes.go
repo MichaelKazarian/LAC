@@ -44,7 +44,6 @@ func GetAutoModeConfig() AutoModeConfig {
       c["op_light_on"],
     },
     Main:   []OperationInfo{
-      c["op_tray_move_auto"],
       c["op_loader"],
     },
     After:  []OperationInfo{

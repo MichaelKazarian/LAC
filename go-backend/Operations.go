@@ -153,25 +153,29 @@ func buildTrayMove() []Step {
 
 func buildTrayAutoFill() []Step {
   return []Step{
-    {
-      Name: "Переміщення лотка доки заготовки не буде в завантажувачі",
-      Do:   doTrayStepToggle,
-      Wait: func(c *Controller) StepResult {
-        time.Sleep(500 * time.Millisecond)
-
-        c.state.mu.RLock()
-        found := c.state.Device10In[PinPartInLoader] == 1
-        c.state.mu.RUnlock()
-
-        if found {
-          return StepResult{Status: StepOK, Message: "Заготовка на місці"}
-        }
-
-        // Якщо не знайшли — повторюємо цей же крок (знову Do -> Wait)
-        return StepResult{Status: StepRepeat, Message: "Деталі немає, наступний такт"}
-      },
-    },
+    stepTrayAutoFill(),
   }
+}
+
+func stepTrayAutoFill() Step {
+	return Step{
+		Name: "Подача лотка до появи заготовки в завантажувачі",
+		Do:   doTrayStepToggle,
+		Wait: func(c *Controller) StepResult {
+			time.Sleep(500 * time.Millisecond)
+
+			c.state.mu.RLock()
+			found := c.state.Device10In[PinPartInLoader] == 1
+			c.state.mu.RUnlock()
+
+			if found {
+				return StepResult{Status: StepOK, Message: "Заготовка на місці"}
+			}
+
+			// Якщо не знайшли — повторюємо цей же крок (знову Do -> Wait)
+			return StepResult{Status: StepRepeat, Message: "Деталі немає, наступний такт"}
+		},
+	}
 }
 
 func doTrayStepToggle(c *Controller) {
@@ -206,17 +210,19 @@ func buildLoader() []Step {
 	return []Step {
     stepCheckStartPosition(),
     //stepCheckCylinddresHome,
+    stepTrayAutoFill(), // Завантажуємо заготовку паралельно з підготовкою осей
     stepToolToHome(),
     stepUnloaderToAxis(),
     stepColletOpen(),
     stepEjectorForward(),
     stepAirBlastPulse(),
     stepUnloaderHome(),
-    stepLoaderToAxis(),
+    stepLoaderToAxis(), // Завантажувач йде вперед.
     stepPusherToAxis(2),
     stepColletClose(),
     stepPusherHome(),
-    stepLoaderHome(),
+    stepLoaderHome(), // Завантажувач очікує заготовку
+		stepTrayAutoFill(), // подаємо наступну заготовку,
     stepToolToAxis(),
     stepVFDEnable(),
     stepVFDSpeed1(),
