@@ -54,7 +54,7 @@ func GetAutoModeConfig() AutoModeConfig {
   }
 }
 
-func GetManualConfig() []OperationInfo {
+func GetCatalogConfig() []OperationInfo {
   res := make([]OperationInfo, 0, len(orderedKeys))
   for _, id := range orderedKeys {
     res = append(res, catalog[id])

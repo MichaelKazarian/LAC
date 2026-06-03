@@ -30,7 +30,7 @@ type Controller struct {
 }
 
 func NewController(hw HardwareService, state *HardwareState) *Controller {
-  orderedOps := GetManualConfig()
+  orderedOps := GetCatalogConfig()
   guiList := make([][]string, 0, len(orderedOps))
   opsMap := make(map[string]OperationInfo)
 
