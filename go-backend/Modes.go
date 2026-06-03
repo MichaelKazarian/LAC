@@ -18,7 +18,6 @@ func InitOperationCatalog() {
   add("op_drive_power_off", "Живлення приводів ВИМК", buildDrivePowerOff)
   add("op_mag_shutter",     "Завантаження магазину", buildMagShutter)
   add("op_tray_move",       "Крок лотка",            buildTrayMove)
-  add("op_tray_move_auto",  "Переміщення лотка",     buildTrayAutoFill)
   add("op_loader",          "Цикл",                  buildLoader)
   add("op_spindle_on",      "Старт шпінделя",        buildSpindleOn)
   add("op_spindle_off",     "Стоп шпінделя",         buildSpindleOff)
