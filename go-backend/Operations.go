@@ -217,15 +217,10 @@ func runTrayFeedingLoop(c *Controller) {
 			break
 		}
 
-		// 1. Смикаємо лоток вперед (Do)
-		doTrayStepToggle(c)
+		doTrayStepToggle(c) // Смикаємо лоток вперед
 		time.Sleep(500 * time.Millisecond)
 
-		c.state.mu.RLock()
-		partFound := c.state.Device10In[PinPartInLoader] == 1
-		c.state.mu.RUnlock()
-
-		if partFound {
+    if isPartInLoader(c) {
 			fmt.Println("[BG_TRAY] Part detected! Background feeding SUCCESS")
 			break
 		}
@@ -233,7 +228,6 @@ func runTrayFeedingLoop(c *Controller) {
 		fmt.Println("[BG_TRAY] Part not found yet, retrying next cycle...")
 	}
 
-	// Скидаємо прапорець проміжного стану перед виходом з горутини
 	trayBgMutex.Lock()
 	isTrayFillingBg = false
 	trayBgMutex.Unlock()
@@ -243,14 +237,9 @@ func runTrayFeedingLoop(c *Controller) {
 // Якщо завантажувач порожній і фонова рутина не активна, запускає подачу.
 func stepInitBackgroundTrayIfNeeded() Step {
 	return Step{
-		Name: "Перевірка потреби первинного завантаження",
+		Name: "Перевірка необхідності первинного завантаження",
 		Do: func(c *Controller) {
-			c.state.mu.RLock()
-			partFound := c.state.Device10In[PinPartInLoader] == 1
-			c.state.mu.RUnlock()
-
-			// Якщо заготовки немає, запускаємо фонову подачу
-			if !partFound {
+			if !isPartInLoader(c) {
 				startBgTrayFilling(c)
 			}
 		},
@@ -268,9 +257,7 @@ func stepWaitBackgroundTrayReady() Step {
 			running := isTrayFillingBg
 			trayBgMutex.Unlock()
 
-			c.state.mu.RLock()
-			partFound := c.state.Device10In[PinPartInLoader] == 1
-			c.state.mu.RUnlock()
+			partFound := isPartInLoader(c)
 
 			if !running && partFound {
 				return StepResult{Status: StepOK, Message: "Заготовка успішно підготовлена у фоні"}
@@ -284,6 +271,13 @@ func stepWaitBackgroundTrayReady() Step {
 			return StepResult{Status: StepRepeat, Message: "Очікування фонової подачі деталі..."}
 		},
 	}
+}
+
+// isPartInLoader перевіряє наявність заготовки в завантажувачі (потокобезпечно)
+func isPartInLoader(c *Controller) bool {
+	c.state.mu.RLock()
+	defer c.state.mu.RUnlock()
+	return c.state.Device10In[PinPartInLoader] == 1
 }
 
 func buildLoader() []Step {
