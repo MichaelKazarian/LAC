@@ -1,3 +1,8 @@
+GO_MIN_VERSION=1.21
+GO_VERSION=1.24.4
+GO_LOCAL=$(CURDIR)/.tools/go
+GO_LOCAL_BIN=$(GO_LOCAL)/bin/go
+
 HOST=localhost
 PORT=8080
 SERVICE_NAME=lac-backend.service
@@ -17,6 +22,8 @@ BINARY_NAME=modbus-app
 TARGET_OS=linux
 TARGET_ARCH=arm64
 
+GO = $(if $(wildcard $(GO_LOCAL_BIN)),$(GO_LOCAL_BIN),go)
+
 .PHONY: all init build build-arm run clean fmt deploy deploy-service deploy-lac-web-gui deploy-rotate-screen-90-degree deploy-rotate-screen-normal help
 
 # 1. Початкова ініціалізація проекту
@@ -27,13 +34,46 @@ init:
 	go get github.com/goburrow/modbus
 	@echo "Проект ініціалізовано. Залежності завантажено."
 
+check-go:
+	@echo "--- Checking Go toolchain ---"; \
+	GO_CMD=""; \
+	if [ -x "$(GO_LOCAL_BIN)" ]; then \
+		VER=$$($(GO_LOCAL_BIN) version | sed -E 's/.*go([0-9]+\.[0-9]+).*/\1/'); \
+		if [ "$$(printf '%s\n%s\n' "$(GO_MIN_VERSION)" "$$VER" | sort -V | head -n1)" = "$(GO_MIN_VERSION)" ]; then \
+			echo "Using local Go $$VER"; \
+			exit 0; \
+		fi; \
+		echo "Local Go $$VER is too old."; \
+	fi; \
+	if command -v go >/dev/null 2>&1; then \
+		VER=$$(go version | sed -E 's/.*go([0-9]+\.[0-9]+).*/\1/'); \
+		if [ "$$(printf '%s\n%s\n' "$(GO_MIN_VERSION)" "$$VER" | sort -V | head -n1)" = "$(GO_MIN_VERSION)" ]; then \
+			echo "Using system Go $$VER"; \
+			exit 0; \
+		fi; \
+		echo "System Go $$VER is too old."; \
+	fi; \
+	echo "Installing Go $(GO_VERSION) into $(GO_LOCAL)..."; \
+	mkdir -p .tools; \
+	rm -rf "$(GO_LOCAL)"; \
+	ARCH=$$(uname -m); \
+	case $$ARCH in \
+		x86_64) GO_ARCH=amd64 ;; \
+		aarch64) GO_ARCH=arm64 ;; \
+		armv7l) GO_ARCH=armv6l ;; \
+		*) echo "Unsupported architecture: $$ARCH"; exit 1 ;; \
+	esac; \
+	URL="https://go.dev/dl/go$(GO_VERSION).linux-$$GO_ARCH.tar.gz"; \
+	curl -fsSL "$$URL" | tar -C .tools -xz; \
+	echo "Installed: $$($(GO_LOCAL_BIN) version)"
+
 # Стандартна команда: скомпілювати для поточної системи
-build:
-	go build -o bin/$(BINARY_NAME) .
+build: check-go
+	$(GO) build -o bin/$(BINARY_NAME) .
 
 # Крос-компіляція для Raspberry Pi 4
-build-arm:
-	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) go build -o bin/$(BINARY_NAME)-arm .
+build-arm: check-go
+	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) $(GO) build -o bin/$(BINARY_NAME)-arm .
 
 # Запуск локально
 run: build fw-check

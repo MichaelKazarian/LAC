@@ -36,6 +36,10 @@
 .clang_complete
 .ccls
 
+# Build artifacts
 go-backend/bin/
+
+# Local Go toolchain
+go-backend/.tools/
 
 TAGS
