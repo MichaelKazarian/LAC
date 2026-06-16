@@ -103,6 +103,7 @@ type StepResult struct {
 //   - розширюваною без вкладених state machine
 type Step struct {
 	Name    string
+  LogMode StepLogMode
   Before  func(c *Controller) StepResult
 	Do      func(c *Controller)
 	Wait    func(c *Controller) StepResult

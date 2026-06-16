@@ -170,16 +170,18 @@ func (c *Controller) execSteps(opID string) bool { // Додали поверн�
 	}()
 
 	steps := op.Build()
+  total := len(steps)
 	for i := 0; i < len(steps); {
 		step := steps[i]
-		fmt.Printf("[STEP] %d/%d: %s\n", i+1, len(steps), step.Name)
+    stepMsg := fmt.Sprintf("[STEP %d/%d]", i+1, total)
+    AppLog{}.Log(step, fmt.Sprintf("%s: ", stepMsg))
 
 		if c.isEmergency() { return false } // Екстрена зупинка — це невдача
 
 		if step.Before != nil {
 			beforeRes := step.Before(c)
 			if beforeRes.Status != StepOK {
-				fmt.Printf("[CTRL] Step %s: Before-check failed: %s\n", step.Name, beforeRes.Message)
+        AppLog{}.Log(step, fmt.Sprintf("%s: Before-check failed: %s\n", stepMsg, beforeRes.Message))
 				return false
 			}
 		}
@@ -202,7 +204,8 @@ func (c *Controller) execSteps(opID string) bool { // Додали поверн�
 		case StepOK:
 			i++
 		case StepRepeat:
-			fmt.Printf("[CTRL] Step %s repeating: %s\n", step.Name, result.Message)
+			// fmt.Printf("[CTRL] Step %s repeating: %s\n", step.Name, result.Message)
+      AppLog{}.Log(step, "[CTRL] Repeating")
 			// Не інкрементуємо i, цикл повторить крок
 		case StepFail:
 			fmt.Printf("[CTRL] Step %s failed: %s\n", step.Name, result.Message)
