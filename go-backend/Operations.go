@@ -215,7 +215,7 @@ func runTrayFeedingLoop(c *Controller) {
 	}
 	for {
 		if c.isEmergency() {
-      AppLog{}.Log(this, "[BG_TRAY] Emergency stop detected, aborting background tray")
+      AppLog{}.Info(this, "[BG_TRAY] Emergency stop detected, aborting background tray")
 			break
 		}
 
@@ -223,7 +223,7 @@ func runTrayFeedingLoop(c *Controller) {
 		time.Sleep(500 * time.Millisecond)
 
     if isPartInLoader(c) {
-      AppLog{}.Log(this, "[BG_TRAY] Part detected! Background feeding SUCCESS")
+      AppLog{}.Info(this, "[BG_TRAY] Part detected! Background feeding SUCCESS")
 			break
 		}
 	}
