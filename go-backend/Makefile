@@ -21,6 +21,11 @@ BINARY_NAME=modbus-app
 # Параметри для Raspberry Pi (ARM)
 TARGET_OS=linux
 TARGET_ARCH=arm64
+# SSH deployment settings
+SSH_HOST ?= 10.8.49.233
+SSH_USER ?= pi
+SSH_PORT ?= 22
+REMOTE_DIR ?= /home/pi/LAC/go-backend/bin
 
 GO = $(if $(wildcard $(GO_LOCAL_BIN)),$(GO_LOCAL_BIN),go)
 
@@ -74,6 +79,15 @@ build: check-go
 # Крос-компіляція для Raspberry Pi 4
 build-arm: check-go
 	GOOS=$(TARGET_OS) GOARCH=$(TARGET_ARCH) $(GO) build -o bin/$(BINARY_NAME)-arm .
+
+deploy-ssh: build-arm
+	@echo "--- Deploying to $(SSH_USER)@$(SSH_HOST) ---"
+	ssh -p $(SSH_PORT) $(SSH_USER)@$(SSH_HOST) "mkdir -p $(REMOTE_DIR)"
+	scp -P $(SSH_PORT) bin/$(BINARY_NAME)-arm \
+		$(SSH_USER)@$(SSH_HOST):$(REMOTE_DIR)/$(BINARY_NAME)
+	# ssh -p $(SSH_PORT) $(SSH_USER)@$(SSH_HOST) \
+	# 	"sudo systemctl restart $(SERVICE_NAME)"
+	@echo "Deployment completed and service restarted."
 
 # Запуск локально
 run: build fw-check
