@@ -190,6 +190,7 @@ func stepStartBackgroundTrayFill() Step {
 			startBgTrayFilling(c)
 		},
 		Wait: waitAlwaysOK, // Не блокує конвеєр, одразу йдемо далі
+    LogMode: LogOnce,
 	}
 }
 
@@ -203,17 +204,18 @@ func startBgTrayFilling(c *Controller) {
 	isTrayFillingBg = true
 	trayBgMutex.Unlock()
 
-	// Запускаємо виділену функцію в окремій горутині
 	go runTrayFeedingLoop(c)
 }
 
 // runTrayFeedingLoop виконує фоновий цикл подачі лотка до появи заготовки або аварії.
 func runTrayFeedingLoop(c *Controller) {
-	fmt.Println("[BG_TRAY] Background feeding STARTED")
-
+  this := Step{
+		Name:    "Фонова подача лотка",
+		LogMode: LogOnce,
+	}
 	for {
 		if c.isEmergency() {
-			fmt.Println("[BG_TRAY] Emergency stop detected, aborting background tray")
+      AppLog{}.Log(this, "[BG_TRAY] Emergency stop detected, aborting background tray")
 			break
 		}
 
@@ -221,11 +223,9 @@ func runTrayFeedingLoop(c *Controller) {
 		time.Sleep(500 * time.Millisecond)
 
     if isPartInLoader(c) {
-			fmt.Println("[BG_TRAY] Part detected! Background feeding SUCCESS")
+      AppLog{}.Log(this, "[BG_TRAY] Part detected! Background feeding SUCCESS")
 			break
 		}
-
-		fmt.Println("[BG_TRAY] Part not found yet, retrying next cycle...")
 	}
 
 	trayBgMutex.Lock()
@@ -270,6 +270,7 @@ func stepWaitBackgroundTrayReady() Step {
 			// Якщо рутина ще працює, а деталі немає — чекаємо на цьому кроці
 			return StepResult{Status: StepRepeat, Message: "Очікування фонової подачі деталі..."}
 		},
+    LogMode: LogOnce,
 	}
 }
 
