@@ -152,7 +152,7 @@ func (c *Controller) checkGlobalConstraints() {
 //   - If Wait() returns StepRepeat: Re-run the SAME step (re-execute Do and Wait).
 //   - If Wait() returns StepFail:   Stop the operation immediately.
 //   - If Wait() returns StepAbort:  Stop the operation immediately.
-func (c *Controller) execSteps(opID string) bool { // Додали повернення bool
+func (c *Controller) execSteps(opID string) bool {
 	op, ok := c.opsMap[opID]
 	if !ok {
 		fmt.Printf("[CTRL] Операція %s не знайдена\n", opID)
@@ -162,26 +162,29 @@ func (c *Controller) execSteps(opID string) bool { // Додали поверн�
 	c.state.mu.Lock()
 	c.state.ActiveOperation = opID
 	c.state.mu.Unlock()
+	steps := op.Build()
+  total := len(steps)
 
 	defer func() {
 		c.state.mu.Lock()
 		c.state.ActiveOperation = ""
 		c.state.mu.Unlock()
+    for _, s := range steps {
+			AppLog{}.Reset(s)
+		}
 	}()
 
-	steps := op.Build()
-  total := len(steps)
 	for i := 0; i < len(steps); {
 		step := steps[i]
     stepMsg := fmt.Sprintf("[STEP %d/%d]", i+1, total)
-    AppLog{}.Log(step, fmt.Sprintf("%s: ", stepMsg))
+    AppLog{}.Info(step, stepMsg)
 
-		if c.isEmergency() { return false } // Екстрена зупинка — це невдача
+		if c.isEmergency() { return false }
 
 		if step.Before != nil {
 			beforeRes := step.Before(c)
 			if beforeRes.Status != StepOK {
-        AppLog{}.Log(step, fmt.Sprintf("%s: Before-check failed: %s\n", stepMsg, beforeRes.Message))
+        AppLog{}.Info(step, fmt.Sprintf("%s: Before-check failed: %s\n", stepMsg, beforeRes.Message))
 				return false
 			}
 		}
@@ -204,23 +207,20 @@ func (c *Controller) execSteps(opID string) bool { // Додали поверн�
 		case StepOK:
 			i++
 		case StepRepeat:
-			// fmt.Printf("[CTRL] Step %s repeating: %s\n", step.Name, result.Message)
-      AppLog{}.Log(step, "[CTRL] Repeating")
-			// Не інкрементуємо i, цикл повторить крок
+      AppLog{}.Info(step, "[CTRL] Repeating")
 		case StepFail:
-			fmt.Printf("[CTRL] Step %s failed: %s\n", step.Name, result.Message)
+			AppLog{}.LogForce(step, fmt.Sprintf("failed: %s", result.Message))
 			return false
 		case StepAbort:
-			fmt.Printf("[CTRL] Step %s aborted: %s\n", step.Name, result.Message)
+			AppLog{}.LogForce(step, fmt.Sprintf("aborted: %s", result.Message))
 			return false
 		}
 
 		if c.isEmergency() { return false }
 	}
 
-	return true // Усі кроки виконані успішно
+	return true
 }
-
 
 func (c *Controller) isEmergency() bool {
     c.state.mu.RLock()
