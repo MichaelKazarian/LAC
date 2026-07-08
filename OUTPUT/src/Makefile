@@ -1,8 +1,14 @@
+ifdef INSIDE_EMACS
+	FILTER = 2>&1 | sed 's/src\///'
+else
+	FILTER =
+endif
+
 upload:
-	cd .. && platformio run --target upload
+	cd .. && (pio run --target upload) $(FILTER)
 
 build:
-	cd .. && (pio run) 2>&1 | awk '{if (/src\//){print substr($$0,5, 100)} else {print "",$$0}}'
+	cd .. && (pio run) $(FILTER)
 
 clean:
 	cd .. && platformio run --target clean
