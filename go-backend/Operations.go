@@ -125,23 +125,34 @@ func buildMagShutter() []Step {
 	}
 }
 
+// Внутрішня функція БЕЗ c.apply (для виклику всередині інших apply)
+func updateMagShutterLogic(c *Controller) {
+  magStep := Step{Name: "MAG", LogMode: LogOnce}
+
+  // Пряме зчитування без RLock, бо м'ютекс уже захоплено зверху!
+  if c.state.Device10In[Pin25] == 1 {
+    c.state.Device20Out[OutMagShutterOpen] = 1 // Закриваємо
+    return
+  }
+
+  isHome := c.state.Device10In[PinMagShutterHome] == 1
+  if isHome {
+    c.state.Device20Out[OutMagShutterOpen] = 0 // Відкриваємо
+    AppLog{}.Info(magStep, "Action: Opening shutter (waiting for part)")
+  } else {
+    c.state.Device20Out[OutMagShutterOpen] = 1
+  }
+}
+
+// атомарне зміна положення магазина
 func doMagShutterToggle(c *Controller) {
   c.apply(func() {
-    fmt.Printf("30 - %b\n", c.state.Device10In[PinMagShutterHome])
-    isHome := c.state.Device10In[PinMagShutterHome] == 1   
-    fmt.Printf("[MAG] Shutter Home sensor: %v\n", isHome)
-    if isHome {
-      c.state.Device20Out[OutMagShutterOpen] = 0
-      fmt.Println("[MAG] Action: Opening shutter")
-    } else {
-      c.state.Device20Out[OutMagShutterOpen] = 1
-      fmt.Println("[MAG] Action: Closing shutter")
-    }
+    updateMagShutterLogic(c)
   })
 }
 
 func buildTrayMove() []Step {
-	return []Step{
+  return []Step{
     {
       Name: "Рух лотка, такт 1",
       Do:   doTrayStepToggle,
@@ -152,16 +163,17 @@ func buildTrayMove() []Step {
       Do:   doTrayStepToggle,
       Wait: waitTime(500 * time.Millisecond),
     },
-	}
+  }
 }
 
 func doTrayStepToggle(c *Controller) {
   c.apply(func() {
     // якщо датчик бачить заготовку, припиняємо рух
     if c.state.Device10In[PinPartInLoader] == 1 {
+      c.state.Device20Out[OutMagShutterOpen] = 1
       return
     }
-
+    updateMagShutterLogic(c)
     isHome := c.state.Device10In[PinTrayGateHome] == 1
     isOpen := c.state.Device10In[PinTrayGateOpen] == 1
     switch {
@@ -275,15 +287,27 @@ func stepWaitBackgroundTrayReady() Step {
 	}
 }
 
-// isPartInLoader перевіряє наявність заготовки в завантажувачі (потокобезпечно)
+// isPartInLoader перевіряє наявність заготовки в завантажувачі.
+// Використовує RLock для забезпечення потокобезпечного зчитування стану
+// з регістра Device10In в конкурентному середовищі.
+// Повертає true, якщо датчик фізично бачить заготовку (сигнал == 1).
 func isPartInLoader(c *Controller) bool {
 	c.state.mu.RLock()
 	defer c.state.mu.RUnlock()
 	return c.state.Device10In[PinPartInLoader] == 1
 }
 
+// isPartAtMagazineExit перевіряє, чи заготовка пройшла шторку магазина.
+// Повертає true, якщо датчик на виході магазина (Pin 25) активний.
+func isPartAtMagazineExit(c *Controller) bool {
+	c.state.mu.RLock()
+	defer c.state.mu.RUnlock()
+	return c.state.Device10In[Pin25] == 1
+}
+
 func buildLoader() []Step {
 	return []Step {
+    stepLogAllInputs(),
     stepCheckStartPosition(),
     stepInitBackgroundTrayIfNeeded(),
     //stepCheckCylinddresHome,
