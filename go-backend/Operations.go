@@ -310,6 +310,40 @@ func buildLoader() []Step {
   }
 }
 
+func stepLogAllInputs() Step {
+	return Step{
+		Name:    "Діагностика: зчитування стану входів",
+		LogMode: LogNormal,
+		Before: func(c *Controller) StepResult {
+      fmt.Println("dadasd")
+			AppLog{}.Info(Step{Name: "ДІАГНОСТИКА"}, "=== СТАН УСІХ ЦИФРОВИХ ВХОДІВ ВЕРСТАТА ===")
+			for pin, description := range PinNamesIn {
+				val := c.state.Device10In[pin]
+				statusIcon := "OFF [0]" // Вимкнено / Неактивний
+				if val == 1 {
+					statusIcon = "ON [1]" // Увімкнено / Активний
+				}
+				if pin == Pin9 { // Особливий маркер для нормально замкнутої аварійної зупинки 
+					if val == 1 {
+						statusIcon = "Аварійна кнопка [1] (ОК: Кнопка віджата)"
+					} else {
+						statusIcon = "Аварійна кнопка [0] (АВАРІЯ: Натиснуто/Обрив)"
+					}
+				}
+
+				msg := fmt.Sprintf("Pin %2d | %-22s | %s", pin, statusIcon, description)
+				AppLog{}.Info(Step{Name: ""}, msg)
+			}
+			AppLog{}.Info(Step{Name: "ДІАГНОСТИКА"}, "=========================================")
+			return StepResult{Status: StepOK}
+		},
+		Do: nil,
+		Wait: func(c *Controller) StepResult {
+			return StepResult{Status: StepOK}
+		},
+	}
+}
+
 ///
 func stepCheckStartPosition() Step {
   stepStartTime = time.Now()
