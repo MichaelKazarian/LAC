@@ -93,6 +93,7 @@ func buildMoveToSafePosition() []Step {
     },
     {
       Name: "Примусово повертаємо інструмент",
+      Before: nil, // Перевірити в якому діапазоні розпредвал, щоб не зламати сверло.
       Do:   doToolHome,
       Wait: waitTime(1000 * time.Millisecond),
     },
