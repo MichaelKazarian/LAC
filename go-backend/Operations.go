@@ -166,10 +166,26 @@ func buildTrayMove() []Step {
   }
 }
 
+// shouldStopFeeding аналізує стан контролера і вирішує, чи треба заглушити подачу заготовок.
+// Викликається ВИКЛЮЧНО всередині c.apply (пряме зчитування стану).
+func shouldStopFeeding(c *Controller) bool {
+  if c.state.IsSafetyLocked || c.state.Device10In[PinPartInLoader] == 1 {
+    return true
+  }
+  // Якщо автомат вимкнено, натиснуто STOP, PAUSE, чи одинарний цикл (ModeSingle)
+  // відпрацював і вийшов з runPhase (ActiveOperation порожня)
+  isAutoMode := c.state.Mode == ModeAutomatic || c.state.Mode == ModeSingle
+  if !isAutoMode || c.state.IsPaused ||
+    (c.state.Mode == ModeSingle && c.state.ActiveOperation == "") {
+    return true
+  }
+  return false
+}
+
 func doTrayStepToggle(c *Controller) {
   c.apply(func() {
     // якщо датчик бачить заготовку, припиняємо рух
-    if c.state.Device10In[PinPartInLoader] == 1 {
+    if shouldStopFeeding(c) {
       c.state.Device20Out[OutMagShutterOpen] = 1
       return
     }
