@@ -184,29 +184,24 @@ func shouldStopFeeding(c *Controller) bool {
 
 func doTrayStepToggle(c *Controller) {
   c.apply(func() {
-    // якщо датчик бачить заготовку, припиняємо рух
-    if shouldStopFeeding(c) {
-      c.state.Device20Out[OutMagShutterOpen] = 1
-      return
-    }
-    updateMagShutterLogic(c)
+    trayStep := Step{Name: "TRAY_BG", LogMode: LogOnce}
     isHome := c.state.Device10In[PinTrayGateHome] == 1
     isOpen := c.state.Device10In[PinTrayGateOpen] == 1
+
     switch {
-    case isHome && !isOpen: // відкриваємо
+    case isHome && !isOpen: // відкриваємо лоток
       c.state.Device20Out[OutTrayGateOpen] = 0
 
-    case !isHome && isOpen: // закриваємо
+    case !isHome && isOpen: // закриваємо лоток
       c.state.Device20Out[OutTrayGateOpen] = 1
 
     case !isHome && !isOpen:
-      // ПРОБЛЕМА: Зависли посередині (немає повітря або циліндр застряг)
-      // пробуємо повернути в Home (безпечний стан)
-      c.state.Device20Out[OutTrayGateOpen] = 1
-      // TODO: додати лог: "Попередження: втрата позиції лотка"
+      AppLog{}.Error(trayStep, "Попередження: зависання циліндру лотка між кінцевиками")
+      c.state.Device20Out[OutTrayGateOpen] = 1 // повертаємо в Home
 
-    case isHome && isOpen: // КРИТИЧНО: замикання або збій датчиків
-      c.state.Device20Out[OutTrayGateOpen] = 1 // Вимикаємо
+    case isHome && isOpen:
+      AppLog{}.Error(trayStep, "ПОМИЛКА: Одночасна активація датчиків лотка Home та Open")
+      c.state.Device20Out[OutTrayGateOpen] = 1
     }
   })
 }
@@ -239,27 +234,35 @@ func startBgTrayFilling(c *Controller) {
 // runTrayFeedingLoop виконує фоновий цикл подачі лотка до появи заготовки або аварії.
 func runTrayFeedingLoop(c *Controller) {
   this := Step{
-		Name:    "Фонова подача лотка",
-		LogMode: LogOnce,
-	}
-	for {
-		if c.isEmergency() {
-      AppLog{}.Info(this, "[BG_TRAY] Emergency stop detected, aborting background tray")
-			break
-		}
-
-		doTrayStepToggle(c) // Смикаємо лоток вперед
-		time.Sleep(500 * time.Millisecond)
-
-    if isPartInLoader(c) {
-      AppLog{}.Info(this, "[BG_TRAY] Part detected! Background feeding SUCCESS")
-			break
-		}
-	}
-
-	trayBgMutex.Lock()
-	isTrayFillingBg = false
-	trayBgMutex.Unlock()
+    Name:    "Фонова подача лотка",
+    LogMode: LogOnce,
+  }
+  for {
+    var needStop bool
+    // 1. Атомарно перевіряємо умови зупинки та оновлюємо шторку
+    c.apply(func() {
+      needStop = shouldStopFeeding(c)
+      if !needStop {
+        updateMagShutterLogic(c)
+      }
+    })
+    // Якщо спрацював тригер зупинки (аварія, деталь на місці, пауза чи кінець одиночного циклу)
+    if needStop {
+      AppLog{}.Info(this, "[BG_TRAY] Зупинка фонової подачі")
+      break
+    }
+    // 2. Якщо все ОК — робимо такт лотка
+    doTrayStepToggle(c)
+    time.Sleep(500 * time.Millisecond)
+  }
+  // 3. При виході з циклу гарантовано переводимо обидва циліндри в безпечний закритий стан
+  c.apply(func() {
+    c.state.Device20Out[OutMagShutterOpen] = 1
+    c.state.Device20Out[OutTrayGateOpen] = 1
+  })
+  trayBgMutex.Lock()
+  isTrayFillingBg = false
+  trayBgMutex.Unlock()
 }
 
 // stepInitBackgroundTrayIfNeeded перевіряє наявність заготовки на старті циклу.

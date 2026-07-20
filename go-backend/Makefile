@@ -82,7 +82,7 @@ build-arm: check-go
 
 deploy-ssh: build-arm
 	@echo "--- Deploying to $(SSH_USER)@$(SSH_HOST) ---"
-	ssh -p $(SSH_PORT) $(SSH_USER)@$(SSH_HOST) "mkdir -p $(REMOTE_DIR)"
+	# ssh -p $(SSH_PORT) $(SSH_USER)@$(SSH_HOST) "mkdir -p $(REMOTE_DIR)"
 	scp -P $(SSH_PORT) bin/$(BINARY_NAME)-arm \
 		$(SSH_USER)@$(SSH_HOST):$(REMOTE_DIR)/$(BINARY_NAME)
 	# ssh -p $(SSH_PORT) $(SSH_USER)@$(SSH_HOST) \
