@@ -437,25 +437,25 @@ func stepCheckStartPosition() Step {
 }
 
 func stepCheckStopZeroDegree() Step {
-	return StepDoWait(
-		"Очікування завершення оберту валу",
-		func(c *Controller) {},
-		func(c *Controller) StepResult {
-			currentPos := int(c.state.EncoderValue / 2)
+  s := StepDoWait(
+    "Очікування завершення оберту валу",
+    func(c *Controller) {},
+    func(c *Controller) StepResult {
+      currentPos := int(c.state.EncoderValue / 2)
 
-			if isEncoderAtStartPosition(currentPos) {
-				fmt.Printf("[LOADER] Цикл завершено успішно. Вал у точці: %d\n", currentPos)
-				c.apply(func() {
-          // c.state.Device20Out[OutVFsDEnable] = 0
-					c.state.Device20Out[OutVFDSpeed1] = 0
-				})
-				return StepResult{Status: StepOK}
-			}
+      if isEncoderAtStartPosition(currentPos) {
+        fmt.Printf("[LOADER] Цикл завершено успішно. Вал у точці: %d\n", currentPos)
+        c.apply(func() {
+          c.state.Device20Out[OutVFDSpeed1] = 0
+        })
+        return StepResult{Status: StepOK}
+      }
 
-			// Вал ще крутиться — чекаемнаступний такт опроса
-			return StepResult{Status: StepRepeat}
-		},
-	)
+      return StepResult{Status: StepRepeat}
+    },
+  )
+  s.LogMode = LogOnce
+  return s
 }
 
 func buildVFDToZero() []Step {
