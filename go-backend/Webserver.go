@@ -1,6 +1,7 @@
 package main
 
 import (
+  "bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -88,15 +89,14 @@ func (ws *WebServer) setupRoutes() {
   ws.mux.HandleFunc("/", ws.handleIndex)
   }
 
-/// handleIndex відображає спрощений UI для оператора
+// handleIndex відображає спрощений UI для оператора
 func (ws *WebServer) handleIndex(w http.ResponseWriter, r *http.Request) {
-	// Перевіряємо, чи це запит на корінь "/", щоб не перехоплювати неіснуючі шляхи
+	// Перевіряємо, чи це запит строго на корінь "/"
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
 
-	// Передаємо тільки режими, які доступні оператору
 	data := map[string]interface{}{
 		"modes": []map[string]interface{}{
 			{"id": "mode-auto", "name": "АВТОМАТ", "class": "btn-outline-success"},
@@ -104,40 +104,41 @@ func (ws *WebServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if err := ws.tmpl.ExecuteTemplate(w, "index.html", data); err != nil {
-		log.Printf("[WEB] Помилка виконання шаблону index: %v", err)
-		http.Error(w, "Internal Server Error", 500)
-	}
+	ws.renderTemplate(w, "index.html", data)
 }
 
 // handleSetupPage відображає розширений UI для обслуговуючого персоналу
 func (ws *WebServer) handleSetupPage(w http.ResponseWriter, r *http.Request) {
-  // Якщо шлях не рівно "/", то це 404, а не головна сторінка
-  if r.URL.Path != "/" {
-    http.NotFound(w, r)
-    return
-  }
+	opNames := map[int]string{
+		1: "Одиничний цикл",
+		2: "Подача",
+		3: "Мотор шпінделя",
+	}
 
-  opNames := map[int]string{
-    1: "Одиничний цикл", 
-    2: "Подача", 
-    3: "Мотор шпінделя",
-  }
-  
-  data := map[string]interface{}{
-    "modes": []map[string]interface{}{
-      {"id": "mode-auto", "name": "АВТОМАТ", "class": "btn-outline-success"},
-      {"id": "mode-once-cycle", "name": "ОДИН ЦИКЛ", "class": "btn-outline-primary"},
-      {"id": "mode-manual", "name": "РУЧНИЙ", "class": "btn-outline-secondary"},
-    },
-    "opNames": opNames,
-  }
-  
-  err := ws.tmpl.ExecuteTemplate(w, "index.html", data) // Явно вказуємо назву шаблону
-  if err != nil {
-    log.Printf("[WEB] Помилка виконання шаблону index: %v", err)
-    http.Error(w, "Internal Server Error", 500)
-  }
+	data := map[string]interface{}{
+		"modes": []map[string]interface{}{
+			{"id": "mode-auto", "name": "АВТОМАТ", "class": "btn-outline-success"},
+			{"id": "mode-once-cycle", "name": "ОДИН ЦИКЛ", "class": "btn-outline-primary"},
+			{"id": "mode-manual", "name": "РУЧНИЙ", "class": "btn-outline-secondary"},
+		},
+		"opNames": opNames,
+	}
+
+	// ВИПРАВЛЕНО: Рендеримо setup.html замість index.html
+	ws.renderTemplate(w, "setup.html", data)
+}
+
+// Вспоміжний метод для безпечного рендерингу (уникнення часткового запису 200 OK при помилках)
+func (ws *WebServer) renderTemplate(w http.ResponseWriter, tmplName string, data interface{}) {
+	var buf bytes.Buffer
+	if err := ws.tmpl.ExecuteTemplate(&buf, tmplName, data); err != nil {
+		log.Printf("[WEB] Помилка виконання шаблону %s: %v", tmplName, err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	buf.WriteTo(w)
 }
 
 // handleState повертає поточний стан системи для UI
