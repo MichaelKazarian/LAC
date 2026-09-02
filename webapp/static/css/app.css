@@ -206,3 +206,57 @@ circle-progress::part(base) {
   background-color: #198754 !important;
   color: white !important;
 }
+
+/* Фіксовані розміри та оптимізація для тач-скрінів */
+.btn-control-fixed,
+label.btn-control-fixed {
+  height: 64px !important;
+  min-height: 64px !important;
+  max-height: 64px !important;
+
+  /* Жорстка флекс-сітка для центрування */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+
+  box-sizing: border-box !important;
+}
+
+/* Якщо всередині label є прихований текст або переноси */
+.btn-control-fixed * {
+  vertical-align: middle !important;
+}
+
+/* Спеціальний розмір для великої кнопки СТОП (якщо потрібна більшою) */
+.btn-stop-fixed {
+  height: 120px !important;
+  min-height: 120px !important;
+  font-size: 1.5rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: normal !important;   /* дозволити перенос */
+  word-break: break-word;           /* про всяк випадок для довгих слів */
+  line-height: 1.1;
+  padding: 0 8px;
+}
+
+/* Фіксований контейнер для кнопки СТОП/РОЗБЛОКУВАТИ */
+.safety-container {
+  min-height: 120px; /* Загальна фіксована висота слота під кнопку */
+}
+/* Резервування місця під праву панель, щоб вона не схлопувалася */
+.right-panel-wrapper {
+  min-height: 200px; /* Висота блоку режимів + кнопки паузи */
+}
+/* Альтернатива d-none: ховаємо вміст, зберігаючи фізичне місце у флексбоксі */
+.ghost-hidden {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

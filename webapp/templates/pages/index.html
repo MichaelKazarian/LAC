@@ -33,45 +33,44 @@
       <!-- Головна картка панелі управління -->
       <div class="card shadow-lg mb-2">
         <div class="card-body p-2 p-sm-3">
-          
+
           <div class="row g-2 align-items-stretch">
-            
-            <!-- Ліва колонка: Аварійна кнопка СТОП (col-4) -->
-            <div class="col-4 d-flex flex-column justify-content-center">
-              <button class="btn btn-danger btn-lg w-100 h-100 invisible" id="btnSafety" type="button">
+
+            <!-- Ліва колонка: Кнопка СТОП (col-4) -->
+            <div class="col-4 safety-container d-flex align-items-start justify-content-center">
+              <button class="btn btn-danger btn-lg w-100 btn-stop-fixed invisible" id="btnSafety" type="button">
                 СТОП
               </button>
             </div>
-
             <!-- Центральна колонка: Лічильник (col-3) -->
-            <div id="container-counter" class="col-3 text-center d-flex flex-column justify-content-center px-1">
+            <div id="container-counter" class="col-3 d-flex flex-column align-items-center justify-content-center">
               <span class="fs-6 text-muted text-uppercase fw-semibold mb-1">Виготовлено</span>
               <span id="product-counter" class="fw-bold text-dark lh-1">---</span>
             </div>
-            
+
             <!-- Права колонка: Режими та Пауза (col-5) -->
-            <div class="col-5 d-flex flex-column justify-content-center" id="rightPanel">
-              
+            <div class="col-5 right-panel-wrapper d-flex flex-column justify-content-start gap-2" id="rightPanel">
+
               <!-- Кнопки режимів -->
-              <div id="modes-switcher" class="d-flex flex-column">
-                <div>
+              <div id="modes-switcher" class="d-flex flex-column gap-2">
+                <div class="w-100">
                   <input type="radio" class="btn-check" name="radio-auto-mode" id="mode-auto" autocomplete="off">
-                  <label id="lb-mode-auto" class="btn btn-outline-success btn-lg w-100 py-3" for="mode-auto">
+                  <label id="lb-mode-auto" class="btn btn-outline-success btn-lg w-100 btn-control-fixed" for="mode-auto">
                     АВТОМАТ
                   </label>
                 </div>
-                <div>
+                <div class="w-100">
                   <input type="radio" class="btn-check" name="radio-auto-mode" id="mode-once-cycle" autocomplete="off">
-                  <label id="lb-mode-once-cycle" class="btn btn-outline-primary btn-lg w-100 py-3" for="mode-once-cycle">
+                  <label id="lb-mode-once-cycle" class="btn btn-outline-primary btn-lg w-100 btn-control-fixed" for="mode-once-cycle">
                     ОДИН ЦИКЛ
                   </label>
                 </div>
               </div>
-
               <!-- Кнопка Пауза -->
-              <button class="btn btn-warning btn-lg w-100 invisible py-2" id="btnPause" type="button">ПАУЗА</button>
+              <button class="btn btn-warning btn-lg w-100 btn-control-fixed invisible" id="btnPause" type="button">
+                ПАУЗА
+              </button>
             </div>
-
           </div>
         </div>
       </div>

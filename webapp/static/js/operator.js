@@ -100,16 +100,25 @@ export function updateSafetyIfNeeded(json) {
   lastSafetyVisibility = shouldBeVisible;
   lastSafetyLocked = isLocked;
 
+  const rightPanel = document.getElementById("rightPanel");
+
   if (isLocked) {
     btnSafety.innerHTML = "РОЗБЛОКУВАТИ";
-    btnSafety.className = "btn btn-success btn-lg w-100 shadow-sm";
-    document.getElementById("rightPanel")?.classList.add("d-none");
+    btnSafety.classList.replace("btn-danger", "btn-success");
+    
+    // Замість d-none використовуємо ghost-hidden (місце залишається, але кнопки невидимі й неклікабельні)
+    rightPanel?.classList.add("ghost-hidden");
   } else {
     btnSafety.innerHTML = "СТОП";
-    btnSafety.className = "btn btn-danger btn-lg w-100 shadow-sm";
-    document.getElementById("rightPanel")?.classList.remove("d-none");
+    btnSafety.classList.replace("btn-success", "btn-danger");
+    
+    rightPanel?.classList.remove("ghost-hidden");
   }
 
+  // Завжди тримаємо фіксовані розмірні класи
+  btnSafety.classList.add("btn-stop-fixed", "btn-lg", "w-100");
+  
+  // Керуємо видимістю кнопки СТОП/РОЗБЛОКУВАТИ
   btnSafety.classList.toggle("invisible", !shouldBeVisible);
 }
 
