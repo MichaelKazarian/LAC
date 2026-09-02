@@ -1,504 +1,83 @@
-let isConnected = true;
-let prevControlMode;
-let isOperationsRendered = false;
-let isPausedGlobal = false;
-let lastPausedState = null;
-let lastSafetyVisibility = null;
-let lastSafetyLocked = null;
-let errorMessage = "";
-let infoMessage = "";
-let warningMessage = "";
-let manualOperations = [];
-let lastActiveId = null;
-let lastError = "";
+// static/js/lac.js
 
-let systemMessage = {
-  type: null, // "error", "warning", "info"
-  text: ""
-};
+import { 
+  initBaseEvents, 
+  applyBaseState, 
+  setMessage 
+} from './operator.js';
 
-/**
- * Відкриває вікно статусу. 
- * Використання імені "StatusPage" дозволяє перемикатися на вже відкриту вкладку.
- */
-function openStatusWindow() {
-  window.open('/status', 'StatusPage');
+let prevOperationsState = [];
+const pieSegment = document.getElementById("pie-segment");
+const pieText = document.getElementById("pie-text");
+
+// Оновлення кругової діаграми градусів
+function updatePieChart(degrees) {
+  if (!pieSegment || !pieText) return;
+  const percentage = (degrees / 360) * 100;
+  pieSegment.setAttribute("stroke-dasharray", `${percentage}, 100`);
+  pieText.textContent = `${Math.round(degrees)}°`;
 }
 
-function setMessage(type, text) {
-  if (systemMessage.type === type && systemMessage.text === text) return;
-
-  systemMessage.type = type;
-  systemMessage.text = text;
-
-  if (!stateArea) return;
-  stateArea.innerHTML = text;
-  switch (type) {
-    case "error":
-      stateArea.className = "alert alert-danger";
-      break;
-    case "warning":
-      stateArea.className = "alert alert-warning";
-      break;
-    case "info":
-      stateArea.className = "alert alert-info";
-      break;
-    default:
-      stateArea.className = "";
-      stateArea.innerHTML = "";
-  }
-}
-
-let btnManual = document.getElementById("mode-manual");
-btnManual.addEventListener('click', async function () {
-  let response = await fetch('/modeset?id=mode-manual',
-                             {method: 'GET'});
-});
-
-let lbModeCycleOnce = document.getElementById("lb-mode-once-cycle");
-let btnModeCycleOnce = document.getElementById("mode-once-cycle");
-btnModeCycleOnce.addEventListener('click', async function () {
-  let response = await fetch('/modeset?id=mode-once-cycle',
-                             {method: 'GET'});
-});
-
-let lbModeAuto = document.getElementById("lb-mode-auto");
-let btnModeAuto = document.getElementById("mode-auto");
-btnModeAuto.addEventListener('click', async function () {
-  let response = await fetch('/modeset?id=mode-auto',
-                             {method: 'GET'});
-});
-
-let btnPause = document.getElementById("btnPause");
-btnPause.addEventListener('click', async function () {
-  let targetState = !isPausedGlobal; 
-  let response = await fetch(`/pause?set=${targetState}`, { method: 'GET' });
-  if (!response.ok) {
-    setMessage("error", "Помилка відправки команди паузи");
-  }
-});
-
-let btnSafety = document.getElementById("btnSafety");
-btnSafety.addEventListener('click', async function () {
-  await fetch('/safety', { method: 'GET' });
-});
-
-let circleProgress = document.getElementById("circle-progress");
-circleProgress.textFormat = "value";
-
-let stateArea = document.getElementById("state-area");
-let counterContainer = document.getElementById("container-counter");
-let productCounter = document.getElementById("product-counter");
-let lbProductCounter = document.getElementById("lb-product-counter");
-
-function arraysEqual(a1,a2) {
-  /* WARNING: arrays must not contain {objects} or behavior may be undefined */
-  return JSON.stringify(a1)==JSON.stringify(a2);
-}
-
-function getErrorInfo(json) {
-  if (json["operationState"].startsWith("error")) return json["operationState"];
-  if (json["modeState"].startsWith("error")) return json["modeState"];
-  if (json["isLocked"]) return json["stopReason"];
-  return "";
-}
-
-function renderOperations(operations) {
-  const leftCol = document.getElementById("ops-col-left");
-  const rightCol = document.getElementById("ops-col-right");
-  
-  if (!leftCol || !rightCol || !operations) return;
-
-  // Розраховуємо точку поділу (якщо 19, то limit = 10)
-  const limit = Math.ceil(operations.length / 2);
-  
-  let leftHtml = "";
-  let rightHtml = "";
-
-  operations.forEach((op, index) => {
-    const id = op[0];   // Ключ/ID операції
-    const name = op[1]; // Те, що в Go ми прописали як UserName
-    
-    const html = `
-      <div class="row mx-1 my-1">
-                <input type="radio" class="btn-check" name="radio-operation" id="${id}" autocomplete="off">
-                <label class="btn btn-outline-primary btn-lg" for="${id}" id="lRadio_${id}">
-                  ${name}
-                </label>
-      </div>`;
-
-    if (index < limit) {
-      leftHtml += html;
-    } else {
-      rightHtml += html;
+// Оновлення 18+ ручних кнопок
+function updateManualButtons(operations) {
+  if (!operations) return;
+  operations.forEach((state, index) => {
+    const opId = index + 1;
+    if (state !== prevOperationsState[index]) {
+      const btn = document.getElementById(`op-${opId}`);
+      if (btn) {
+        btn.checked = (state === 1);
+      }
     }
   });
+  prevOperationsState = [...operations];
+}
 
-  // Оновлюємо DOM
-  leftCol.innerHTML = leftHtml;
-  rightCol.innerHTML = rightHtml;
+// Прив'язка кліків для ручних кнопок (18+ шт)
+function initManualButtons() {
+  const btnContainer = document.getElementById("btnContainer");
+  if (!btnContainer) return;
 
-  // Прив'язка кліків
-  operations.forEach((op) => {
-    const id = op[0];
-    const el = document.getElementById(id);
-    if (el) {
-      el.onclick = () => invokeOperation(id);
+  btnContainer.addEventListener("change", (e) => {
+    if (e.target && e.target.id.startsWith("op-")) {
+      const opId = e.target.id.replace("op-", "");
+      const isChecked = e.target.checked ? 1 : 0;
+      
+      fetch(`/radio?id=${opId}&val=${isChecked}`)
+        .catch(() => setMessage("error", "Помилка відправки ручної команди"));
     }
   });
 }
 
-async function invokeOperation(id) {
-  console.log(`Sending operation: ${id}`);
-  let response = await fetch(`/radio?id=${id}`, { method: 'GET' });
-  if (!response.ok) {
-    setMessage("error", `Помилка виконання: ${id}`);
-  }
-}
+// Головний цикл наладчика
+document.addEventListener("DOMContentLoaded", () => {
+  initBaseEvents();
+  initManualButtons();
 
-function setOperationState(elementId, value) {
-  var element = document.getElementById(elementId);
-  if (!element) return;
-  var currentClass = element.className;
-  if (value === 0) {
-    element.className = "btn btn-primary btn-lg";
-    clearOperationsActiveState();
-    element.checked = true;
-  } else if (value === 1) {
-    element.className = "btn btn-outline-primary btn-lg";
-  } else {
-    element.className = "btn btn-danger btn-lg";
-  }
-}  
+  async function cabinetState() {
+    try {
+      const response = await fetch("/state");
+      if (response.ok) {
+        const json = await response.json();
+        
+        // 1. Викликаємо базове оновлення з operator.js
+        applyBaseState(json);
 
-function setDegree(json) {
-  circleProgress.value = parseInt(json["degree"]/2);
-  if (productCounter) {
-    productCounter.innerHTML = json["counter"] || 0;
-  }
-}
-
-function setOperationsActiveState(state) {
-  let operations = document.getElementsByName("radio-operation");
-  for (let i=0; i<operations.length; i++) {
-    let r = operations[i];
-    r.disabled = !state;
-  }
-}
-
-function clearOperationsActiveState() {
-  let operations = document.getElementsByName("radio-operation");
-  operations.forEach(r => {
-    r.checked = false;
-    let l = document.querySelector(`label[for="${r.id}"]`);
-    if (l) {
-      l.className = "btn btn-outline-secondary btn-lg";
-    }
-  });
-}
-
-function updAvailableManualOperations(json) {
-  const newOps = json["manualOperations"];
-  // Якщо список дозволених операцій не змінився — виходимо
-  if (arraysEqual(manualOperations, newOps)) return;
-
-  // 1. Скидаємо всі кнопки операцій до "вимкненого" стану (сірі)
-  let allRadios = document.getElementsByName("radio-operation");
-  allRadios.forEach(r => {
-    r.disabled = true;
-    let l = document.querySelector(`label[for="${r.id}"]`);
-    if (l) {
-      // Робимо кнопку сірою
-      l.className = "btn btn-outline-secondary btn-lg";
-    }
-  });
-
-  // 2. Вмикаємо лише ті, що дозволені бекендом за кутом/станом
-  newOps.forEach(opId => {
-    const radio = document.getElementById(opId);
-    const label = document.querySelector(`label[for="${opId}"]`);
-    if (radio && label) {
-      radio.disabled = false;
-      // Робимо кнопку синьою та жирною
-      label.className = "btn btn-outline-primary btn-lg fw-bold";
-    }
-  });
-
-  manualOperations = newOps;
-}
-
-function updPauseButton(isPaused, modeId) {
-  let btnPause = document.getElementById("btnPause");
-  if (isPaused === lastPausedState || modeId === "mode-manual") return;
-  if (isPaused) {
-    btnPause.innerHTML = "ПРОДОВЖИТИ";
-    btnPause.className = "btn btn-success btn-lg blink"; // blink можна додати в CSS для уваги
-    btnManual.disabled = false;
-    btnManual.classList.remove("btn-outline-secondary");
-    btnManual.classList.add("btn-secondary", "fw-bold");
-  } else {
-    btnPause.innerHTML = "ПАУЗА";
-    btnPause.className = "btn btn-warning btn-lg";
-    btnManual.disabled = true;
-    btnManual.classList.add("btn-outline-secondary");
-    btnManual.classList.remove("btn-secondary", "fw-bold");
-  }
-  lastPausedState = isPaused;
-}
-
-function updModeState(modeId) {
-  if (modeId !== prevControlMode) {
-    errorMessage = "";
-    infoMessage = "";
-    warningMessage = "";
-
-    switch (modeId) {
-      case "mode-auto":
-      case "mode-once-cycle":
-        const isAuto = (modeId === "mode-auto");
-        btnModeAuto.checked = isAuto;
-        btnModeCycleOnce.checked = !isAuto;
-        btnPause.classList.remove("invisible");
-        lbModeAuto.classList.add("invisible");
-        lbModeCycleOnce.classList.add("invisible");
-        if (isAuto) {
-          counterContainer.classList.remove("invisible");
-        } else {
-          counterContainer.classList.add("invisible");
+        // 2. Додаємо наладку: Градуси та Ручні кнопки
+        if (json["degrees"] !== undefined) {
+          updatePieChart(json["degrees"]);
         }
-        setOperationsActiveState(false);
-        break;
-      default:
-        btnManual.checked = true;
-        btnManual.disabled = false;
-        btnPause.classList.add("invisible");
-        lbModeAuto.className = "btn btn-outline-success btn-lg";
-        lbModeCycleOnce.className = "btn btn-outline-success btn-lg";
-        counterContainer.classList.add("invisible");
-        setOperationsActiveState(true);
-        clearOperationsActiveState();
-    }
-    prevControlMode = modeId;
-  }
-}
-
-async function getCabinetState() {
-  try {
-    let response = await fetch("/state");  
-    if (response.ok) {
-      let json = await response.json();
-      if (!isConnected) {
-        // TODO в окрему функцію
-        isConnected = true;
-        console.log("Зв'язок відновлено");
-      }
-      // ПЕРЕВІРКА ТА РЕНДЕР ОПЕРАЦІЙ (Тільки один раз!)
-      if (!isOperationsRendered && json["OperationsList"]) {
-        renderOperations(json["OperationsList"]);
-        isOperationsRendered = true;
-      }
-      let modeId = json["modeId"];
-      isPausedGlobal = json["isPaused"];
-      updateSafetyIfNeeded(json);
-      updPauseButton(isPausedGlobal, modeId);
-      updModeState(modeId);
-      setDegree(json);
-      if (modeId === "mode-manual") {
-        updAvailableManualOperations(json);
+        if (json["operations"]) {
+          updateManualButtons(json["operations"]);
+        }
       } else {
-        setOperationsActiveState(false);
-        manualOperations = []; 
+        setMessage("error", `Помилка сервера: ${response.status}`);
       }
-      updActiveOperation(json["ActiveOperation"]);
-      let errState = getErrorInfo(json);
-      if (errState !== "") {
-        setMessage("error", errState);
-        updModeState("mode-manual");
-      }
-      else if (json["modeState"].startsWith("warning-")) {
-        setMessage("warning", json["modeState"].split("-")[1]);
-      }
-      else {
-        setMessage("info", json["modeDescription"]);
-      }
-    } else {
-      isConnected = false;
-      setMessage("error", `Помилка сервера: ${response.status}`);
-    }
-  } catch (TypeError) {
-    if (isConnected) { // Фізична відсутність зв'язку (Network Error)
-      isConnected = false;
+    } catch (err) {
       setMessage("error", "Зв'язок з контролером відсутній!");
-      setOperationsActiveState(false); // Блокуємо все від гріха подалі
     }
-  }
-}
-
-function updActiveOperation(activeId) {
-  // Якщо ID не змінився, нічого не робимо — виходимо миттєво
-  if (activeId === lastActiveId) return;
-  console.log(`🔄 Зміна активної операції: ${lastActiveId} -> ${activeId}`);
-  // 1. Скидаємо попередню активну кнопку (якщо вона була)
-  if (lastActiveId) {
-    let lastLabel = document.querySelector(`label[for="${lastActiveId}"]`);
-    if (lastLabel) {
-      lastLabel.classList.remove("btn-warning", "blink");
-      lastLabel.classList.add("btn-outline-primary");
-    }
-    // Тут не було скидання r.checked = false, тому кнопка залишалася "вибраною"
+    setTimeout(cabinetState, 100);
   }
 
-  // 2. Підсвічуємо нову активну кнопку
-  if (activeId && activeId !== "") {
-    let currentRadio = document.getElementById(activeId);
-    let currentLabel = document.querySelector(`label[for="${activeId}"]`);
-    if (currentLabel) {
-      currentLabel.classList.remove("btn-outline-primary", "btn-outline-secondary");
-      currentLabel.classList.add("btn-warning", "fw-bold", "blink");
-      if (currentRadio) currentRadio.checked = true;
-    }
-  }
-  lastActiveId = activeId; // Запам'ятовуємо новий стан
-}
-
-// ВАРІАНТ з "відтисканям" кнопки
-/* function updActiveOperation(activeId) {
- *   if (activeId === lastActiveId) return;
- * 
- *   console.log(`🔄 Стан операцій змінено: ${lastActiveId} -> ${activeId}`);
- * 
- *   // 1. Скидаємо попередню активну кнопку
- *   if (lastActiveId) {
- *     let lastRadio = document.getElementById(lastActiveId);
- *     let lastLabel = document.querySelector(`label[for="${lastActiveId}"]`);
- *     
- *     if (lastLabel) {
- *       lastLabel.classList.remove("btn-warning", "blink");
- *       // ПЕРЕКОНУЄМОСЯ, що вона повертається до правильного кольору
- *       if (manualOperations.includes(lastActiveId)) {
- *         lastLabel.className = "btn btn-outline-primary btn-lg fw-bold";
- *       } else {
- *         lastLabel.className = "btn btn-outline-secondary btn-lg";
- *       }
- *     }
- *     // ВАЖЛИВО: "відтискаємо" кнопку
- *     if (lastRadio) lastRadio.checked = false;
- *   }
- * 
- *   // 2. Підсвічуємо нову активну кнопку (якщо вона є)
- *   if (activeId && activeId !== "") {
- *     let currentRadio = document.getElementById(activeId);
- *     let currentLabel = document.querySelector(`label[for="${activeId}"]`);
- *     if (currentLabel) {
- *       currentLabel.classList.remove("btn-outline-primary", "btn-outline-secondary", "btn-outline-secondary");
- *       currentLabel.classList.add("btn-warning", "fw-bold", "blink");
- *       if (currentRadio) currentRadio.checked = true;
- *     }
- *   }
- * 
- *   lastActiveId = activeId;
- * } */
-
-function updateSafetyIfNeeded(json) {
-  const isLocked = json["isLocked"];
-  const activeOp = json["ActiveOperation"];
-  const mode = json["modeId"];
-
-  // Обчислюємо похідний стан (чи кнопка ВЗАГАЛІ має бути видимою)
-  const shouldBeVisible = (isLocked || activeOp !== "" || mode !== "mode-manual");
-
-  // Якщо нічого суттєвого не змінилось — виходимо
-  if (lastSafetyVisibility === shouldBeVisible &&
-      lastSafetyLocked === isLocked) {
-    return;
-  }
-
-  console.log("Safety UI changed");
-
-  lastSafetyVisibility = shouldBeVisible;
-  lastSafetyLocked = isLocked;
-  updSafetyButton(json);
-}
-
-function updSafetyButton(json) {
-  const isLocked  = json["isLocked"];
-  const activeOp  = json["ActiveOperation"];
-  const mode      = json["modeId"];
-  const errorText = json["stopReason"];
-
-  // --- Обробка помилки
-  if (isLocked) {
-    btnSafety.innerHTML = "РОЗБЛОКУВАТИ";
-    btnSafety.className = "btn btn-success btn-lg w-100 shadow-sm";
-    hideRightPanel();
-  } else {
-    lastError = "";
-    btnSafety.innerHTML = "СТОП";
-    btnSafety.className = "btn btn-danger btn-lg w-100 shadow-sm";
-    showRightPanel();
-  }
-
-  const shouldBeVisible = (isLocked || activeOp !== "" || mode !== "mode-manual");
-  btnSafety.classList.toggle("invisible", !shouldBeVisible);
-}
-
-function hideRightPanel() {
-  document.getElementById("rightPanel").classList.add("d-none");
-}
-
-function showRightPanel() {
-  document.getElementById("rightPanel").classList.remove("d-none");
-}
-
-// function confirmShutdown() {
-//   if (confirm("Ви впевнені, що хочете ПОВНІСТЮ ВИМКНУТИ Raspberry Pi? Для запуску знадобиться перепідключення живлення.")) {
-//     fetch('/shutdown')
-//       .then(response => {
-//         alert("Команду надіслано. Зв'язок буде розірвано через кілька секунд.");
-//         window.location.href = "/";
-//       })
-//       .catch(err => alert("Помилка: " + err));
-//   }
-// }
-
-function confirmShutdown() {
-    const myModal = new bootstrap.Modal(document.getElementById('shutdownModal'));
-    myModal.show();
-}
-
-// Функція, яка реально надсилає запит на сервер
-function doShutdown() {
-    // Показуємо користувачу, що процес пішов
-    const btn = event.target;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Вимикаю...';
-
-    fetch('/shutdown')
-        .then(response => {
-            if (response.ok) {
-                document.body.innerHTML = `
-                    <div class="d-flex justify-content-center align-items-center vh-100 bg-dark text-white text-center">
-                        <div>
-                            <h1>СИСТЕМА ВИМКНЕНА</h1>
-                            <p class="lead">Зв'язок розірвано. Тепер можна знімати живлення.</p>
-                        </div>
-                    </div>`;
-            } else {
-                alert("Помилка сервера при вимкненні.");
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            // В кіоску alert теж може не працювати, тому краще вивести в консоль або в текст на екрані
-        });
-}
-
-function main() {
-  function cabinetState() {
-    getCabinetState();
-    setTimeout(cabinetState, 70);
-  }
-  setTimeout(cabinetState, 70);
-}
-
-if (stateArea !== null) main();
+  setTimeout(cabinetState, 100);
+});

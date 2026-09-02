@@ -1,113 +1,114 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
   <head>
     {{ template "head" . }}
     <link rel="stylesheet" type="text/css" href="/static/css/app.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/operator.css">
   </head>
 
-  <body>
+  <body data-script-role="operator">
     <header>
       {{ template "header" . }}
     </header>
 
-    <div class="container-fluid">
-      <div class="card">
-        <div class="card-body">
-          <script src="/static/js/circle-progress.min.js" type="module"></script>
+    <!-- Замінено container на container-fluid px-2 для використання всієї ширини -->
+    <div class="container-fluid px-2 py-3">
+      
+      <!-- Верхнє меню (вирівняно по лівому краю) -->
+      <div class="d-flex justify-content-start mb-2">
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary btn-lg dropdown-toggle px-4" type="button" id="optionsMenu" data-bs-toggle="dropdown" aria-expanded="false">
+            Опції
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="optionsMenu">
+            <li><a class="dropdown-item fw-bold text-primary py-2" href="/setup">⚙️ Наладка</a></li>
+            <li><a class="dropdown-item py-2" href="#" onclick="openStatusWindow(); return false;">Статус</a></li>
+            <li><a class="dropdown-item text-danger py-2" href="/logout">Вийти</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger fw-bold py-2" href="#" onclick="confirmShutdown(); return false;">🔴 ВИМКНУТИ</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Головна картка панелі управління -->
+      <div class="card shadow-lg mb-2">
+        <div class="card-body p-2 p-sm-3">
           
-          <div class="row align-items-start">
-            <div class="col-sm-3 d-flex flex-column align-items-center justify-content-start">
-              <div class="dropdown mt-1 mb-3">
-                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="optionsMenu" data-bs-toggle="dropdown" aria-expanded="false" style="min-width: 150px;">
-                  Опції
-                </button>
-                <ul class="dropdown-menu" aria-labelledby="optionsMenu">
-                  <li>
-                    <a class="dropdown-item" href="#" onclick="openStatusWindow(); return false;">
-                      Статус
-                    </a>
-                  </li>
-                  <li><a class="dropdown-item text-danger" href="/logout">Вийти</a></li>
-                  <li><hr class="dropdown-divider"></li>
-                  <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="confirmShutdown(); return false;"> 🔴 ВИМКНУТИ</a></li>
-                </ul>
-              </div>
-
-              <div class="mt-1">
-                <button class="btn btn-danger btn-lg invisible" id="btnSafety" type="button" style="min-width: 150px;">
-                  СТОП
-                </button>
-              </div>
+          <div class="row g-2 align-items-stretch">
+            
+            <!-- Ліва колонка: Аварійна кнопка СТОП (col-4) -->
+            <div class="col-4 d-flex flex-column justify-content-center">
+              <button class="btn btn-danger btn-lg w-100 h-100 invisible" id="btnSafety" type="button">
+                СТОП
+              </button>
             </div>
 
-            <div class="col-sm-6 d-flex flex-column align-items-center justify-content-center">
-              <circle-progress id="circle-progress" value="0" max="360"></circle-progress>
-              <div id="state-area" class="alert alert-light text-center mt-3 w-100" role="alert">
-                Статус: Очікування даних...
+            <!-- Центральна колонка: Лічильник (col-3) -->
+            <div id="container-counter" class="col-3 text-center d-flex flex-column justify-content-center px-1">
+              <span class="fs-6 text-muted text-uppercase fw-semibold mb-1">Виготовлено</span>
+              <span id="product-counter" class="fw-bold text-dark lh-1">---</span>
+            </div>
+            
+            <!-- Права колонка: Режими та Пауза (col-5) -->
+            <div class="col-5 d-flex flex-column justify-content-center" id="rightPanel">
+              
+              <!-- Кнопки режимів -->
+              <div id="modes-switcher" class="d-flex flex-column">
+                <div>
+                  <input type="radio" class="btn-check" name="radio-auto-mode" id="mode-auto" autocomplete="off">
+                  <label id="lb-mode-auto" class="btn btn-outline-success btn-lg w-100 py-3" for="mode-auto">
+                    АВТОМАТ
+                  </label>
+                </div>
+                <div>
+                  <input type="radio" class="btn-check" name="radio-auto-mode" id="mode-once-cycle" autocomplete="off">
+                  <label id="lb-mode-once-cycle" class="btn btn-outline-primary btn-lg w-100 py-3" for="mode-once-cycle">
+                    ОДИН ЦИКЛ
+                  </label>
+                </div>
               </div>
+
+              <!-- Кнопка Пауза -->
+              <button class="btn btn-warning btn-lg w-100 invisible py-2" id="btnPause" type="button">ПАУЗА</button>
             </div>
 
-            <div id="rightPanel" class="col-sm-3 d-flex justify-content-center">
-              <div style="width: 100%; max-width: 250px;">
-
-                <div id="modes-switcher" class="row mt-3">
-                  {{ range .modes }}
-                  <div class="row mb-1 mx-0 px-0">
-                    <input type="radio" class="btn-check" name="radio-auto-mode" id="{{ .id }}" autocomplete="off">
-                    <label id="lb-{{ .id }}" class="btn {{ .class }} btn-lg w-100" for="{{ .id }}">
-                      {{ .name }}
-                    </label>
-                  </div>
-                  {{ end }}
-                </div>
-
-                <div class="row mb-1 mt-1">
-                  <button class="btn btn-warning btn-lg invisible w-100" id="btnPause" type="button">ПАУЗА</button>
-                </div>
-
-                <div id="container-counter" class="row mb-1 mt-1 border-bottom pb-1">
-                  <div class="col-8">
-                    <label id="lb-product-counter" class="fs-5 fw-bold mb-0">Кіл-ть:</label>
-                  </div>
-                  <div class="col-4 text-end">
-                    <label id="product-counter" class="fs-5 fw-bold mb-0">---</label>
-                  </div>
-                </div>
-
-              </div>
-            </div>
           </div>
         </div>
       </div>
 
-      <div class="row" id="operations-container">
-        <div class="col-sm-6" id="ops-col-left"></div>
-        <div class="col-sm-6" id="ops-col-right"></div>
+      <!-- Статус системи на всю ширину знизу -->
+      <div class="card bg-light p-2 text-center shadow-sm">
+        <div id="state-area" class="alert alert-light text-center fs-4 p-3 my-0 border" role="alert">
+          Статус: Очікування даних...
+        </div>
       </div>
+    </div>
 
-      <div class="modal fade" id="shutdownModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content border-danger">
-            <div class="modal-header bg-danger text-white">
-              <h5 class="modal-title">Підтвердження вимкнення</h5>
-              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body text-center">
-              <p class="fs-5">Ви впевнені, що хочете ПОВНІСТЮ ВИМКНУТИ систему?</p>
-              <p class="text-muted small">Для запуску знадобиться фізичне перепідключення живлення.</p>
-            </div>
-            <div class="modal-footer justify-content-center">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
-              <button type="button" class="btn btn-danger" onclick="doShutdown()">ТАК, ВИМКНУТИ</button>
-            </div>
+    <!-- Модальне вікно вимкнення -->
+    <div class="modal fade" id="shutdownModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-danger">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title">Підтвердження вимкнення</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center py-4">
+            <p class="fs-5">Ви впевнені, що хочете ПОВНІСТЮ ВИМКНУТИ систему?</p>
+            <p class="text-muted small">Для запуску знадобиться фізичне перепідключення живлення.</p>
+          </div>
+          <div class="modal-footer justify-content-center">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+            <button type="button" class="btn btn-danger" onclick="doShutdown()">ТАК, ВИМКНУТИ</button>
           </div>
         </div>
       </div>
+    </div>
 
-      <footer>
-        {{ template "footer" . }}
-      </footer>
+    <footer>
+      {{ template "footer" . }}
+    </footer>
 
-      <script src="/static/js/lac.js" defer></script>
+    <!-- Скрипт ТІЛЬКИ для оператора -->
+    <script type="module" src="/static/js/operator.js"></script>
   </body>
 </html>

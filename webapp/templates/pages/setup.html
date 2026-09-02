@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {{ template "head" . }}
+    <link rel="stylesheet" type="text/css" href="/static/css/app.css">
+  </head>
+
+  <body>
+    <header>
+      {{ template "header" . }}
+    </header>
+
+    <div class="container-fluid">
+      <div class="card">
+        <div class="card-body">
+          <script src="/static/js/circle-progress.min.js" type="module"></script>
+          
+          <div class="row align-items-start">
+            <div class="col-sm-3 d-flex flex-column align-items-center justify-content-start">
+              <div class="dropdown mt-1 mb-3">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="optionsMenu" data-bs-toggle="dropdown" aria-expanded="false" style="min-width: 150px;">
+                  Опції
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="optionsMenu">
+                  <li>
+                    <a class="dropdown-item" href="#" onclick="openStatusWindow(); return false;">
+                      Статус
+                    </a>
+                  </li>
+                  <li><a class="dropdown-item text-danger" href="/logout">Вийти</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="confirmShutdown(); return false;"> 🔴 ВИМКНУТИ</a></li>
+                </ul>
+              </div>
+
+              <div class="mt-1">
+                <button class="btn btn-danger btn-lg invisible" id="btnSafety" type="button" style="min-width: 150px;">
+                  СТОП
+                </button>
+              </div>
+            </div>
+
+            <div class="col-sm-6 d-flex flex-column align-items-center justify-content-center">
+              <circle-progress id="circle-progress" value="0" max="360"></circle-progress>
+              <div id="state-area" class="alert alert-light text-center mt-3 w-100" role="alert">
+                Статус: Очікування даних...
+              </div>
+            </div>
+
+            <div id="rightPanel" class="col-sm-3 d-flex justify-content-center">
+              <div style="width: 100%; max-width: 250px;">
+
+                <div id="modes-switcher" class="row mt-3">
+                  {{ range .modes }}
+                  <div class="row mb-1 mx-0 px-0">
+                    <input type="radio" class="btn-check" name="radio-auto-mode" id="{{ .id }}" autocomplete="off">
+                    <label id="lb-{{ .id }}" class="btn {{ .class }} btn-lg w-100" for="{{ .id }}">
+                      {{ .name }}
+                    </label>
+                  </div>
+                  {{ end }}
+                </div>
+
+                <div class="row mb-1 mt-1">
+                  <button class="btn btn-warning btn-lg invisible w-100" id="btnPause" type="button">ПАУЗА</button>
+                </div>
+
+                <div id="container-counter" class="row mb-1 mt-1 border-bottom pb-1">
+                  <div class="col-8">
+                    <label id="lb-product-counter" class="fs-5 fw-bold mb-0">Кіл-ть:</label>
+                  </div>
+                  <div class="col-4 text-end">
+                    <label id="product-counter" class="fs-5 fw-bold mb-0">---</label>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" id="operations-container">
+        <div class="col-sm-6" id="ops-col-left"></div>
+        <div class="col-sm-6" id="ops-col-right"></div>
+      </div>
+
+      <div class="modal fade" id="shutdownModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+              <h5 class="modal-title">Підтвердження вимкнення</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+              <p class="fs-5">Ви впевнені, що хочете ПОВНІСТЮ ВИМКНУТИ систему?</p>
+              <p class="text-muted small">Для запуску знадобиться фізичне перепідключення живлення.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+              <button type="button" class="btn btn-danger" onclick="doShutdown()">ТАК, ВИМКНУТИ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        {{ template "footer" . }}
+      </footer>
+
+      <script type="module" src="/static/js/lac.js"></script>
+  </body>
+</html>

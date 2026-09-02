@@ -67,7 +67,7 @@ func (ws *WebServer) setupRoutes() {
   fs := http.FileServer(http.Dir("../../webapp/static"))
   ws.mux.Handle("/static/", http.StripPrefix("/static/", fs))
   
-  // 2. API Endpoints (чіткі шляхи)
+  // 2. API Endpoints
   ws.mux.HandleFunc("/state", ws.handleState)
   ws.mux.HandleFunc("/api/status", ws.handleStatusAPI) // JSON дані
   
@@ -81,14 +81,37 @@ func (ws *WebServer) setupRoutes() {
   ws.mux.HandleFunc("/shutdown", ws.handleShutdown)
 
   // 4. Сторінки
-  ws.mux.HandleFunc("/status", ws.handleStatusPage)   // HTML сторінка
+  ws.mux.HandleFunc("/status", ws.handleStatusPage)
+  ws.mux.HandleFunc("/setup", ws.handleSetupPage)
   
   // 5. Головна сторінка - реєструємо ОСТАННЬОЮ
   ws.mux.HandleFunc("/", ws.handleIndex)
   }
 
-// handleIndex обробляє головну сторінку
+/// handleIndex відображає спрощений UI для оператора
 func (ws *WebServer) handleIndex(w http.ResponseWriter, r *http.Request) {
+	// Перевіряємо, чи це запит на корінь "/", щоб не перехоплювати неіснуючі шляхи
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Передаємо тільки режими, які доступні оператору
+	data := map[string]interface{}{
+		"modes": []map[string]interface{}{
+			{"id": "mode-auto", "name": "АВТОМАТ", "class": "btn-outline-success"},
+			{"id": "mode-once-cycle", "name": "ОДИН ЦИКЛ", "class": "btn-outline-primary"},
+		},
+	}
+
+	if err := ws.tmpl.ExecuteTemplate(w, "index.html", data); err != nil {
+		log.Printf("[WEB] Помилка виконання шаблону index: %v", err)
+		http.Error(w, "Internal Server Error", 500)
+	}
+}
+
+// handleSetupPage відображає розширений UI для обслуговуючого персоналу
+func (ws *WebServer) handleSetupPage(w http.ResponseWriter, r *http.Request) {
   // Якщо шлях не рівно "/", то це 404, а не головна сторінка
   if r.URL.Path != "/" {
     http.NotFound(w, r)

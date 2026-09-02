@@ -1,0 +1,78 @@
+/* ==========================================================================
+   Стилі для книжкової (вертикальної) орієнтації
+   ========================================================================== */
+
+/* Відступи між блоками у правій панелі */
+#rightPanel {
+  gap: 1.25rem !important;
+}
+
+/* Відстань між кнопками АВТОМАТ та ОДИН ЦИКЛ */
+#modes-switcher {
+  gap: 1rem !important; 
+}
+
+/* Кнопки режимів (АВТОМАТ / ОДИН ЦИКЛ) */
+#modes-switcher .btn-lg {
+  min-height: 90px;
+  font-size: 1.6rem !important;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-width: 2px;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease-in-out;
+}
+
+/* Активний стан вибраного режиму */
+#modes-switcher .btn-check:checked + .btn {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+/* Кнопка ПАУЗА */
+#btnPause {
+  min-height: 80px;
+  font-size: 1.5rem !important;
+  font-weight: 700;
+  border-radius: 12px;
+  letter-spacing: 0.03em;
+  box-shadow: 0 4px 10px rgba(255, 193, 7, 0.25);
+}
+
+/* Аварійна кнопка СТОП */
+#btnSafety {
+  min-height: 100% !important;   /* Розтягується на всю висоту суміжного блоку */
+  font-size: 2.2rem !important;
+  font-weight: 800;
+  border-radius: 14px;
+  letter-spacing: 0.05em;
+  box-shadow: 0 6px 18px rgba(220, 53, 69, 0.35);
+}
+
+/* Верхня кнопка Меню / Опції */
+#optionsMenu {
+  min-height: 55px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+/* Блок лічильника */
+#container-counter {
+  border-radius: 14px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef !important;
+  padding: 1rem 0.25rem !important;
+}
+
+#container-counter .text-muted {
+  font-size: 0.95rem !important;
+  letter-spacing: 0.03em;
+}
+
+#product-counter {
+  font-size: 3.2rem !important;  /* Підібрано під вузьку центральну колонку */
+  font-family: 'Courier New', monospace;
+  color: #1a1d20;
+}
